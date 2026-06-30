@@ -16,6 +16,12 @@ Options -Indexes
 	# http://httpd.apache.org/docs/current/mod/mod_rewrite.html#rewritebase
 	# RewriteBase /
 
+	# Hide the engine: any direct client request for a .php file (e.g.
+	# /index.php/...) returns 404. Internal rewrites to index.php still work
+	# because THE_REQUEST holds only the original request line, not rewrites.
+	RewriteCond %{THE_REQUEST} \s/+[^?]*\.php[\s?/] [NC]
+	RewriteRule ^ - [R=404,L]
+
 	# Redirect Trailing Slashes...
 	RewriteCond %{REQUEST_FILENAME} !-d
 	RewriteCond %{REQUEST_URI} (.+)/$
@@ -47,3 +53,22 @@ Options -Indexes
 # Disable server signature start
 ServerSignature Off
 # Disable server signature end
+
+# ----------------------------------------------------------------------
+# Anti-fingerprinting + security headers (defense in depth)
+# The Stealth application filter sets these too; doing it here also covers
+# static files served directly by Apache. Full Server-token masking lives in
+# the vhost (ServerTokens Prod) — see docs/ARCHITECTURE.md §18.
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+	Header always unset X-Powered-By
+	Header unset X-Powered-By
+	Header always set X-Content-Type-Options "nosniff"
+	Header always set X-Frame-Options "DENY"
+	Header always set Referrer-Policy "no-referrer"
+</IfModule>
+
+# Deny access to hidden/dotfiles (e.g. anything starting with a dot).
+<FilesMatch "^\.">
+	Require all denied
+</FilesMatch>

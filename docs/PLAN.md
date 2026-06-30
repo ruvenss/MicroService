@@ -59,9 +59,11 @@ tested in the production runtime (§17). Full perf tuning is finished in Phase 6
 - [ ] `ProblemDetails` library → RFC 9457 `application/problem+json` builder.
 - [ ] Global exception/error handler routes **all** failures through ProblemDetails.
 - [ ] `RequestId` filter (before) — generate/propagate `X-Request-Id`; echo in responses.
-- [ ] `SecurityHeaders` filter (after) — HSTS, CSP, `X-Content-Type-Options`, etc. (`php-security-engineer`).
+- [x] `SecurityHeaders` filter (after) — delivered as the `Stealth` filter (CSP, `X-Content-Type-Options`,
+      `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`) + anti-fingerprinting (§18). HSTS lands with TLS in P6.
 - [ ] `ContentGuard` filter — enforce/parse JSON, reject bad media types (415/400).
-- [ ] `HealthController` → `GET /api/v1/health` (DB + Redis ping).
+- [x] `HealthController` → `GET /api/v1/health` (DB ping now; Redis ping when Redis lands). Neutral
+      problem+json 404 override + engine hiding also shipped in this slice.
 - [ ] Tests: envelope shapes, every canonical error status, health endpoint.
 
 **Done when:** health returns the standard envelope and forced errors return problem+json.

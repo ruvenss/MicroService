@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Filters\Stealth;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -34,6 +35,7 @@ class Filters extends BaseFilters
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
+        'stealth'       => Stealth::class,
     ];
 
     /**
@@ -57,7 +59,11 @@ class Filters extends BaseFilters
         'after' => [
             'pagecache',   // Web Page Caching
             'performance', // Performance Metrics
-            'toolbar',     // Debug Toolbar
+            // 'toolbar' is intentionally removed: the CodeIgniter DebugToolbar
+            // injects Debugbar-* headers via a post-filter event (which a filter
+            // cannot strip) and is useless for a headless JSON API. Leaving it
+            // out keeps the engine hidden even in development.
+            'stealth',     // Strip engine fingerprints + add security headers (always last)
         ],
     ];
 

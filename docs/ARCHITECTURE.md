@@ -650,3 +650,60 @@ Makefile / spark command     # `make build` / `make up` — the "auto-docker" en
 - `.env`/secrets injected at runtime (DB host/user/pass, Redis, signing material) — never baked
   into the image.
 
+## 18. Stealth / anti-fingerprinting
+
+**Requirement:** if the service is ever exposed, a probe must not be able to tell what runs behind
+it (PHP, CodeIgniter, Apache version). Defence is layered — application + web server + runtime.
+
+### 18.1 Application layer — the `Stealth` filter
+
+`app/Filters/Stealth.php` runs on **every** response (registered in `Filters::$required['after']`,
+last, so it sees the final headers — even on 404s and errors). It:
+
+- removes `X-Powered-By` (both from the framework header bag and via `header_remove()`, since the
+  PHP SAPI injects it independently of the framework);
+- strips the CodeIgniter **DebugToolbar** correlation headers (`Debugbar-Time`/`Debugbar-Link`) and
+  the toolbar is removed from the filter chain entirely (useless for a JSON API, and an instant tell);
+- sets an engine-neutral `Server: MicroService`;
+- adds baseline security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+  a restrictive `Content-Security-Policy` (`default-src 'none'`), and `Permissions-Policy`.
+
+Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`, and the default
+**welcome page is deleted** — unknown paths and the bare root return a neutral `application/problem+json`
+404 via `Routes::set404Override()`, disclosing nothing about the router or app.
+
+### 18.2 Web-server layer — Apache (`public/.htaccess` + vhost)
+
+- **Hide PHP in URLs:** any direct client request for a `.php` file (e.g. `/index.php/...`) returns
+  404; internal rewrites to the front controller still work (the rule keys off `THE_REQUEST`, which
+  holds only the original request line). Clean, extensionless URLs only.
+- `mod_headers` re-asserts the security headers and unsets `X-Powered-By` for static files too.
+- Dotfiles are denied; directory listing is off; `ServerSignature Off`.
+- **Server-token masking** (`ServerTokens Prod`, and stripping the Apache `Server` version) belongs
+  in the vhost/main config shipped in the container (Phase 6) — `.htaccess` cannot set it.
+
+### 18.3 Runtime layer — PHP / container
+
+- `expose_php = Off` in the container `php.ini` (so the SAPI never emits `X-Powered-By` in the first
+  place); production `CI_ENVIRONMENT=production` disables verbose CI error pages.
+- Error responses are JSON/problem+json — no stack traces or framework branding leak in production.
+
+> **Tested:** `tests/Api/StealthHeadersTest.php` and `NotFoundTest.php` assert no PHP/CodeIgniter/
+> Debugbar fingerprint and the neutral 404 body. Note `.htaccess` rules only apply under Apache —
+> the PHP dev server ignores them, so the `.php`-hiding rule is verified in the container, not via
+> `spark serve`.
+
+## 19. n8n integration
+
+The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes several choices:
+
+- **Predictable JSON envelope** (`{data, meta}` / problem+json) so n8n can map fields without
+  guesswork; stable error `status`/`title` for branch logic.
+- **Bearer API-key auth** maps directly to an n8n *Generic Credential → Header/Bearer*; per-key
+  scopes (§7) let each workflow get a least-privilege key, and usage tracking (§13) attributes calls
+  back to the workflow.
+- **Unauthenticated `/api/v1/health`** for n8n schedule/health checks and uptime polling.
+- **Importable Postman collection** (`docs/postman/`) documents each endpoint for humans and serves
+  as the reference when configuring the matching n8n node.
+- Idempotency keys on unsafe writes (§6/§7 roadmap) so n8n retries don't double-apply.
+
