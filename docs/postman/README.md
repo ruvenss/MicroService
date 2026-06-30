@@ -27,5 +27,7 @@ Importable API collection for humans to test every endpoint by hand.
   RFC 9457 `application/problem+json`.
 - **Stealth:** responses intentionally expose no engine fingerprint — the bundled
   test script asserts `Server: MicroService` and the absence of `X-Powered-By`.
-- This collection is hand-maintained for now; once the doc generator lands
-  (PLAN Phase 2.6) it will be produced from the OpenAPI spec automatically.
+- **This collection is generated** from the resource registry by
+  `php spark docs:generate` (alongside `public/docs/openapi.json`, a searchable
+  HTML viewer, and `docs/api/README.md`). Don't hand-edit it — change the
+  registry/endpoints and regenerate.

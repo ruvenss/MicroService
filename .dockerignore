@@ -16,7 +16,11 @@ node_modules
 .claude
 .qodo
 .vscode
-docs
+/docs
+# The generated API docs describe the whole surface — never bake them into a
+# production image (would be exposed if the service is). Dev serves them via
+# `php spark serve`; they stay in the repo for humans/LLMs.
+/public/docs
 tests
 phpunit.dist.xml
 phpcs.xml.dist

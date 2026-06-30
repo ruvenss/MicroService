@@ -47,9 +47,11 @@ These are settled. Don't change one without recording the new decision in
 - **Never modify the core (`app/`) for features.** Build in `plugins/`. If a task seems to need a
   core change, treat it as a framework change (separate concern) and flag it — don't smuggle
   feature logic into core.
-- **Regenerate docs in the same change** as any new/changed function or endpoint: run
-  `php spark docs:generate` (once it exists) and commit the HTML + Markdown output. CI rejects
-  stale docs. See the `api-doc-generator` skill.
+- **Regenerate docs in the same change** as any new/changed endpoint: run `php spark docs:generate`
+  and commit the output — OpenAPI (`public/docs/openapi.json`), searchable HTML viewer
+  (`public/docs/index.html`), Markdown (`docs/api/README.md`), and the Postman collection
+  (`docs/postman/`). All four are generated from the resource registry by `App\Libraries\Docs`,
+  so they never drift. (Generated docs are excluded from the production image — see `.dockerignore`.)
 - **Test in the same change** (see Testing policy below).
 - Build in the **phase order** of [docs/PLAN.md](docs/PLAN.md); each phase ends green.
 

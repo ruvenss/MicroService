@@ -1,308 +1,435 @@
 {
-	"info": {
-		"_postman_id": "b1f6e2a0-0000-4a00-9000-microservice01",
-		"name": "MicroService API",
-		"description": "Importable collection for the MicroService REST framework (CodeIgniter 4). Bearer API-key auth is set at the collection level so every request — and any n8n HTTP Request node modelled on these — inherits it. Set the `baseUrl` and `apiKey` collection variables (or import the matching environment) before sending.\n\n**Auth**\n- All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` EXCEPT `health` (open).\n- Mint a key on the server: `php spark key:create --name n8n --scopes products:read,products:write` (the key is shown once). Paste it into the `apiKey` variable.\n- Scopes are `{resource}:{action}` with action ∈ read/write/delete; wildcards `products:*`, `*:read`, `*`.\n- Missing/invalid key → 401; valid key without the needed scope → 403 (both neutral problem+json).\n\n**Contract**\n- Success: `{ \"data\": ..., \"meta\": ... }` (`meta` omitted when empty; collections carry `meta.pagination`).\n- Errors: RFC 9457 `application/problem+json` (`{type,title,status,detail?,requestId,errors?}`).\n- Every response carries an `X-Request-Id` (echoed, or supply your own to correlate an n8n run).\n- Writes must send `Content-Type: application/json` (else 415) with valid JSON (else 400).\n- **Rate limiting:** per-key fixed window; every response carries `X-RateLimit-Limit` / `X-RateLimit-Remaining`; exceeding it returns **429** with `Retry-After`. Set a per-key limit with `key:create --rate-limit N`.\n- Every request is recorded server-side (`api_request_log`) and stamps the key's `last_used_at`.\n- Responses deliberately carry **no** PHP/CodeIgniter/Apache fingerprints.\n\n**Resources** are config-driven: `products` is the sample. Run **Create product** first — its test script stores the new id into `productId`, which the Get/Update/Delete requests reuse.",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"auth": {
-		"type": "bearer",
-		"bearer": [
-			{ "key": "token", "value": "{{apiKey}}", "type": "string" }
-		]
-	},
-	"variable": [
-		{ "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
-		{ "key": "apiKey", "value": "", "type": "string" },
-		{ "key": "productId", "value": "", "type": "string" },
-		{ "key": "archiveId", "value": "", "type": "string" }
-	],
-	"item": [
-		{
-			"name": "System",
-			"item": [
-				{
-					"name": "Health",
-					"request": {
-						"auth": { "type": "noauth" },
-						"method": "GET",
-						"header": [
-							{ "key": "Accept", "value": "application/json" },
-							{ "key": "X-Request-Id", "value": "{{$guid}}", "description": "Optional correlation id (echoed back). Remove to let the service mint one." }
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/health",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "health"]
-						},
-						"description": "Liveness/readiness probe. Pings the external database; `{data:{status,service,time,checks}}`. 200 healthy, 503 degraded. Unauthenticated."
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('status is 200', () => pm.response.to.have.status(200));",
-									"pm.test('engine is hidden', () => {",
-									"    pm.expect(pm.response.headers.has('X-Powered-By')).to.be.false;",
-									"    pm.expect(pm.response.headers.get('Server')).to.eql('MicroService');",
-									"});"
-								]
-							}
-						}
-					],
-					"response": []
-				},
-				{
-					"name": "Unknown path (neutral 404 example)",
-					"request": {
-						"auth": { "type": "noauth" },
-						"method": "GET",
-						"header": [{ "key": "Accept", "value": "application/problem+json" }],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/does-not-exist",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "does-not-exist"]
-						},
-						"description": "Shows the neutral error shape: unknown paths return RFC 9457 problem+json with no engine disclosure. The same shape is returned for every error status."
-					},
-					"response": []
-				},
-				{
-					"name": "Discover resources",
-					"request": {
-						"method": "GET",
-						"header": [{ "key": "Accept", "value": "application/json" }],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/_resources",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "_resources"]
-						},
-						"description": "Self-description of the API: every registered resource with its endpoint, output fields, writable fields, sortable/filterable columns, supported operators, and pagination caps. Will be auth-gated once auth lands."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Products",
-			"description": "CRUD for the sample `products` resource (generic config-driven engine).",
-			"item": [
-				{
-					"name": "List products",
-					"request": {
-						"method": "GET",
-						"header": [{ "key": "Accept", "value": "application/json" }],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/products?page=1&perPage=25&sort=-created_at",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "products"],
-							"query": [
-								{ "key": "page", "value": "1" },
-								{ "key": "perPage", "value": "25", "description": "Capped at the resource max (100)." },
-								{ "key": "sort", "value": "-created_at", "description": "Prefix '-' for descending. Only whitelisted columns: sku, name, price, created_at." }
-							]
-						},
-						"description": "Paginated list: `{data:[...], meta:{pagination:{page,perPage,total,totalPages}}}`."
-					},
-					"response": []
-				},
-				{
-					"name": "List products (filter + sparse fields)",
-					"request": {
-						"method": "GET",
-						"header": [{ "key": "Accept", "value": "application/json" }],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/products?filter[status]=active&filter[price][gte]=10&fields=id,sku,price&sort=-price",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "products"],
-							"query": [
-								{ "key": "filter[status]", "value": "active", "description": "Equality filter (operator defaults to eq)." },
-								{ "key": "filter[price][gte]", "value": "10", "description": "Operators: eq, ne, gt, gte, lt, lte, like, in. Only filterable columns: sku, status, price." },
-								{ "key": "fields", "value": "id,sku,price", "description": "Sparse fieldset — restrict returned columns (allow-listed)." },
-								{ "key": "sort", "value": "-price" }
-							]
-						},
-						"description": "Filtering and sparse fieldsets are allow-listed and parameter-bound. Unknown columns/operators/fields return 400 problem+json."
-					},
-					"response": []
-				},
-				{
-					"name": "Create product",
-					"request": {
-						"method": "POST",
-						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Accept", "value": "application/json" }
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"sku\": \"SKU-1001\",\n    \"name\": \"Sample Widget\",\n    \"price\": \"19.99\",\n    \"status\": \"active\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/products",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "products"]
-						},
-						"description": "Creates a product. 201 + `Location` header. Validation errors return 422 problem+json with a per-field `errors` map."
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('status is 201', () => pm.response.to.have.status(201));",
-									"const id = pm.response.json().data.id;",
-									"pm.collectionVariables.set('productId', id);",
-									"pm.test('Location header set', () => pm.expect(pm.response.headers.get('Location')).to.include('/api/v1/products/'));"
-								]
-							}
-						}
-					],
-					"response": []
-				},
-				{
-					"name": "Get product",
-					"request": {
-						"method": "GET",
-						"header": [{ "key": "Accept", "value": "application/json" }],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/products/{{productId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "products", "{{productId}}"]
-						},
-						"description": "Fetch one product by id. Unknown id → neutral 404 problem+json."
-					},
-					"response": []
-				},
-				{
-					"name": "Update product",
-					"request": {
-						"method": "PATCH",
-						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
-							{ "key": "Accept", "value": "application/json" }
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Renamed Widget\",\n    \"price\": \"24.50\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/products/{{productId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "products", "{{productId}}"]
-						},
-						"description": "Partial update (PATCH) or full replace (PUT). Only fillable fields are accepted; others are ignored."
-					},
-					"response": []
-				},
-				{
-					"name": "Delete product",
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/products/{{productId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "products", "{{productId}}"]
-						},
-						"description": "Archival delete: the row is moved to the recycle bin (not destroyed) and audited. 204 No Content. Restore it via Audit & recycle bin → Restore archived record."
-					},
-					"response": [],
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('status is 204', () => pm.response.to.have.status(204));"
-								]
-							}
-						}
-					]
-				}
-			]
-		},
-		{
-			"name": "Audit & recycle bin",
-			"description": "Inspect the audit trail and the recycle bin; restore deleted rows. Needs scopes audit:read / archive:read / archive:write.",
-			"item": [
-				{
-					"name": "List archived (recycle bin)",
-					"request": {
-						"method": "GET",
-						"header": [{ "key": "Accept", "value": "application/json" }],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/_archive?resource=products",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "_archive"],
-							"query": [{ "key": "resource", "value": "products", "description": "Optional filter." }]
-						},
-						"description": "Lists archived (deleted) rows. Requires scope archive:read."
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"const items = pm.response.json().data;",
-									"if (items.length) { pm.collectionVariables.set('archiveId', items[0].id); }"
-								]
-							}
-						}
-					],
-					"response": []
-				},
-				{
-					"name": "Get archived record",
-					"request": {
-						"method": "GET",
-						"header": [{ "key": "Accept", "value": "application/json" }],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/_archive/{{archiveId}}",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "_archive", "{{archiveId}}"]
-						},
-						"description": "Shows one archived record including its full payload. Requires scope archive:read."
-					},
-					"response": []
-				},
-				{
-					"name": "Restore archived record",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/_archive/{{archiveId}}/restore",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "_archive", "{{archiveId}}", "restore"]
-						},
-						"description": "Re-inserts the row into its original table. Requires scope archive:write. 409 if already restored or the original id is taken."
-					},
-					"response": []
-				},
-				{
-					"name": "Audit trail",
-					"request": {
-						"method": "GET",
-						"header": [{ "key": "Accept", "value": "application/json" }],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/_audit?resource=products",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "v1", "_audit"],
-							"query": [
-								{ "key": "resource", "value": "products", "description": "Optional filter." },
-								{ "key": "record_id", "value": "", "description": "Optional: filter by a single record id.", "disabled": true }
-							]
-						},
-						"description": "Every create/update/delete/restore with before/after snapshots and changed-field list. Requires scope audit:read."
-					},
-					"response": []
-				}
-			]
-		}
-	]
+    "info": {
+        "_postman_id": "b1f6e2a0-0000-4a00-9000-microservice01",
+        "name": "MicroService API",
+        "description": "Generated from the resource registry (php spark docs:generate). Set the `baseUrl` and `apiKey` collection variables. Mint a key with `php spark key:create`. Bearer auth is inherited by every request except health. Success: {data, meta}; errors: RFC 9457 problem+json; rate limits via X-RateLimit-* / 429; responses carry no PHP/CodeIgniter/Apache fingerprint.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{apiKey}}",
+                "type": "string"
+            }
+        ]
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080",
+            "type": "string"
+        },
+        {
+            "key": "apiKey",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "archiveId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "productsId",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "System",
+            "item": [
+                {
+                    "name": "Liveness/readiness probe (pings the database).",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/health",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "health"
+                            ]
+                        },
+                        "description": "Liveness/readiness probe (pings the database).",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Discover registered resources and how to query them.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_resources",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_resources"
+                            ]
+                        },
+                        "description": "Discover registered resources and how to query them."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Audit & recycle bin",
+            "item": [
+                {
+                    "name": "List archived (deleted) rows.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_archive?resource=&page=&perPage=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_archive"
+                            ],
+                            "query": [
+                                {
+                                    "key": "resource",
+                                    "value": "",
+                                    "description": "Optional resource filter.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "",
+                                    "description": "Page number (1-based).",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "perPage",
+                                    "value": "",
+                                    "description": "Items per page (capped per resource).",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "List archived (deleted) rows. Scope: archive:read."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Inspect one archived record (full payload).",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_archive/{{archiveId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_archive",
+                                "{{archiveId}}"
+                            ]
+                        },
+                        "description": "Inspect one archived record (full payload). Scope: archive:read."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Restore an archived record to its original table.",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_archive/{{archiveId}}/restore",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_archive",
+                                "{{archiveId}}",
+                                "restore"
+                            ]
+                        },
+                        "description": "Restore an archived record to its original table. Scope: archive:write."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Read the data-mutation audit trail.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_audit?resource=&record_id=&page=&perPage=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_audit"
+                            ],
+                            "query": [
+                                {
+                                    "key": "resource",
+                                    "value": "",
+                                    "description": "Optional resource filter.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "record_id",
+                                    "value": "",
+                                    "description": "Optional record id filter.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "",
+                                    "description": "Page number (1-based).",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "perPage",
+                                    "value": "",
+                                    "description": "Items per page (capped per resource).",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "Read the data-mutation audit trail. Scope: audit:read."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Products",
+            "item": [
+                {
+                    "name": "List products.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products?page=&perPage=&sort=&fields=&filter[sku]=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "",
+                                    "description": "Page number (1-based).",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "perPage",
+                                    "value": "",
+                                    "description": "Items per page (capped per resource).",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "sort",
+                                    "value": "",
+                                    "description": "Sort column; prefix \"-\" for descending. Allowed: sku, name, price, created_at.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "fields",
+                                    "value": "",
+                                    "description": "Comma-separated sparse fieldset. Allowed: id, sku, name, price, status, created_at, updated_at.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "filter[sku]",
+                                    "value": "",
+                                    "description": "Filter. Columns: sku, status, price. Operators: eq, ne, gt, gte, lt, lte, like, in (e.g. filter[col][gte]=10).",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "List products. Scope: products:read."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create a products record.",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products"
+                            ]
+                        },
+                        "description": "Create a products record. Scope: products:write.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"sku\": \"string\",\n    \"name\": \"string\",\n    \"price\": \"0.00\",\n    \"status\": \"string\"\n}"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Fetch one products by id.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products/{{productsId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products",
+                                "{{productsId}}"
+                            ]
+                        },
+                        "description": "Fetch one products by id. Scope: products:read."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update a products (PATCH/PUT).",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products/{{productsId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products",
+                                "{{productsId}}"
+                            ]
+                        },
+                        "description": "Update a products (PATCH/PUT). Scope: products:write.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"sku\": \"string\",\n    \"name\": \"string\",\n    \"price\": \"0.00\",\n    \"status\": \"string\"\n}"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Archival delete (moves the row to the recycle bin).",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products/{{productsId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products",
+                                "{{productsId}}"
+                            ]
+                        },
+                        "description": "Archival delete (moves the row to the recycle bin). Scope: products:delete."
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ]
 }

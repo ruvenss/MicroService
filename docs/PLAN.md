@@ -126,18 +126,20 @@ today; FPM+event is a Phase 6 perf upgrade).
 
 **Goal:** docs auto-generate from code so they can never drift; enforced from here on (§16).
 
-- [ ] `DocGenerator` introspects: resource registry, plugin manifests, controller docblocks/attributes.
-- [ ] Emit canonical **OpenAPI 3.1** (`public/docs/openapi.json`) as the backbone.
-- [ ] **HTML** output → `public/docs/`: searchable static site (Redoc/Stoplight Elements + per-plugin pages).
-- [ ] **Markdown** output → `docs/api/`: one file per resource/plugin to the fixed template (§16.3) + index.
-- [ ] Spark command `docs:generate` (full) and `docs:check` (fails if generated output is stale).
-- [ ] CI gate: run `docs:check`; stale docs fail the build.
-- [ ] Standing workflow rule recorded in `CLAUDE.md` + `api-doc-generator` skill: regenerate on every
-      function/endpoint change.
-- [ ] Tests: generator produces expected HTML+MD for the sample plugin; `docs:check` detects drift.
+- [x] `App\Libraries\Docs\EndpointCatalog` introspects the resource registry + meta endpoints (single
+      source of truth shared by all generators). Plugin manifests/docblocks fold in once plugins land.
+- [x] Emit canonical **OpenAPI 3.1** (`public/docs/openapi.json`) as the backbone.
+- [x] **HTML** output → `public/docs/index.html`: searchable Redoc viewer over the OpenAPI spec.
+- [x] **Markdown** output → `docs/api/README.md`: every endpoint to a fixed template (LLM-friendly).
+- [x] **Postman** collection generated from the same catalog (`docs/postman/`), so it never drifts.
+- [x] Spark command `docs:generate` (writes all four artefacts).
+- [ ] `docs:check` (fail on drift) + CI gate — follow-up.
+- [x] Standing workflow rule in `CLAUDE.md`: regenerate on every endpoint change.
+- [x] Tests: `DocsGeneratorTest` asserts OpenAPI/Postman/Markdown/catalog cover the resources (84 green).
+- [x] Generated docs excluded from the production image (`.dockerignore`) — not exposed if the service is.
 
-**Done when:** adding a function/endpoint and running `docs:generate` yields updated, searchable HTML
-and LLM-ready Markdown, and CI rejects stale docs.
+**Done when:** adding/changing an endpoint and running `docs:generate` yields updated OpenAPI + searchable
+HTML + LLM Markdown + Postman. **Done** (CI `docs:check` drift-gate is the remaining follow-up).
 
 ---
 
