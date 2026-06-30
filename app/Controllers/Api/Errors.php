@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
+use App\Libraries\ProblemDetails;
+use App\Libraries\RequestContext;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -18,13 +20,13 @@ class Errors extends BaseController
 {
     public function notFound(): ResponseInterface
     {
+        $body = ProblemDetails::make(404, null, [
+            'requestId' => RequestContext::id(),
+        ]);
+
         return $this->response
             ->setStatusCode(404)
-            ->setBody((string) json_encode([
-                'type'   => 'about:blank',
-                'title'  => 'Not Found',
-                'status' => 404,
-            ]))
+            ->setBody((string) json_encode($body))
             ->setContentType('application/problem+json');
     }
 }

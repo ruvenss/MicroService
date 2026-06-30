@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
+use App\Libraries\ResponseEnvelope;
 use CodeIgniter\HTTP\ResponseInterface;
 use Config\Database;
 use Throwable;
@@ -25,16 +26,14 @@ class Health extends BaseController
 
         return $this->response
             ->setStatusCode($healthy ? 200 : 503)
-            ->setJSON([
-                'data' => [
-                    'status'  => $healthy ? 'ok' : 'degraded',
-                    'service' => 'microservice',
-                    'time'    => gmdate('c'),
-                    'checks'  => [
-                        'database' => $databaseUp ? 'up' : 'down',
-                    ],
+            ->setJSON(ResponseEnvelope::wrap([
+                'status'  => $healthy ? 'ok' : 'degraded',
+                'service' => 'microservice',
+                'time'    => gmdate('c'),
+                'checks'  => [
+                    'database' => $databaseUp ? 'up' : 'down',
                 ],
-            ]);
+            ]));
     }
 
     private function checkDatabase(): bool

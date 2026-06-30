@@ -31,7 +31,19 @@ parameters:
 			path: app/Config/Logger.php
 
 		-
+			message: '#^Strict comparison using \!\=\= between ''testing'' and ''production'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Config/Routes.php
+
+		-
 			message: '#^Strict comparison using \=\=\= between ''testing'' and ''production'' will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 1
 			path: app/Config/Security.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''testing'' and ''production'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Libraries/ApiExceptionHandler.php

@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Filters\RequestId;
 use App\Filters\Stealth;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
@@ -36,6 +37,7 @@ class Filters extends BaseFilters
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
         'stealth'       => Stealth::class,
+        'requestid'     => RequestId::class,
     ];
 
     /**
@@ -53,12 +55,14 @@ class Filters extends BaseFilters
      */
     public array $required = [
         'before' => [
+            'requestid',  // Establish correlation id as early as possible
             'forcehttps', // Force Global Secure Requests
             'pagecache',  // Web Page Caching
         ],
         'after' => [
             'pagecache',   // Web Page Caching
             'performance', // Performance Metrics
+            'requestid',   // Echo X-Request-Id
             // 'toolbar' is intentionally removed: the CodeIgniter DebugToolbar
             // injects Debugbar-* headers via a post-filter event (which a filter
             // cannot strip) and is useless for a headless JSON API. Leaving it

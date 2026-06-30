@@ -9,6 +9,10 @@
     <arg name="colors"/>
     <arg value="sp"/>
 
+    <!-- Errors fail the build; warnings (e.g. line length in stock CI4 config
+         files) stay advisory and do not break CI. -->
+    <config name="ignore_warnings_on_exit" value="1"/>
+
     <rule ref="PSR12"/>
 
     <!-- Generated / framework-shaped code is exempt. -->

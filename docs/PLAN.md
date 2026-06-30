@@ -55,16 +55,19 @@ tested in the production runtime (§17). Full perf tuning is finished in Phase 6
 
 **Goal:** the uniform success/error contract exists before any resource does.
 
-- [ ] `ResponseEnvelope` library → `{data, meta}` shaping (single + collection).
-- [ ] `ProblemDetails` library → RFC 9457 `application/problem+json` builder.
-- [ ] Global exception/error handler routes **all** failures through ProblemDetails.
-- [ ] `RequestId` filter (before) — generate/propagate `X-Request-Id`; echo in responses.
+- [x] `ResponseEnvelope` library → `{data, meta}` shaping (single + collection).
+- [x] `ProblemDetails` library → RFC 9457 `application/problem+json` builder.
+- [x] Global exception/error handler routes **all** failures through ProblemDetails
+      (`ApiExceptionHandler` wired in `Config\Exceptions`; verified end-to-end — even a 500 returns
+      neutral problem+json with no stack trace/engine disclosure).
+- [x] `RequestId` filter (before/after) — adopt a well-formed inbound `X-Request-Id` or mint one;
+      echo on the response and embed in problem+json (`RequestContext`).
 - [x] `SecurityHeaders` filter (after) — delivered as the `Stealth` filter (CSP, `X-Content-Type-Options`,
       `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`) + anti-fingerprinting (§18). HSTS lands with TLS in P6.
 - [ ] `ContentGuard` filter — enforce/parse JSON, reject bad media types (415/400).
 - [x] `HealthController` → `GET /api/v1/health` (DB ping now; Redis ping when Redis lands). Neutral
       problem+json 404 override + engine hiding also shipped in this slice.
-- [ ] Tests: envelope shapes, every canonical error status, health endpoint.
+- [x] Tests: envelope shapes, problem details, request-id behaviour, health endpoint (20 tests green).
 
 **Done when:** health returns the standard envelope and forced errors return problem+json.
 

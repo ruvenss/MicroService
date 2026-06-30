@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "b1f6e2a0-0000-4a00-9000-microservice01",
 		"name": "MicroService API",
-		"description": "Importable collection for the MicroService REST framework (CodeIgniter 4). Bearer API-key auth is set at the collection level so every request — and any n8n HTTP Request node modelled on these — inherits it. Set the `baseUrl` and `apiKey` collection variables (or import the matching environment) before sending.\n\nResponses follow the framework contract: success is `{ \"data\": ... , \"meta\": ... }`; errors are RFC 9457 `application/problem+json`. The service deliberately hides its engine, so responses carry no PHP/CodeIgniter/Apache fingerprints.",
+		"description": "Importable collection for the MicroService REST framework (CodeIgniter 4). Bearer API-key auth is set at the collection level so every request — and any n8n HTTP Request node modelled on these — inherits it. Set the `baseUrl` and `apiKey` collection variables (or import the matching environment) before sending.\n\n**Contract**\n- Success: `{ \"data\": ..., \"meta\": ... }` (`meta` omitted when empty).\n- Errors: RFC 9457 `application/problem+json` (`{type,title,status,detail?,requestId,...}`).\n- Every response carries an `X-Request-Id` (echoed back, or supply your own to correlate an n8n run end to end).\n- Responses deliberately carry **no** PHP/CodeIgniter/Apache fingerprints.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"auth": {
@@ -42,6 +42,11 @@
 							{
 								"key": "Accept",
 								"value": "application/json"
+							},
+							{
+								"key": "X-Request-Id",
+								"value": "{{$guid}}",
+								"description": "Optional: supply your own correlation id (echoed back). Remove to let the service mint one."
 							}
 						],
 						"url": {
@@ -82,6 +87,10 @@
 								{
 									"key": "Content-Type",
 									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "X-Request-Id",
+									"value": "317fdac4aee44d3d85182427"
 								}
 							],
 							"body": "{\n    \"data\": {\n        \"status\": \"ok\",\n        \"service\": \"microservice\",\n        \"time\": \"2026-06-30T21:27:12+00:00\",\n        \"checks\": {\n            \"database\": \"up\"\n        }\n    }\n}"
@@ -102,9 +111,69 @@
 									"pm.test('engine is hidden', function () {",
 									"    pm.expect(pm.response.headers.has('X-Powered-By')).to.be.false;",
 									"    pm.expect(pm.response.headers.get('Server')).to.eql('MicroService');",
+									"});",
+									"pm.test('correlation id present', function () {",
+									"    pm.expect(pm.response.headers.has('X-Request-Id')).to.be.true;",
 									"});"
 								]
 							}
+						}
+					]
+				},
+				{
+					"name": "Unknown path (neutral 404 example)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/problem+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/does-not-exist",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"does-not-exist"
+							]
+						},
+						"description": "Shows the neutral error shape: unknown paths return RFC 9457 problem+json with no engine disclosure. The same shape is returned for every error status (401/403/422/500/...)."
+					},
+					"response": [
+						{
+							"name": "Not Found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/does-not-exist",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"does-not-exist"
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/problem+json; charset=UTF-8"
+								}
+							],
+							"body": "{\n    \"type\": \"about:blank\",\n    \"title\": \"Not Found\",\n    \"status\": 404,\n    \"requestId\": \"c7af2c6c886f9d1ac0682cee\"\n}"
 						}
 					]
 				}

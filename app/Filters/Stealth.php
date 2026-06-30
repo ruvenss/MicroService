@@ -33,6 +33,19 @@ class Stealth implements FilterInterface
 
     public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
     {
+        self::harden($response);
+
+        return $response;
+    }
+
+    /**
+     * Apply anti-fingerprinting + security headers to a response.
+     *
+     * Exposed statically so the global exception handler can harden error
+     * responses too — those are produced outside the normal filter chain.
+     */
+    public static function harden(ResponseInterface $response): void
+    {
         // ── Remove engine fingerprints ───────────────────────────────────
         // X-Powered-By is injected by the PHP SAPI itself (expose_php), not the
         // framework header bag — drop it at the PHP level too. The production
@@ -56,7 +69,5 @@ class Stealth implements FilterInterface
         $response->setHeader('Referrer-Policy', 'no-referrer');
         $response->setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
         $response->setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-
-        return $response;
     }
 }
