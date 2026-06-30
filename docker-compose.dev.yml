@@ -1,0 +1,46 @@
+# =============================================================================
+#  DEV-ONLY infrastructure for local development & testing.
+#  Currently provides the EXTERNAL MySQL the microservice connects to.
+#  (The app/Apache/Redis stack arrives with Phase 0.5 in a separate compose;
+#   per the architecture, the database is never bundled into the app image.)
+#
+#  Usage:
+#    docker compose -f docker-compose.dev.yml up -d      # start
+#    docker compose -f docker-compose.dev.yml ps         # status
+#    docker compose -f docker-compose.dev.yml logs -f db # logs
+#    docker compose -f docker-compose.dev.yml down       # stop (keep data)
+#    docker compose -f docker-compose.dev.yml down -v    # stop + wipe data
+#
+#  Credentials are read from .env (gitignored).
+# =============================================================================
+name: microservice-dev
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: microservice-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-microservice}
+      MYSQL_USER: ${MYSQL_USER:-microservice}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    ports:
+      - "${MYSQL_HOST_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d:ro
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  mysql-data:
+    name: microservice-mysql-data

@@ -4,14 +4,54 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This is **MicroService v1.0**, a project in its initial scaffolding stage. As of now the
-repository contains only a README, a GPLv3 LICENSE, and editor config — there is no
-application source, build tooling, dependency manifest, or test suite yet.
+This is **MicroService v1.0**, a reusable **CodeIgniter 4 microservice framework** providing
+essential REST CRUD over a single database. It is in the **design stage** — the architecture is
+fully specified but no application code exists yet (only README, GPLv3 LICENSE, editor config,
+and the specialist agents/skills).
 
-The intended stack (inferred from the project's specialist agents/skills) is a **PHP 8.4/8.5
-REST API microservice** backed by **MySQL** and **Redis**, served under **Apache2**, with a
-strong emphasis on security and performance. When you add the first real code, update this
-file with the actual build/test/lint commands and the concrete architecture.
+**Read the design before building:**
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — the system design (source of truth).
+- [docs/PLAN.md](docs/PLAN.md) — the phased, dependency-ordered implementation roadmap.
+
+When you add the first real code, update this file with the actual build/test/lint/serve commands.
+
+## Locked architectural decisions
+
+These are settled. Don't change one without recording the new decision in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §3.
+
+1. **Stack:** CodeIgniter **4.7.x**, PHP **8.5** (ZTS build; code stays 8.4-compatible), **MySQL 8**
+   (single DB, InnoDB/utf8mb4), **Redis** for cache/rate-limit/counters, **Apache2 + PHP-FPM** (`mpm_event`).
+2. **Generic, config-driven CRUD** — one generic controller+model serves every entity; resources
+   are *declared*, not hand-coded. Filter/sort/field exposure are allow-lists.
+3. **Auth = bearer API keys.** Many keys per service, per-key permission scopes (`{resource}:{action}`,
+   wildcards), usage tracked. `Authorization: Bearer <key>`; only secret hashes stored.
+4. **Responses:** wrapped `{data, meta}` on success; **RFC 9457 Problem Details** on error.
+5. **Full auditing:** every request logged (access audit) and every mutation logged with
+   before/after snapshots (data audit), written **inside the same DB transaction** as the change.
+6. **Archival deletes:** DELETE never destroys — it moves the full row to a recycle-bin table and
+   can be restored. No destructive deletes on business tables.
+7. **Sealed core + plugins:** developers **never edit `app/` (core)**. All features live in
+   `plugins/<Vendor>/<Name>/` and extend the core via the registry, events, and routes.
+8. **Auto-generated docs:** every function/endpoint change regenerates **searchable HTML**
+   (`public/docs/`) and **LLM-friendly Markdown** (`docs/api/`) from code — never hand-edited.
+9. **Self-contained container, external DB:** ships as a Docker image (PHP 8.5 + Apache2 + Redis,
+   OPcache/JIT/preload, parallel-capable). **No database in the container** — MySQL is external.
+   **Persistent DB connections** (`pConnect`); FPM pool sized so Σ`max_children` ≤ MySQL `max_connections`.
+10. **Delivery = monorepo** (core `app/` + all `plugins/` in one repo; seal enforced by CI guard),
+    **deploy via docker-compose** (app + Redis sidecar, external DB), and the Phase 2 vertical slice
+    is built against a **generic `products` sample** plugin.
+
+## Standing workflow rules
+
+- **Never modify the core (`app/`) for features.** Build in `plugins/`. If a task seems to need a
+  core change, treat it as a framework change (separate concern) and flag it — don't smuggle
+  feature logic into core.
+- **Regenerate docs in the same change** as any new/changed function or endpoint: run
+  `php spark docs:generate` (once it exists) and commit the HTML + Markdown output. CI rejects
+  stale docs. See the `api-doc-generator` skill.
+- **Test in the same change** (see Testing policy below).
+- Build in the **phase order** of [docs/PLAN.md](docs/PLAN.md); each phase ends green.
 
 ## License
 

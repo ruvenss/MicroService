@@ -1,0 +1,15 @@
+# Dev MySQL tuning for the MicroService framework.
+# utf8mb4 everywhere; modest connection ceiling for local use.
+# NOTE: in production, max_connections must be coordinated with the FPM pool
+# size so that Σ(pm.max_children × replicas) ≤ max_connections (see ARCHITECTURE §17.2).
+[mysqld]
+character-set-server        = utf8mb4
+collation-server            = utf8mb4_unicode_ci
+max_connections             = 200
+innodb_buffer_pool_size     = 256M
+# Sane defaults for predictable local behaviour
+sql_mode                    = STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+wait_timeout                = 28800
+
+[client]
+default-character-set       = utf8mb4
