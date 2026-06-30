@@ -43,7 +43,11 @@ class ApiKeyAuth implements FilterInterface
             return $this->unauthorized();
         }
 
-        AuthContext::set((int) $key['id'], $model->scopesFor((int) $key['id']));
+        AuthContext::set(
+            (int) $key['id'],
+            $model->scopesFor((int) $key['id']),
+            isset($key['rate_limit']) ? (int) $key['rate_limit'] : null,
+        );
 
         return null;
     }

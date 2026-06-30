@@ -17,7 +17,7 @@ trait AuthTestTrait
      *
      * @return string the full bearer token (prefix.secret)
      */
-    protected function makeKey(array $scopes, string $status = 'active', ?string $expiresAt = null): string
+    protected function makeKey(array $scopes, string $status = 'active', ?string $expiresAt = null, ?int $rateLimit = null): string
     {
         $prefix = bin2hex(random_bytes(6));
         $secret = bin2hex(random_bytes(24));
@@ -28,6 +28,7 @@ trait AuthTestTrait
             'secret_hash' => hash('sha256', $secret),
             'name'        => 'test',
             'status'      => $status,
+            'rate_limit'  => $rateLimit,
             'expires_at'  => $expiresAt,
         ], true);
 

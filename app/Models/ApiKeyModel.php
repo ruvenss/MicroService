@@ -16,7 +16,7 @@ class ApiKeyModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $useTimestamps = true;
-    protected $allowedFields = ['prefix', 'secret_hash', 'name', 'status', 'expires_at', 'last_used_at'];
+    protected $allowedFields = ['prefix', 'secret_hash', 'name', 'status', 'rate_limit', 'expires_at', 'last_used_at'];
 
     /**
      * Fetch an active, unexpired key row by its public prefix.

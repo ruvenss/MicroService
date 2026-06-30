@@ -2,10 +2,7 @@
 
 declare(strict_types=1);
 
-use CodeIgniter\Test\CIUnitTestCase;
-use CodeIgniter\Test\DatabaseTestTrait;
-use CodeIgniter\Test\FeatureTestTrait;
-use Tests\Support\AuthTestTrait;
+use Tests\Support\FeatureTestCase;
 
 /**
  * ContentGuard rejects bad write payloads (after auth/permission pass) with a
@@ -13,15 +10,8 @@ use Tests\Support\AuthTestTrait;
  *
  * @internal
  */
-final class ContentGuardTest extends CIUnitTestCase
+final class ContentGuardTest extends FeatureTestCase
 {
-    use FeatureTestTrait;
-    use DatabaseTestTrait;
-    use AuthTestTrait;
-
-    protected $namespace = 'App';
-    protected $refresh   = true;
-
     /** @var array<string, string> */
     private array $auth;
 

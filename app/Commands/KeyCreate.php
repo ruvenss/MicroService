@@ -19,9 +19,10 @@ class KeyCreate extends BaseCommand
     protected $description = 'Create an API key and print the secret once.';
     protected $usage       = 'key:create [--name <name>] [--scopes <a:b,c:d>] [--expires <YYYY-MM-DD>]';
     protected $options     = [
-        '--name'    => 'Human label for the key.',
-        '--scopes'  => 'Comma-separated scopes, e.g. products:read,products:write (default *:read).',
-        '--expires' => 'Optional expiry date (YYYY-MM-DD).',
+        '--name'       => 'Human label for the key.',
+        '--scopes'     => 'Comma-separated scopes, e.g. products:read,products:write (default *:read).',
+        '--expires'    => 'Optional expiry date (YYYY-MM-DD).',
+        '--rate-limit' => 'Optional per-minute request limit (overrides the global default).',
     ];
 
     public function run(array $params)
@@ -29,6 +30,7 @@ class KeyCreate extends BaseCommand
         $name      = CLI::getOption('name') ?? CLI::prompt('Key name', 'default');
         $scopesOpt = CLI::getOption('scopes') ?? CLI::prompt('Scopes (comma-separated)', '*:read');
         $expires   = CLI::getOption('expires');
+        $rateLimit = CLI::getOption('rate-limit');
 
         $prefix = bin2hex(random_bytes(6));
         $secret = bin2hex(random_bytes(24));
@@ -39,6 +41,7 @@ class KeyCreate extends BaseCommand
             'secret_hash' => hash('sha256', $secret),
             'name'        => (string) $name,
             'status'      => 'active',
+            'rate_limit'  => $rateLimit !== null ? (int) $rateLimit : null,
             'expires_at'  => $expires !== null ? date('Y-m-d H:i:s', (int) strtotime((string) $expires)) : null,
         ], true);
 

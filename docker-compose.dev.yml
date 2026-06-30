@@ -1,8 +1,9 @@
 # =============================================================================
 #  DEV-ONLY infrastructure for local development & testing.
-#  Currently provides the EXTERNAL MySQL the microservice connects to.
-#  (The app/Apache/Redis stack arrives with Phase 0.5 in a separate compose;
-#   per the architecture, the database is never bundled into the app image.)
+#  Provides the EXTERNAL MySQL the microservice connects to, plus a Redis
+#  sidecar for cache / rate-limit counters (set cache.handler=redis in .env to
+#  use it; the host PHP falls back to the file cache when phpredis is absent).
+#  Per the architecture, the database is never bundled into the app image.
 #
 #  Usage:
 #    docker compose -f docker-compose.dev.yml up -d      # start
@@ -40,6 +41,20 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: microservice-redis
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
 volumes:
   mysql-data:

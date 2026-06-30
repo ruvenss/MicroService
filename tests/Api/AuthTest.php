@@ -2,32 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Libraries\AuthContext;
-use CodeIgniter\Test\CIUnitTestCase;
-use CodeIgniter\Test\DatabaseTestTrait;
-use CodeIgniter\Test\FeatureTestTrait;
-use Tests\Support\AuthTestTrait;
+use Tests\Support\FeatureTestCase;
 
 /**
  * Bearer API-key authentication and scope enforcement on /api/v1/*.
  *
  * @internal
  */
-final class AuthTest extends CIUnitTestCase
+final class AuthTest extends FeatureTestCase
 {
-    use FeatureTestTrait;
-    use DatabaseTestTrait;
-    use AuthTestTrait;
-
-    protected $namespace = 'App';
-    protected $refresh   = true;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        AuthContext::reset();
-    }
-
     public function testMissingKeyReturns401(): void
     {
         $result = $this->get('api/v1/products');

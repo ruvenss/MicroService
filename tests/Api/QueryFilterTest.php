@@ -2,25 +2,15 @@
 
 declare(strict_types=1);
 
-use CodeIgniter\Test\CIUnitTestCase;
-use CodeIgniter\Test\DatabaseTestTrait;
-use CodeIgniter\Test\FeatureTestTrait;
-use Tests\Support\AuthTestTrait;
+use Tests\Support\FeatureTestCase;
 
 /**
  * End-to-end filtering and sparse fieldsets against the real test database.
  *
  * @internal
  */
-final class QueryFilterTest extends CIUnitTestCase
+final class QueryFilterTest extends FeatureTestCase
 {
-    use FeatureTestTrait;
-    use DatabaseTestTrait;
-    use AuthTestTrait;
-
-    protected $namespace = 'App';
-    protected $refresh   = true;
-
     /** @var array<string, string> */
     private array $auth;
 
@@ -28,11 +18,11 @@ final class QueryFilterTest extends CIUnitTestCase
     {
         parent::setUp();
         $this->auth = $this->authHeaders(['products:*']);
-        $this->seed('cheap', 'active', '5.00');
-        $this->seed('pricey', 'archived', '50.00');
+        $this->seedProduct('cheap', 'active', '5.00');
+        $this->seedProduct('pricey', 'archived', '50.00');
     }
 
-    private function seed(string $sku, string $status, string $price): void
+    private function seedProduct(string $sku, string $status, string $price): void
     {
         $this->withHeaders($this->auth)->withBodyFormat('json')->post('api/v1/products', [
             'sku' => $sku, 'name' => ucfirst($sku), 'price' => $price, 'status' => $status,

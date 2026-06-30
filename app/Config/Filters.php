@@ -4,9 +4,11 @@ namespace Config;
 
 use App\Filters\ApiKeyAuth;
 use App\Filters\ContentGuard;
+use App\Filters\RateLimit;
 use App\Filters\RequestId;
 use App\Filters\RequirePermission;
 use App\Filters\Stealth;
+use App\Filters\UsageTracker;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -44,6 +46,8 @@ class Filters extends BaseFilters
         'contentguard'  => ContentGuard::class,
         'apikey'        => ApiKeyAuth::class,
         'permission'    => RequirePermission::class,
+        'ratelimit'     => RateLimit::class,
+        'usagetracker'  => UsageTracker::class,
     ];
 
     /**

@@ -2,23 +2,13 @@
 
 declare(strict_types=1);
 
-use CodeIgniter\Test\CIUnitTestCase;
-use CodeIgniter\Test\DatabaseTestTrait;
-use CodeIgniter\Test\FeatureTestTrait;
-use Tests\Support\AuthTestTrait;
+use Tests\Support\FeatureTestCase;
 
 /**
  * @internal
  */
-final class DiscoveryTest extends CIUnitTestCase
+final class DiscoveryTest extends FeatureTestCase
 {
-    use FeatureTestTrait;
-    use DatabaseTestTrait;
-    use AuthTestTrait;
-
-    protected $namespace = 'App';
-    protected $refresh   = true;
-
     public function testRequiresAuthentication(): void
     {
         $this->get('api/v1/_resources')->assertStatus(401);

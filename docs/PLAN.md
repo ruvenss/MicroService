@@ -164,15 +164,18 @@ and LLM-ready Markdown, and CI rejects stale docs.
 
 **Goal:** every request recorded; per-key limits enforced.
 
-- [ ] Migration: `api_request_log` (§7.3) + optional `api_key_usage_daily` rollup.
-- [ ] `UsageTracker` filter (after) — write access-audit row (key, resource, action, status, latency, ip, request id).
-- [ ] Redis per-key counters (`INCR`+`EXPIRE`); periodic flush to `api_key_usage_daily`; update `last_used_at`.
-- [ ] `RateLimit` filter (before) — atomic Redis Lua sliding-window/token-bucket; global default +
-      per-key override; `429` + `Retry-After` (`php-redis-specialist`).
+- [x] Migration: `api_request_log` (§7.3). (`api_key_usage_daily` rollup deferred.)
+- [x] `UsageTracker` filter (after) — write access row (key, resource, action, status, latency, ip, request id);
+      stamps `last_used_at`. Failures are swallowed so logging never breaks a response.
+- [~] Counters via the **CI4 cache** service (file in dev/test, **Redis** in prod — Redis sidecar added to
+      `docker-compose.dev.yml`). Atomic Redis Lua + `api_key_usage_daily` rollup still to come.
+- [x] `RateLimit` filter (before) — per-key fixed window; global default (120/min) + per-key `rate_limit`
+      override; `429` + `Retry-After`; `X-RateLimit-Limit`/`X-RateLimit-Remaining` on every response.
 - [ ] Decide Redis-down behavior (fail closed for writes / open for reads — confirm).
-- [ ] Tests: usage rows written, counters increment, limit triggers 429, override respected.
+- [x] Tests: usage rows written, limit triggers 429, headers present, override respected (63 tests green).
 
 **Done when:** usage is queryable in the DB and limits are enforced per key.
+**Status:** done; remaining polish = atomic Lua sliding-window + daily rollup + Redis-down policy.
 
 ---
 
