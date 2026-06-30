@@ -21,8 +21,16 @@ if (ENVIRONMENT !== 'production') {
 }
 
 // ── Authenticated endpoints ──────────────────────────────────────────────
-// Discovery requires a valid key (any scope); usage is tracked.
-$routes->get('api/v1/_resources', 'Api\Discovery::resources', ['filter' => ['apikey', 'usagetracker']]);
+// Authenticated meta endpoints (valid key; per-endpoint scope checks live in the
+// controllers). Usage is tracked. Declared before the generic CRUD group so the
+// underscore-prefixed paths win over the resource matcher.
+$routes->group('api/v1', ['filter' => ['apikey', 'usagetracker']], static function (RouteCollection $routes): void {
+    $routes->get('_resources', 'Api\Discovery::resources');
+    $routes->get('_archive', 'Api\Archive::index');
+    $routes->get('_archive/(:segment)', 'Api\Archive::show/$1');
+    $routes->post('_archive/(:segment)/restore', 'Api\Archive::restore/$1');
+    $routes->get('_audit', 'Api\Audit::index');
+});
 
 // Generic CRUD engine. Filters run in order: authenticate → rate-limit →
 // authorize scope → validate JSON body, then usage tracking on the way out.

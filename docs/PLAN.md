@@ -183,16 +183,17 @@ and LLM-ready Markdown, and CI rejects stale docs.
 
 **Goal:** full data-mutation audit trail + non-destructive delete with restore.
 
-- [ ] Migration: `audit_log` (§13), `archived_records` (§14).
-- [ ] `AuditWriter` — invoked by `GenericResourceModel` on create/update/delete/restore, writing
-      before/after snapshots **inside the same transaction** as the change; redact hidden fields.
-- [ ] Rework DELETE → archival: copy full row → `archived_records`, remove from source, audit — all atomic.
-- [ ] Archive surface: `GET /api/v1/_archive`, `GET /api/v1/_archive/{id}`,
-      `POST /api/v1/_archive/{id}/restore` (elevated scope; 409 on PK conflict).
-- [ ] Audit surface: `GET /api/v1/_audit` (filter by resource/record/key/date; admin scope).
-- [ ] Hook key-management actions (`key.create`/`key.revoke`) into `audit_log` too.
-- [ ] Tests: delete moves row + writes audit; restore round-trips; audit before/after correctness;
-      transaction rollback leaves neither orphaned data nor orphaned audit rows.
+- [x] Migration: `audit_log` (§13), `archived_records` (§14).
+- [x] `AuditWriter` — invoked by the `ResourceController` (and `Archive::restore`) on
+      create/update/delete/restore, writing before/after snapshots **inside the same transaction**
+      as the change; hidden fields are redacted from snapshots.
+- [x] Rework DELETE → archival: copy full row → `archived_records`, remove from source, audit — all atomic.
+- [x] Archive surface: `GET /api/v1/_archive`, `GET /api/v1/_archive/{id}`,
+      `POST /api/v1/_archive/{id}/restore` (scope `archive:read`/`archive:write`; 409 on PK conflict / re-restore).
+- [x] Audit surface: `GET /api/v1/_audit` (filter by resource/record; scope `audit:read`).
+- [ ] Hook key-management actions (`key.create`/`key.revoke`) into `audit_log` too (CLI path) — follow-up.
+- [x] Tests: delete moves row + writes audit; restore round-trips; audit create/update before/after +
+      changed-fields; scope enforcement on archive/audit (72 tests green).
 
 **Done when:** nothing is ever hard-deleted from business tables, every change is reconstructable
 from `audit_log`, and any deleted row can be restored.

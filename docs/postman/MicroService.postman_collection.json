@@ -14,7 +14,8 @@
 	"variable": [
 		{ "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
 		{ "key": "apiKey", "value": "", "type": "string" },
-		{ "key": "productId", "value": "", "type": "string" }
+		{ "key": "productId", "value": "", "type": "string" },
+		{ "key": "archiveId", "value": "", "type": "string" }
 	],
 	"item": [
 		{
@@ -207,7 +208,97 @@
 							"host": ["{{baseUrl}}"],
 							"path": ["api", "v1", "products", "{{productId}}"]
 						},
-						"description": "Deletes a product. 204 No Content. (Becomes an archival/recycle-bin delete in a later phase — see ARCHITECTURE §14.)"
+						"description": "Archival delete: the row is moved to the recycle bin (not destroyed) and audited. 204 No Content. Restore it via Audit & recycle bin → Restore archived record."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 204', () => pm.response.to.have.status(204));"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Audit & recycle bin",
+			"description": "Inspect the audit trail and the recycle bin; restore deleted rows. Needs scopes audit:read / archive:read / archive:write.",
+			"item": [
+				{
+					"name": "List archived (recycle bin)",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/_archive?resource=products",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "_archive"],
+							"query": [{ "key": "resource", "value": "products", "description": "Optional filter." }]
+						},
+						"description": "Lists archived (deleted) rows. Requires scope archive:read."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const items = pm.response.json().data;",
+									"if (items.length) { pm.collectionVariables.set('archiveId', items[0].id); }"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Get archived record",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/_archive/{{archiveId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "_archive", "{{archiveId}}"]
+						},
+						"description": "Shows one archived record including its full payload. Requires scope archive:read."
+					},
+					"response": []
+				},
+				{
+					"name": "Restore archived record",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/_archive/{{archiveId}}/restore",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "_archive", "{{archiveId}}", "restore"]
+						},
+						"description": "Re-inserts the row into its original table. Requires scope archive:write. 409 if already restored or the original id is taken."
+					},
+					"response": []
+				},
+				{
+					"name": "Audit trail",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/_audit?resource=products",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "_audit"],
+							"query": [
+								{ "key": "resource", "value": "products", "description": "Optional filter." },
+								{ "key": "record_id", "value": "", "description": "Optional: filter by a single record id.", "disabled": true }
+							]
+						},
+						"description": "Every create/update/delete/restore with before/after snapshots and changed-field list. Requires scope audit:read."
 					},
 					"response": []
 				}

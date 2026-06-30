@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
+use App\Libraries\AuditWriter;
+use App\Libraries\AuthContext;
 use App\Libraries\ProblemDetails;
 use App\Libraries\QueryParser;
 use App\Libraries\RequestContext;
 use App\Libraries\ResourceDefinition;
 use App\Libraries\ResourceRegistry;
 use App\Libraries\ResponseEnvelope;
+use App\Models\ArchivedRecordModel;
 use App\Models\GenericResourceModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -95,13 +98,18 @@ class ResourceController extends BaseController
         }
 
         $model = $this->model($definition);
-        $id    = $model->insert($this->onlyFillable($data, $definition), true);
-        $row   = $model->find($id);
+        $db    = db_connect();
+
+        $db->transStart();
+        $id  = $model->insert($this->onlyFillable($data, $definition), true);
+        $row = (array) $model->find($id);
+        AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
+        $db->transComplete();
 
         return $this->response
             ->setStatusCode(201)
             ->setHeader('Location', site_url("api/v1/{$slug}/{$id}"))
-            ->setJSON(ResponseEnvelope::wrap($this->hide((array) $row, $definition)));
+            ->setJSON(ResponseEnvelope::wrap($this->hide($row, $definition)));
     }
 
     public function update(string $slug, string $id): ResponseInterface
@@ -111,8 +119,9 @@ class ResourceController extends BaseController
             return $this->notFound();
         }
 
-        $model = $this->model($definition);
-        if ($model->find($id) === null) {
+        $model  = $this->model($definition);
+        $before = $model->find($id);
+        if ($before === null) {
             return $this->notFound();
         }
 
@@ -126,11 +135,21 @@ class ResourceController extends BaseController
             return $this->validationProblem($errors);
         }
 
+        $db = db_connect();
+        $db->transStart();
         $model->update($id, $this->onlyFillable($data, $definition));
+        $after = (array) $model->find($id);
+        AuditWriter::record('update', $definition->slug, (string) $id, $this->hide($before, $definition), $this->hide($after, $definition));
+        $db->transComplete();
 
-        return $this->response->setJSON(ResponseEnvelope::wrap($this->hide((array) $model->find($id), $definition)));
+        return $this->response->setJSON(ResponseEnvelope::wrap($this->hide($after, $definition)));
     }
 
+    /**
+     * Archival delete: the row is moved to the recycle bin (archived_records)
+     * and audited, then removed from its table — all in one transaction. It can
+     * be restored later via POST /api/v1/_archive/{id}/restore.
+     */
     public function delete(string $slug, string $id): ResponseInterface
     {
         $definition = $this->resolve($slug);
@@ -139,11 +158,25 @@ class ResourceController extends BaseController
         }
 
         $model = $this->model($definition);
-        if ($model->find($id) === null) {
+        $row   = $model->find($id);
+        if ($row === null) {
             return $this->notFound();
         }
 
+        $db = db_connect();
+        $db->transStart();
+        (new ArchivedRecordModel())->insert([
+            'resource'     => $definition->slug,
+            'source_table' => $definition->table,
+            'record_id'    => (string) $id,
+            'payload_json' => json_encode($row),
+            'deleted_by'   => AuthContext::keyId(),
+            'request_id'   => RequestContext::id(),
+            'deleted_at'   => date('Y-m-d H:i:s'),
+        ]);
         $model->delete($id);
+        AuditWriter::record('delete', $definition->slug, (string) $id, $this->hide($row, $definition), null);
+        $db->transComplete();
 
         return $this->response->setStatusCode(204);
     }

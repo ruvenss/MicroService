@@ -381,6 +381,12 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
 
 ## 13. Auditing (transaction audit trail)
 
+> **Status (implemented):** both layers are live. Access logging → `api_request_log` (UsageTracker,
+> §8). Data mutations → `audit_log` via `AuditWriter`, written **inside the same transaction** as the
+> change (create/update/delete/restore) with before/after snapshots + changed-field list; hidden
+> fields are redacted. Read the trail at `GET /api/v1/_audit` (scope `audit:read`). Deletes are
+> archival (§14). Outstanding: routing CLI key actions through `audit_log`, and a retention/purge job.
+
 **Requirement:** every transaction in the microservice is recorded in the database for later
 auditing. Two complementary layers, both write to the single DB:
 
