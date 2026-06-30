@@ -1,3 +1,6 @@
+includes:
+    - phpstan-baseline.neon
+
 parameters:
     phpVersion: 80400
     level: 5
@@ -6,13 +9,8 @@ parameters:
         - plugins
     bootstrapFiles:
         - vendor/codeigniter4/framework/system/Test/bootstrap.php
-    scanDirectories:
-        - vendor/codeigniter4/framework/system
     excludePaths:
         - app/Views/*
         - '*/Database/Migrations/*'
-    ignoreErrors:
-        # CodeIgniter's magic property/method access trips the analyser; revisit as code grows.
-        - '#Access to an undefined property#'
     universalObjectCratesClasses:
         - CodeIgniter\Entity\Entity

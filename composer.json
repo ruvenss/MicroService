@@ -37,7 +37,7 @@
     "scripts": {
         "test": "phpunit",
         "test:coverage": "phpunit --coverage-text --coverage-html build/logs/html --coverage-clover build/logs/clover.xml",
-        "stan": "phpstan analyse",
+        "stan": "phpstan analyse --memory-limit=512M",
         "cs": "phpcs",
         "cs:fix": "phpcbf"
     }
