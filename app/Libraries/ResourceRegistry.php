@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\Libraries;
 
+use App\Core\Plugin\PluginManager;
 use Config\Resources;
 
 /**
- * Resolves resource slugs to ResourceDefinition objects from the registry,
- * caching the built definitions per request.
+ * Resolves resource slugs to ResourceDefinition objects, aggregating the core
+ * config (Config\Resources) with everything plugins contribute (PluginManager).
+ * Plugin resources can override core entries of the same slug.
  */
 final class ResourceRegistry
 {
     /** @var array<string, ResourceDefinition> */
     private array $cache = [];
+
+    /** @var array<string, array<string, mixed>>|null */
+    private ?array $merged = null;
 
     public function __construct(private readonly Resources $config)
     {
@@ -26,16 +31,17 @@ final class ResourceRegistry
 
     public function has(string $slug): bool
     {
-        return isset($this->config->resources[$slug]);
+        return isset($this->all()[$slug]);
     }
 
     public function get(string $slug): ?ResourceDefinition
     {
-        if (! $this->has($slug)) {
+        $all = $this->all();
+        if (! isset($all[$slug])) {
             return null;
         }
 
-        return $this->cache[$slug] ??= ResourceDefinition::fromArray($slug, $this->config->resources[$slug]);
+        return $this->cache[$slug] ??= ResourceDefinition::fromArray($slug, $all[$slug]);
     }
 
     /**
@@ -43,6 +49,16 @@ final class ResourceRegistry
      */
     public function slugs(): array
     {
-        return array_keys($this->config->resources);
+        return array_keys($this->all());
+    }
+
+    /**
+     * Core config resources merged with plugin-contributed ones.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function all(): array
+    {
+        return $this->merged ??= array_merge($this->config->resources, PluginManager::instance()->resources());
     }
 }

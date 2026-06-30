@@ -105,20 +105,22 @@ today; FPM+event is a Phase 6 perf upgrade).
 
 **Goal:** developers extend the service via `plugins/` without ever editing `app/` (§15).
 
-- [ ] `PluginInterface` (`register()`, `boot()`) + `plugin.json` manifest schema + loader/validator.
-- [ ] `PluginManager` — discover `plugins/`, resolve `requires`, order by dependency, register, boot.
-- [ ] PSR-4 autoload mapping for `Plugins\\<Vendor>\\<Name>\\`; namespaced plugin migrations.
-- [ ] Wire the central resource registry to **aggregate** definitions contributed by plugins
-      (core `Resources.php` no longer hand-edited per entity).
-- [ ] Lifecycle **events** fired by the generic engine (`resource.beforeCreate`/`afterCreate`,
-      `…Update`, `…Delete`, `…Restore`, `resource.beforeQuery`, `resource.serialize`).
-- [ ] Spark commands: `plugin:list`, `plugin:enable`, `plugin:disable`, `make:plugin` (scaffold).
-- [ ] Move the Phase 2 sample resource into a **sample plugin** to prove the path end-to-end.
-- [ ] CI guard: PR fails if it modifies `app/` without an explicit core-change label.
-- [ ] Tests: discovery/ordering, enable/disable, a plugin resource served through the generic engine,
-      a plugin event hook firing and mutating behavior.
+- [x] `PluginInterface` (`register()`, `boot()`) + `plugin.json` manifest + `PluginManager` loader
+      (`App\Core\Plugin`). Disabled plugins skipped; `boot()` runs after all `register()`.
+- [x] `PluginManager` — discover `plugins/<Vendor>/<Name>/`, register, boot. (Dependency ordering via
+      `requires` is a follow-up.)
+- [x] PSR-4 autoload `Plugins\\` → `plugins/` (composer). (Plugin-owned migrations: follow-up.)
+- [x] `ResourceRegistry` **aggregates** core config + plugin-contributed resources; core `Resources` is empty.
+- [ ] Lifecycle **events** fired by the generic engine — follow-up.
+- [x] Spark command `plugin:list`. (`plugin:enable/disable`, `make:plugin` — follow-up.)
+- [x] **Moved the sample `products` resource into `plugins/Sample/Catalog`** — served end-to-end via the
+      plugin with zero core change.
+- [ ] CI guard: PR fails if it modifies `app/` without an explicit core-change label — follow-up.
+- [x] Tests: plugin discovery, registry resolves the plugin resource, core ships no resources, and all
+      existing CRUD/query/audit tests pass against the plugin-served `products` (88 green).
 
 **Done when:** a new resource/endpoint can be delivered entirely from a plugin, core untouched.
+**Status:** resource contribution done & proven; events / plugin migrations / scaffolding / CI guard remain.
 
 ---
 
