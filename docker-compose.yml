@@ -1,0 +1,49 @@
+# =============================================================================
+#  Production-style stack: the Apache/PHP app image + a Redis sidecar.
+#  The DATABASE IS EXTERNAL and never part of this stack (ARCHITECTURE §17).
+#  For local prod-like runs it points at the dev MySQL from docker-compose.dev.yml
+#  via host.docker.internal:${DB_PORT}. In real deployments, set DB_HOST to the
+#  managed database. Secrets come from the host .env (gitignored).
+#
+#  Usage:  make build && make up        (or: docker compose up -d --build)
+# =============================================================================
+name: microservice
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        PHP_VERSION: ${PHP_VERSION:-8.5}
+    container_name: microservice-app
+    restart: unless-stopped
+    ports:
+      - "${APP_HOST_PORT:-8080}:80"
+    environment:
+      CI_ENVIRONMENT: production
+      app.baseURL: ${APP_BASE_URL:-http://localhost:8080/}
+      app.forceGlobalSecureRequests: "false"
+      # External database (never bundled). Persistent connections.
+      database.default.hostname: ${DB_HOST:-host.docker.internal}
+      database.default.port: "${DB_PORT:-3307}"
+      database.default.database: ${MYSQL_DATABASE:-microservice}
+      database.default.username: ${MYSQL_USER:-microservice}
+      database.default.password: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      database.default.DBDriver: MySQLi
+      database.default.pConnect: "true"
+      # Rate-limit / cache counters. Defaults to file (always available); set
+      # CACHE_HANDLER=redis in .env once the phpredis extension is in the image.
+      cache.handler: ${CACHE_HANDLER:-file}
+      cache.redis.host: redis
+      cache.redis.port: "6379"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: microservice-app-redis
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]

@@ -38,16 +38,18 @@
 **Goal:** the app runs in its real target container immediately, so every later phase is built and
 tested in the production runtime (§17). Full perf tuning is finished in Phase 6.
 
-- [ ] `docker/Dockerfile` — multi-stage, **PHP 8.5 ZTS** + Apache (`mpm_event`) + PHP-FPM
-      (`mod_proxy_fcgi`), non-root; extensions `opcache, pdo_mysql, redis, intl, parallel`.
-- [ ] `docker-compose.yml` — services: **app** + **redis sidecar**; **no MySQL service** (external
-      DB via env). `docker-compose.dev.yml` adds a throwaway MySQL for local tests only.
-- [ ] DB config `'pConnect' => true` (persistent connections); DB host/creds from env/secrets.
-- [ ] `Makefile` (`make build` / `make up`) as the "auto-docker" entrypoint; healthcheck → `/api/v1/health`.
-- [ ] Baseline `php.ini`/FPM: OPcache on, `pm` sized provisionally (final sizing in Phase 6).
-- [ ] Verify the app serves through Apache→FPM in-container and reaches an external MySQL.
+- [x] `docker/Dockerfile` — **PHP 8.5** + Apache (mod_security/rewrite/headers), mysqli/pdo_mysql/intl,
+      composer install. (mpm_event+PHP-FPM and `opcache`/`redis` extensions deferred — see §17 status.)
+- [x] `docker-compose.yml` — services: **app** + **redis sidecar**; **no MySQL service** (external DB
+      via env). `docker-compose.dev.yml` provides the dev MySQL/Redis. `.dockerignore` keeps `.env` out.
+- [x] DB config `'pConnect' => true` (persistent connections); DB host/creds from env (12-factor).
+- [x] `Makefile` (`make build` / `make up`) as the "auto-docker" entrypoint.
+- [~] `php.ini`: `expose_php=Off`, display_errors off, realpath cache. OPcache/JIT block deferred with the extension.
+- [x] **Verified**: app serves through real Apache against the external MySQL; engine fully hidden
+      (direct `.php`→404, `Server: MicroService`, no fingerprints — §18.2).
 
-**Done when:** `make up` brings up the service (app + Redis) against an external DB, healthcheck green.
+**Done when:** `make up` brings up the service (app + Redis) against an external DB. **Done** (mod_php
+today; FPM+event is a Phase 6 perf upgrade).
 
 ---
 

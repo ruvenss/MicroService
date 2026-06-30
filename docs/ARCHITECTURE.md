@@ -599,6 +599,14 @@ Each generated `.md` entry follows a fixed shape so it's diff-friendly and LLM-p
 running **PHP 8.5 + Apache2 + Redis** with all extensions; **no database in the container**
 (MySQL is external); **database connections are persistent**; code paths support parallel execution.
 
+> **Status (built & verified):** `docker/Dockerfile` (PHP **8.5** + Apache + mod_security/rewrite/headers,
+> mysqli/pdo_mysql/intl) builds; `docker-compose.yml` runs the app + a Redis sidecar against the
+> **external** MySQL (`make build && make up`). Verified end-to-end: app serves through real Apache,
+> persistent connections (`pConnect`), and the engine is fully hidden (§18.2). **Deferred (do not yet
+> build cleanly on PHP 8.5 via `docker-php-ext-install`):** `opcache`/JIT and the `redis` extension —
+> the app falls back to the file cache until they're enabled (one-line uncomment in the Dockerfile).
+> mpm_event + PHP-FPM (vs the current mod_php) remains a performance follow-up.
+
 ### 17.1 Image composition
 
 - **Base:** `php:8.5` line. Build **ZTS (Zend Thread Safe)** so the `parallel` extension is
@@ -706,9 +714,18 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
 - Error responses are JSON/problem+json — no stack traces or framework branding leak in production.
 
 > **Tested:** `tests/Api/StealthHeadersTest.php` and `NotFoundTest.php` assert no PHP/CodeIgniter/
-> Debugbar fingerprint and the neutral 404 body. Note `.htaccess` rules only apply under Apache —
-> the PHP dev server ignores them, so the `.php`-hiding rule is verified in the container, not via
-> `spark serve`.
+> Debugbar fingerprint and the neutral 404 body (application layer).
+>
+> **Verified in the container (PHP 8.5 + Apache):** with the real image (`docker/`, see §17.6) running
+> against the external MySQL, a probe gets: every direct `.php` request (`/index.php`, `/phpinfo.php`,
+> `/anything.php`) → **404**; `Server: MicroService` (Apache version masked via mod_security
+> `SecServerSignature`; `ServerTokens Prod`); **no** `X-Powered-By`, Apache, PHP, or CodeIgniter
+> anywhere; neutral root and enforced auth. A full header fingerprint scan comes back clean.
+>
+> **Known follow-up:** `/index.php/<valid-route>` (PATH_INFO on the front controller) still reaches
+> the app — it discloses no engine info in headers or body, but reveals `index.php` exists. The
+> server-context rewrite does not intercept this PATH_INFO case in Apache; the production fix is to
+> switch the front controller to query-string routing (`index.php?/$1`) so PATH_INFO never routes.
 
 ## 19. n8n integration
 
