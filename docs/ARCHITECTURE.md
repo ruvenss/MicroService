@@ -722,10 +722,13 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
 > `SecServerSignature`; `ServerTokens Prod`); **no** `X-Powered-By`, Apache, PHP, or CodeIgniter
 > anywhere; neutral root and enforced auth. A full header fingerprint scan comes back clean.
 >
-> **Known follow-up:** `/index.php/<valid-route>` (PATH_INFO on the front controller) still reaches
-> the app — it discloses no engine info in headers or body, but reveals `index.php` exists. The
-> server-context rewrite does not intercept this PATH_INFO case in Apache; the production fix is to
-> switch the front controller to query-string routing (`index.php?/$1`) so PATH_INFO never routes.
+> **PATH_INFO closed:** because Apache's server-context rewrite does not reliably intercept
+> `/index.php/<route>` (PATH_INFO on an existing file), PHP is also hidden at the **application layer**:
+> the `HidePhp` filter (first in `Filters::$required['before']`) inspects the raw `REQUEST_URI` and
+> returns a neutral 404 for **any** path that references a `.php` file — including `/index.php/...`.
+> Internal rewrites of clean URLs don't change `REQUEST_URI`, so `/api/v1/health` passes untouched.
+> **Verified in the container:** `/index.php/api/v1/health`, `/index.php`, `/phpinfo.php`,
+> `/index.php/api/v1/_resources` all → 404; clean URLs unaffected. (`HidePhpTest` covers the detection.)
 
 ## 19. n8n integration
 

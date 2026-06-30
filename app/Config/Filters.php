@@ -4,6 +4,7 @@ namespace Config;
 
 use App\Filters\ApiKeyAuth;
 use App\Filters\ContentGuard;
+use App\Filters\HidePhp;
 use App\Filters\RateLimit;
 use App\Filters\RequestId;
 use App\Filters\RequirePermission;
@@ -48,6 +49,7 @@ class Filters extends BaseFilters
         'permission'    => RequirePermission::class,
         'ratelimit'     => RateLimit::class,
         'usagetracker'  => UsageTracker::class,
+        'hidephp'       => HidePhp::class,
     ];
 
     /**
@@ -65,6 +67,7 @@ class Filters extends BaseFilters
      */
     public array $required = [
         'before' => [
+            'hidephp',    // 404 any .php request (PATH_INFO-proof) before anything else
             'requestid',  // Establish correlation id as early as possible
             'forcehttps', // Force Global Secure Requests
             'pagecache',  // Web Page Caching
