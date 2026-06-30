@@ -11,6 +11,7 @@ $routes->set404Override('App\Controllers\Api\Errors::notFound');
 // Versioned API surface. n8n and other clients target /api/v1/*.
 $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('health', 'Api\Health::index');
+    $routes->get('_resources', 'Api\Discovery::resources');
 });
 
 // Diagnostic-only: a route that throws, so the global exception handler can be

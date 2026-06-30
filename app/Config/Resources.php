@@ -40,6 +40,7 @@ class Resources extends BaseConfig
                 ],
             ],
             'sortable'    => ['sku', 'name', 'price', 'created_at'],
+            'filterable'  => ['sku', 'status', 'price'],
             'defaultSort' => '-created_at',
             'perPage'     => ['default' => 25, 'max' => 100],
             'timestamps'  => true,

@@ -17,6 +17,7 @@ final class ResourceDefinition
      * @param array<string, string> $createRules validation rules for create
      * @param array<string, string> $updateRules validation rules for update
      * @param list<string>          $sortable    columns allowed in ?sort
+     * @param list<string>          $filterable  columns allowed in ?filter
      */
     public function __construct(
         public readonly string $slug,
@@ -27,11 +28,29 @@ final class ResourceDefinition
         public readonly array $createRules,
         public readonly array $updateRules,
         public readonly array $sortable,
+        public readonly array $filterable,
         public readonly string $defaultSort,
         public readonly int $perPageDefault,
         public readonly int $perPageMax,
         public readonly bool $timestamps,
     ) {
+    }
+
+    /**
+     * Columns a client may receive (and therefore request via ?fields):
+     * primary key + writable fields + managed timestamps, minus hidden.
+     *
+     * @return list<string>
+     */
+    public function outputColumns(): array
+    {
+        $columns = [$this->primaryKey, ...$this->fillable];
+        if ($this->timestamps) {
+            $columns[] = 'created_at';
+            $columns[] = 'updated_at';
+        }
+
+        return array_values(array_diff(array_unique($columns), $this->hidden));
     }
 
     /**
@@ -50,6 +69,7 @@ final class ResourceDefinition
             createRules: $def['rules']['create'] ?? [],
             updateRules: $def['rules']['update'] ?? [],
             sortable: $def['sortable'] ?? [],
+            filterable: $def['filterable'] ?? [],
             defaultSort: $def['defaultSort'] ?? $primaryKey,
             perPageDefault: (int) ($def['perPage']['default'] ?? 25),
             perPageMax: (int) ($def['perPage']['max'] ?? 100),

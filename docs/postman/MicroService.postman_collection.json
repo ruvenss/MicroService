@@ -67,6 +67,21 @@
 						"description": "Shows the neutral error shape: unknown paths return RFC 9457 problem+json with no engine disclosure. The same shape is returned for every error status."
 					},
 					"response": []
+				},
+				{
+					"name": "Discover resources",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/_resources",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "_resources"]
+						},
+						"description": "Self-description of the API: every registered resource with its endpoint, output fields, writable fields, sortable/filterable columns, supported operators, and pagination caps. Will be auth-gated once auth lands."
+					},
+					"response": []
 				}
 			]
 		},
@@ -90,6 +105,26 @@
 							]
 						},
 						"description": "Paginated list: `{data:[...], meta:{pagination:{page,perPage,total,totalPages}}}`."
+					},
+					"response": []
+				},
+				{
+					"name": "List products (filter + sparse fields)",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/products?filter[status]=active&filter[price][gte]=10&fields=id,sku,price&sort=-price",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "products"],
+							"query": [
+								{ "key": "filter[status]", "value": "active", "description": "Equality filter (operator defaults to eq)." },
+								{ "key": "filter[price][gte]", "value": "10", "description": "Operators: eq, ne, gt, gte, lt, lte, like, in. Only filterable columns: sku, status, price." },
+								{ "key": "fields", "value": "id,sku,price", "description": "Sparse fieldset — restrict returned columns (allow-listed)." },
+								{ "key": "sort", "value": "-price" }
+							]
+						},
+						"description": "Filtering and sparse fieldsets are allow-listed and parameter-bound. Unknown columns/operators/fields return 400 problem+json."
 					},
 					"response": []
 				},

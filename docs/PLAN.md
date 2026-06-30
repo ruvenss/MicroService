@@ -80,12 +80,14 @@ tested in the production runtime (§17). Full perf tuning is finished in Phase 6
 - [x] `ResourceDefinition` library — typed wrapper over a registry entry (fields, rules, query rules).
 - [x] `app/Config/Resources.php` registry + `ResourceRegistry` + the **`products`** sample resource end-to-end.
 - [x] `GenericResourceModel` — CI `Model` configured at runtime from a `ResourceDefinition`.
-- [~] `QueryParser` — **pagination** (`?page/perPage`, capped) and **sorting** (`?sort`, allow-listed) done;
-      `?filter[...]` operators and `?fields` sparse fieldsets still to come (next iteration).
+- [x] `QueryParser` — pagination (`?page/perPage`, capped), sorting (`?sort`, allow-listed),
+      `?filter[col][op]` (eq/ne/gt/gte/lt/lte/like/in) and `?fields` sparse fieldsets. All allow-listed
+      against the definition and parameter-bound via the query builder; unknown column/operator/field → 400.
 - [x] `ResourceController` (generic) — `index/show/create/update/patch/delete` using the model +
       envelope; validation via per-resource create/update rule sets; 201+`Location` on create.
 - [x] `Routes.php` — `/api/v1/{resource}` and `/api/v1/{resource}/{id}` → generic controller (after reserved paths).
-- [ ] `DiscoveryController` → `GET /api/v1/_resources` (schema introspection from the registry).
+- [x] `DiscoveryController` → `GET /api/v1/_resources` (schema introspection from the registry;
+      to be auth-gated in Phase 3).
 - [x] Migration for the sample resource table (`products`).
 - [x] Tests: CRUD happy paths, validation failures (422), 404, pagination, hidden-field exclusion,
       ContentGuard (415/400). Filtering/sparse-field tests land with those features.

@@ -6,6 +6,7 @@ namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use App\Libraries\ProblemDetails;
+use App\Libraries\QueryParser;
 use App\Libraries\RequestContext;
 use App\Libraries\ResourceDefinition;
 use App\Libraries\ResourceRegistry;
@@ -28,13 +29,24 @@ class ResourceController extends BaseController
             return $this->notFound();
         }
 
-        $model   = $this->model($definition);
+        $spec = QueryParser::parse($this->request->getGet() ?? [], $definition);
+        if (! $spec->isValid()) {
+            return $this->problem(400, 'Invalid query parameters.', ['errors' => $spec->errors]);
+        }
+
+        $model = $this->model($definition);
+        $this->applyFilters($model, $spec->filters);
+
         $perPage = $this->perPage($definition);
         $page    = max((int) ($this->request->getGet('page') ?? 1), 1);
-        $total   = $model->countAllResults();
+        $total   = $model->countAllResults(false);
 
         [$column, $direction] = $this->sort($definition);
-        $rows = $model->orderBy($column, $direction)->findAll($perPage, ($page - 1) * $perPage);
+        $model->orderBy($column, $direction);
+        if ($spec->fields !== null) {
+            $model->select($spec->fields);
+        }
+        $rows = $model->findAll($perPage, ($page - 1) * $perPage);
 
         $rows = array_map(fn (array $row): array => $this->hide($row, $definition), $rows);
 
@@ -48,7 +60,16 @@ class ResourceController extends BaseController
             return $this->notFound();
         }
 
-        $row = $this->model($definition)->find($id);
+        $spec = QueryParser::parse($this->request->getGet() ?? [], $definition);
+        if (! $spec->isValid()) {
+            return $this->problem(400, 'Invalid query parameters.', ['errors' => $spec->errors]);
+        }
+
+        $model = $this->model($definition);
+        if ($spec->fields !== null) {
+            $model->select($spec->fields);
+        }
+        $row = $model->find($id);
         if ($row === null) {
             return $this->notFound();
         }
@@ -137,6 +158,31 @@ class ResourceController extends BaseController
     private function model(ResourceDefinition $definition): GenericResourceModel
     {
         return (new GenericResourceModel())->forResource($definition);
+    }
+
+    /**
+     * Apply parsed filters to the model's query builder. Columns are already
+     * allow-listed by the parser; values are bound by the builder.
+     *
+     * @param list<array{column: string, operator: string, value: mixed}> $filters
+     */
+    private function applyFilters(GenericResourceModel $model, array $filters): void
+    {
+        foreach ($filters as $filter) {
+            $column = $filter['column'];
+            $value  = $filter['value'];
+
+            match ($filter['operator']) {
+                'ne'    => $model->where("{$column} !=", $value),
+                'gt'    => $model->where("{$column} >", $value),
+                'gte'   => $model->where("{$column} >=", $value),
+                'lt'    => $model->where("{$column} <", $value),
+                'lte'   => $model->where("{$column} <=", $value),
+                'like'  => $model->like($column, is_array($value) ? implode(',', $value) : (string) $value),
+                'in'    => $model->whereIn($column, is_array($value) ? $value : [$value]),
+                default => $model->where($column, $value), // 'eq'
+            };
+        }
     }
 
     private function perPage(ResourceDefinition $definition): int
