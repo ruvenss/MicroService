@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Filters\ContentGuard;
 use App\Filters\RequestId;
 use App\Filters\Stealth;
 use CodeIgniter\Config\Filters as BaseFilters;
@@ -38,6 +39,7 @@ class Filters extends BaseFilters
         'performance'   => PerformanceMetrics::class,
         'stealth'       => Stealth::class,
         'requestid'     => RequestId::class,
+        'contentguard'  => ContentGuard::class,
     ];
 
     /**
@@ -116,5 +118,7 @@ class Filters extends BaseFilters
      *
      * @var array<string, array<string, list<string>>>
      */
-    public array $filters = [];
+    public array $filters = [
+        'contentguard' => ['before' => ['api/v1/*']],
+    ];
 }

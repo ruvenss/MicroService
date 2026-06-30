@@ -64,7 +64,7 @@ tested in the production runtime (§17). Full perf tuning is finished in Phase 6
       echo on the response and embed in problem+json (`RequestContext`).
 - [x] `SecurityHeaders` filter (after) — delivered as the `Stealth` filter (CSP, `X-Content-Type-Options`,
       `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`) + anti-fingerprinting (§18). HSTS lands with TLS in P6.
-- [ ] `ContentGuard` filter — enforce/parse JSON, reject bad media types (415/400).
+- [x] `ContentGuard` filter — enforce/parse JSON on writes, reject bad media types (415) / malformed JSON (400).
 - [x] `HealthController` → `GET /api/v1/health` (DB ping now; Redis ping when Redis lands). Neutral
       problem+json 404 override + engine hiding also shipped in this slice.
 - [x] Tests: envelope shapes, problem details, request-id behaviour, health endpoint (20 tests green).
@@ -77,18 +77,19 @@ tested in the production runtime (§17). Full perf tuning is finished in Phase 6
 
 **Goal:** declare a resource in config → full CRUD with filtering/sorting/pagination, no per-entity PHP.
 
-- [ ] `ResourceDefinition` library — typed wrapper over a registry entry (fields, rules, query rules, perms).
-- [ ] `app/Config/Resources.php` registry + one **sample resource** (e.g. `products`) end-to-end.
-- [ ] `GenericResourceModel` — CI `Model` configured at runtime from a `ResourceDefinition`.
-- [ ] `QueryParser` — parse `?filter[...]`, `?sort`, `?page/perPage`, `?fields` against the
-      **allow-lists**; bind all values as parameters. Reject unknown columns/operators (400).
-- [ ] `ResourceController` (generic) — `index/show/create/update/patch/delete` using the model +
+- [x] `ResourceDefinition` library — typed wrapper over a registry entry (fields, rules, query rules).
+- [x] `app/Config/Resources.php` registry + `ResourceRegistry` + the **`products`** sample resource end-to-end.
+- [x] `GenericResourceModel` — CI `Model` configured at runtime from a `ResourceDefinition`.
+- [~] `QueryParser` — **pagination** (`?page/perPage`, capped) and **sorting** (`?sort`, allow-listed) done;
+      `?filter[...]` operators and `?fields` sparse fieldsets still to come (next iteration).
+- [x] `ResourceController` (generic) — `index/show/create/update/patch/delete` using the model +
       envelope; validation via per-resource create/update rule sets; 201+`Location` on create.
-- [ ] `Routes.php` — `/api/v1/{resource}` and `/api/v1/{resource}/{id}` → generic controller.
+- [x] `Routes.php` — `/api/v1/{resource}` and `/api/v1/{resource}/{id}` → generic controller (after reserved paths).
 - [ ] `DiscoveryController` → `GET /api/v1/_resources` (schema introspection from the registry).
-- [ ] Migration + seeder for the sample resource table.
-- [ ] Tests: full CRUD happy paths, validation failures (422), 404, filtering/sorting/pagination,
-      sparse fields, hidden-field exclusion, allow-list rejection.
+- [x] Migration for the sample resource table (`products`).
+- [x] Tests: CRUD happy paths, validation failures (422), 404, pagination, hidden-field exclusion,
+      ContentGuard (415/400). Filtering/sparse-field tests land with those features.
+- [x] `ContentGuard` filter (Phase 1 carry-over) — enforce JSON content type (415) + valid JSON (400) on writes.
 
 **Done when:** adding a registry entry yields a working, tested REST resource with zero new PHP.
 > ⚠ Delete here is a placeholder; real delete behavior is **Phase 5 (archival)** — wire DELETE to

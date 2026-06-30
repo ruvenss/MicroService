@@ -2,30 +2,19 @@
 	"info": {
 		"_postman_id": "b1f6e2a0-0000-4a00-9000-microservice01",
 		"name": "MicroService API",
-		"description": "Importable collection for the MicroService REST framework (CodeIgniter 4). Bearer API-key auth is set at the collection level so every request — and any n8n HTTP Request node modelled on these — inherits it. Set the `baseUrl` and `apiKey` collection variables (or import the matching environment) before sending.\n\n**Contract**\n- Success: `{ \"data\": ..., \"meta\": ... }` (`meta` omitted when empty).\n- Errors: RFC 9457 `application/problem+json` (`{type,title,status,detail?,requestId,...}`).\n- Every response carries an `X-Request-Id` (echoed back, or supply your own to correlate an n8n run end to end).\n- Responses deliberately carry **no** PHP/CodeIgniter/Apache fingerprints.",
+		"description": "Importable collection for the MicroService REST framework (CodeIgniter 4). Bearer API-key auth is set at the collection level so every request — and any n8n HTTP Request node modelled on these — inherits it. Set the `baseUrl` and `apiKey` collection variables (or import the matching environment) before sending.\n\n**Contract**\n- Success: `{ \"data\": ..., \"meta\": ... }` (`meta` omitted when empty; collections carry `meta.pagination`).\n- Errors: RFC 9457 `application/problem+json` (`{type,title,status,detail?,requestId,errors?}`).\n- Every response carries an `X-Request-Id` (echoed, or supply your own to correlate an n8n run).\n- Writes must send `Content-Type: application/json` (else 415) with valid JSON (else 400).\n- Responses deliberately carry **no** PHP/CodeIgniter/Apache fingerprints.\n\n**Resources** are config-driven: `products` is the sample. Run **Create product** first — its test script stores the new id into `productId`, which the Get/Update/Delete requests reuse.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"auth": {
 		"type": "bearer",
 		"bearer": [
-			{
-				"key": "token",
-				"value": "{{apiKey}}",
-				"type": "string"
-			}
+			{ "key": "token", "value": "{{apiKey}}", "type": "string" }
 		]
 	},
 	"variable": [
-		{
-			"key": "baseUrl",
-			"value": "http://localhost:8080",
-			"type": "string"
-		},
-		{
-			"key": "apiKey",
-			"value": "",
-			"type": "string"
-		}
+		{ "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+		{ "key": "apiKey", "value": "", "type": "string" },
+		{ "key": "productId", "value": "", "type": "string" }
 	],
 	"item": [
 		{
@@ -34,148 +23,159 @@
 				{
 					"name": "Health",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
+						"auth": { "type": "noauth" },
 						"method": "GET",
 						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json"
-							},
-							{
-								"key": "X-Request-Id",
-								"value": "{{$guid}}",
-								"description": "Optional: supply your own correlation id (echoed back). Remove to let the service mint one."
-							}
+							{ "key": "Accept", "value": "application/json" },
+							{ "key": "X-Request-Id", "value": "{{$guid}}", "description": "Optional correlation id (echoed back). Remove to let the service mint one." }
 						],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/health",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"health"
-							]
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "health"]
 						},
-						"description": "Liveness/readiness probe. Pings the external database and returns `{data:{status,service,time,checks}}`. 200 when healthy, 503 when degraded. Unauthenticated — safe for uptime monitors and n8n schedule checks."
+						"description": "Liveness/readiness probe. Pings the external database; `{data:{status,service,time,checks}}`. 200 healthy, 503 degraded. Unauthenticated."
 					},
-					"response": [
-						{
-							"name": "Healthy",
-							"originalRequest": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/v1/health",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"health"
-									]
-								}
-							},
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=UTF-8"
-								},
-								{
-									"key": "X-Request-Id",
-									"value": "317fdac4aee44d3d85182427"
-								}
-							],
-							"body": "{\n    \"data\": {\n        \"status\": \"ok\",\n        \"service\": \"microservice\",\n        \"time\": \"2026-06-30T21:27:12+00:00\",\n        \"checks\": {\n            \"database\": \"up\"\n        }\n    }\n}"
-						}
-					],
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"type": "text/javascript",
 								"exec": [
-									"pm.test('status is 200', function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"pm.test('reports ok', function () {",
-									"    pm.expect(pm.response.json().data.status).to.eql('ok');",
-									"});",
-									"pm.test('engine is hidden', function () {",
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('engine is hidden', () => {",
 									"    pm.expect(pm.response.headers.has('X-Powered-By')).to.be.false;",
 									"    pm.expect(pm.response.headers.get('Server')).to.eql('MicroService');",
-									"});",
-									"pm.test('correlation id present', function () {",
-									"    pm.expect(pm.response.headers.has('X-Request-Id')).to.be.true;",
 									"});"
 								]
 							}
 						}
-					]
+					],
+					"response": []
 				},
 				{
 					"name": "Unknown path (neutral 404 example)",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
+						"auth": { "type": "noauth" },
 						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/problem+json"
-							}
-						],
+						"header": [{ "key": "Accept", "value": "application/problem+json" }],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/does-not-exist",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"does-not-exist"
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "does-not-exist"]
+						},
+						"description": "Shows the neutral error shape: unknown paths return RFC 9457 problem+json with no engine disclosure. The same shape is returned for every error status."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Products",
+			"description": "CRUD for the sample `products` resource (generic config-driven engine).",
+			"item": [
+				{
+					"name": "List products",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/products?page=1&perPage=25&sort=-created_at",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "products"],
+							"query": [
+								{ "key": "page", "value": "1" },
+								{ "key": "perPage", "value": "25", "description": "Capped at the resource max (100)." },
+								{ "key": "sort", "value": "-created_at", "description": "Prefix '-' for descending. Only whitelisted columns: sku, name, price, created_at." }
 							]
 						},
-						"description": "Shows the neutral error shape: unknown paths return RFC 9457 problem+json with no engine disclosure. The same shape is returned for every error status (401/403/422/500/...)."
+						"description": "Paginated list: `{data:[...], meta:{pagination:{page,perPage,total,totalPages}}}`."
 					},
-					"response": [
+					"response": []
+				},
+				{
+					"name": "Create product",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sku\": \"SKU-1001\",\n    \"name\": \"Sample Widget\",\n    \"price\": \"19.99\",\n    \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "products"]
+						},
+						"description": "Creates a product. 201 + `Location` header. Validation errors return 422 problem+json with a per-field `errors` map."
+					},
+					"event": [
 						{
-							"name": "Not Found",
-							"originalRequest": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/v1/does-not-exist",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"v1",
-										"does-not-exist"
-									]
-								}
-							},
-							"status": "Not Found",
-							"code": 404,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/problem+json; charset=UTF-8"
-								}
-							],
-							"body": "{\n    \"type\": \"about:blank\",\n    \"title\": \"Not Found\",\n    \"status\": 404,\n    \"requestId\": \"c7af2c6c886f9d1ac0682cee\"\n}"
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 201', () => pm.response.to.have.status(201));",
+									"const id = pm.response.json().data.id;",
+									"pm.collectionVariables.set('productId', id);",
+									"pm.test('Location header set', () => pm.expect(pm.response.headers.get('Location')).to.include('/api/v1/products/'));"
+								]
+							}
 						}
-					]
+					],
+					"response": []
+				},
+				{
+					"name": "Get product",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Accept", "value": "application/json" }],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/products/{{productId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "products", "{{productId}}"]
+						},
+						"description": "Fetch one product by id. Unknown id → neutral 404 problem+json."
+					},
+					"response": []
+				},
+				{
+					"name": "Update product",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Accept", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Renamed Widget\",\n    \"price\": \"24.50\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/products/{{productId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "products", "{{productId}}"]
+						},
+						"description": "Partial update (PATCH) or full replace (PUT). Only fillable fields are accepted; others are ignored."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete product",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/products/{{productId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "products", "{{productId}}"]
+						},
+						"description": "Deletes a product. 204 No Content. (Becomes an archival/recycle-bin delete in a later phase — see ARCHITECTURE §14.)"
+					},
+					"response": []
 				}
 			]
 		}

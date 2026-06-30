@@ -20,3 +20,15 @@ if (ENVIRONMENT !== 'production') {
         throw new RuntimeException('boom should not leak');
     });
 }
+
+// Generic CRUD engine. Declared AFTER the explicit routes above so reserved
+// paths (health, _throw) win. The resource slug is resolved against the
+// registry (Config\Resources); unknown slugs return a neutral 404.
+$routes->group('api/v1', static function (RouteCollection $routes): void {
+    $routes->get('(:segment)', 'Api\ResourceController::index/$1');
+    $routes->post('(:segment)', 'Api\ResourceController::create/$1');
+    $routes->get('(:segment)/(:segment)', 'Api\ResourceController::show/$1/$2');
+    $routes->put('(:segment)/(:segment)', 'Api\ResourceController::update/$1/$2');
+    $routes->patch('(:segment)/(:segment)', 'Api\ResourceController::update/$1/$2');
+    $routes->delete('(:segment)/(:segment)', 'Api\ResourceController::delete/$1/$2');
+});
