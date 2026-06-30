@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
+use Tests\Support\AuthTestTrait;
 
 /**
  * @internal
@@ -11,10 +13,20 @@ use CodeIgniter\Test\FeatureTestTrait;
 final class DiscoveryTest extends CIUnitTestCase
 {
     use FeatureTestTrait;
+    use DatabaseTestTrait;
+    use AuthTestTrait;
 
-    public function testListsRegisteredResources(): void
+    protected $namespace = 'App';
+    protected $refresh   = true;
+
+    public function testRequiresAuthentication(): void
     {
-        $result = $this->get('api/v1/_resources');
+        $this->get('api/v1/_resources')->assertStatus(401);
+    }
+
+    public function testListsRegisteredResourcesWhenAuthenticated(): void
+    {
+        $result = $this->withHeaders($this->authHeaders(['*:read']))->get('api/v1/_resources');
         $result->assertStatus(200);
 
         $json     = json_decode((string) $result->response()->getBody(), true);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
+use Tests\Support\AuthTestTrait;
 
 /**
  * End-to-end filtering and sparse fieldsets against the real test database.
@@ -15,27 +16,32 @@ final class QueryFilterTest extends CIUnitTestCase
 {
     use FeatureTestTrait;
     use DatabaseTestTrait;
+    use AuthTestTrait;
 
     protected $namespace = 'App';
     protected $refresh   = true;
 
+    /** @var array<string, string> */
+    private array $auth;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->auth = $this->authHeaders(['products:*']);
         $this->seed('cheap', 'active', '5.00');
         $this->seed('pricey', 'archived', '50.00');
     }
 
     private function seed(string $sku, string $status, string $price): void
     {
-        $this->withBodyFormat('json')->post('api/v1/products', [
+        $this->withHeaders($this->auth)->withBodyFormat('json')->post('api/v1/products', [
             'sku' => $sku, 'name' => ucfirst($sku), 'price' => $price, 'status' => $status,
         ]);
     }
 
     private function list(string $query): array
     {
-        $body = (string) $this->get('api/v1/products?' . $query)->response()->getBody();
+        $body = (string) $this->withHeaders($this->auth)->get('api/v1/products?' . $query)->response()->getBody();
 
         return json_decode($body, true);
     }
@@ -65,11 +71,11 @@ final class QueryFilterTest extends CIUnitTestCase
 
     public function testInvalidFilterColumnReturns400(): void
     {
-        $this->get('api/v1/products?filter[bogus]=x')->assertStatus(400);
+        $this->withHeaders($this->auth)->get('api/v1/products?filter[bogus]=x')->assertStatus(400);
     }
 
     public function testInvalidFieldReturns400(): void
     {
-        $this->get('api/v1/products?fields=secret')->assertStatus(400);
+        $this->withHeaders($this->auth)->get('api/v1/products?fields=secret')->assertStatus(400);
     }
 }

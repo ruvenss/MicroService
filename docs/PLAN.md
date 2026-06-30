@@ -143,17 +143,20 @@ and LLM-ready Markdown, and CI rejects stale docs.
 
 **Goal:** multiple keys per service, per-key scopes, verified on every request.
 
-- [ ] Migrations: `api_keys`, `api_key_scopes` (§7.3).
-- [ ] `ApiKeyModel` + `Authorization` library (scope grammar `{resource}:{action}`, wildcards).
-- [ ] Key hashing & verification — prefix lookup + `hash_equals` on SHA-256 secret (`php-security-engineer`).
-- [ ] `ApiKeyAuth` filter (before) — resolve bearer key → `AuthContext`; 401 on missing/invalid/expired/revoked.
-- [ ] `RequirePermission` filter (before) — required scope from the resource definition → 403 if absent.
-- [ ] Redis read-through cache of `prefix → key+scopes`; invalidate on revoke (`php-redis-specialist`).
-- [ ] Spark commands: `key:create` (prints secret once, stores hash, assigns scopes), `key:revoke`, `key:list`.
-- [ ] Apply auth + permission filters to all `/api/v1/*` resource routes (health stays open).
-- [ ] Tests: 401 paths, 403 scope failures, wildcard scopes, revoked/expired keys, cache invalidation.
+- [x] Migrations: `api_keys`, `api_key_scopes` (§7.3).
+- [x] `ApiKeyModel` + `Authorization` library (scope grammar `{resource}:{action}`, wildcards) + `AuthContext`.
+- [x] Key hashing & verification — prefix lookup + `hash_equals` on SHA-256 secret.
+- [x] `ApiKeyAuth` filter (before) — resolve bearer key → `AuthContext`; single neutral 401 on
+      missing/malformed/invalid/expired/revoked (reason never disclosed) + `WWW-Authenticate: Bearer`.
+- [x] `RequirePermission` filter (before) — required scope from resource + method → 403 if absent.
+- [ ] Redis read-through cache of `prefix → key+scopes`; invalidate on revoke (`php-redis-specialist`) — Phase 4.
+- [x] Spark commands: `key:create` (prints secret once, stores hash, assigns scopes), `key:revoke`, `key:list`.
+- [x] Apply auth + permission filters to `/api/v1/*` (per-route: auth → permission → contentguard);
+      health stays open; `_resources` requires a valid key.
+- [x] Tests: 401 paths, 403 scope failures, wildcard scopes, revoked/expired keys (59 tests green).
 
 **Done when:** resource endpoints require a valid scoped key; key lifecycle is manageable via CLI.
+**Status:** done except the Redis key cache + `last_used_at` tracking, which land with Phase 4.
 
 ---
 

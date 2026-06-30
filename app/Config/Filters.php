@@ -2,8 +2,10 @@
 
 namespace Config;
 
+use App\Filters\ApiKeyAuth;
 use App\Filters\ContentGuard;
 use App\Filters\RequestId;
+use App\Filters\RequirePermission;
 use App\Filters\Stealth;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
@@ -40,6 +42,8 @@ class Filters extends BaseFilters
         'stealth'       => Stealth::class,
         'requestid'     => RequestId::class,
         'contentguard'  => ContentGuard::class,
+        'apikey'        => ApiKeyAuth::class,
+        'permission'    => RequirePermission::class,
     ];
 
     /**
@@ -118,7 +122,8 @@ class Filters extends BaseFilters
      *
      * @var array<string, array<string, list<string>>>
      */
-    public array $filters = [
-        'contentguard' => ['before' => ['api/v1/*']],
-    ];
+    // Auth, permission, and content-guard are applied per-route (see Routes.php)
+    // so ordering is explicit (auth → permission → content) and open endpoints
+    // (health, _throw) stay unauthenticated.
+    public array $filters = [];
 }

@@ -8,8 +8,15 @@ Importable API collection for humans to test every endpoint by hand.
    - `MicroService.postman_collection.json` — the requests.
    - `MicroService.local.postman_environment.json` — the `baseUrl` / `apiKey` variables.
 2. Select the **MicroService — Local** environment (top-right).
-3. Set `apiKey` to a valid key once auth lands (the `Health` request needs none).
+3. Mint a key on the server and paste it into `apiKey`:
+
+   ```bash
+   php spark key:create --name n8n --scopes products:read,products:write,products:delete
+   ```
+
+   The full key (`prefix.secret`) is printed once. `health` needs no key.
 4. Send **System → Health** — you should get `200` with `{"data":{"status":"ok"...}}`.
+5. Send **Products → Create product** (needs `products:write`), then Get/Update/Delete reuse the captured id.
 
 ## Notes
 

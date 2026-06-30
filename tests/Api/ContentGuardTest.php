@@ -3,21 +3,37 @@
 declare(strict_types=1);
 
 use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
+use Tests\Support\AuthTestTrait;
 
 /**
- * ContentGuard rejects bad write payloads before any controller/DB work, with a
- * neutral problem+json. These cases short-circuit, so no database is needed.
+ * ContentGuard rejects bad write payloads (after auth/permission pass) with a
+ * neutral problem+json before any controller/DB work.
  *
  * @internal
  */
 final class ContentGuardTest extends CIUnitTestCase
 {
     use FeatureTestTrait;
+    use DatabaseTestTrait;
+    use AuthTestTrait;
+
+    protected $namespace = 'App';
+    protected $refresh   = true;
+
+    /** @var array<string, string> */
+    private array $auth;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->auth = $this->authHeaders(['products:write']);
+    }
 
     public function testRejectsNonJsonContentType(): void
     {
-        $result = $this->withHeaders(['Content-Type' => 'text/plain'])
+        $result = $this->withHeaders($this->auth + ['Content-Type' => 'text/plain'])
             ->withBody('hello')
             ->post('api/v1/products');
 
@@ -27,7 +43,7 @@ final class ContentGuardTest extends CIUnitTestCase
 
     public function testRejectsMalformedJson(): void
     {
-        $result = $this->withHeaders(['Content-Type' => 'application/json'])
+        $result = $this->withHeaders($this->auth + ['Content-Type' => 'application/json'])
             ->withBody('{not valid json')
             ->post('api/v1/products');
 

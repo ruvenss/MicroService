@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filters;
 
-use App\Libraries\ProblemDetails;
-use App\Libraries\RequestContext;
+use App\Libraries\ApiProblem;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -58,14 +57,6 @@ class ContentGuard implements FilterInterface
 
     private function problem(int $status, string $detail): ResponseInterface
     {
-        $response = service('response');
-        Stealth::harden($response);
-
-        return $response
-            ->setStatusCode($status)
-            ->setBody((string) json_encode(ProblemDetails::make($status, $detail, [
-                'requestId' => RequestContext::id(),
-            ])))
-            ->setContentType('application/problem+json');
+        return ApiProblem::respond($status, $detail);
     }
 }

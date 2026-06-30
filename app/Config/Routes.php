@@ -8,24 +8,26 @@ use CodeIgniter\Router\RouteCollection;
 // disclosure). This replaces CodeIgniter's default welcome page.
 $routes->set404Override('App\Controllers\Api\Errors::notFound');
 
-// Versioned API surface. n8n and other clients target /api/v1/*.
-$routes->group('api/v1', static function (RouteCollection $routes): void {
-    $routes->get('health', 'Api\Health::index');
-    $routes->get('_resources', 'Api\Discovery::resources');
-});
+// ── Open endpoints (no auth) ─────────────────────────────────────────────
+// Health is unauthenticated so monitors / n8n schedule checks can reach it.
+$routes->get('api/v1/health', 'Api\Health::index');
 
-// Diagnostic-only: a route that throws, so the global exception handler can be
-// exercised (it returns neutral problem+json). Never registered in production.
+// Diagnostic-only: a route that throws, exercising the global exception handler.
+// Never registered in production.
 if (ENVIRONMENT !== 'production') {
     $routes->get('api/v1/_throw', static function (): void {
         throw new RuntimeException('boom should not leak');
     });
 }
 
-// Generic CRUD engine. Declared AFTER the explicit routes above so reserved
-// paths (health, _throw) win. The resource slug is resolved against the
-// registry (Config\Resources); unknown slugs return a neutral 404.
-$routes->group('api/v1', static function (RouteCollection $routes): void {
+// ── Authenticated endpoints ──────────────────────────────────────────────
+// Discovery requires a valid key (any scope).
+$routes->get('api/v1/_resources', 'Api\Discovery::resources', ['filter' => 'apikey']);
+
+// Generic CRUD engine. Filters run in order: authenticate → authorize scope →
+// validate JSON body. Declared AFTER the reserved paths above so they win.
+// The resource slug is resolved against the registry; unknown slugs → neutral 404.
+$routes->group('api/v1', ['filter' => ['apikey', 'permission', 'contentguard']], static function (RouteCollection $routes): void {
     $routes->get('(:segment)', 'Api\ResourceController::index/$1');
     $routes->post('(:segment)', 'Api\ResourceController::create/$1');
     $routes->get('(:segment)/(:segment)', 'Api\ResourceController::show/$1/$2');

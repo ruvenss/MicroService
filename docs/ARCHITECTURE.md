@@ -209,6 +209,11 @@ All errors flow through one handler so the shape is guaranteed.
 
 ## 7. Authentication, authorization & usage tracking
 
+> **Status (implemented):** bearer API keys with per-key scopes are live. `ApiKeyAuth` +
+> `RequirePermission` filters gate `/api/v1/*` (health open; `_resources` needs a valid key); keys are
+> managed via `php spark key:create|key:list|key:revoke`. Still to come: the Redis key-lookup cache,
+> `last_used_at`, and the usage log/rate limiting (Phase 4).
+
 ### 7.1 Key format & verification
 
 - Presented as `Authorization: Bearer <key>` where `<key> = <prefix>.<secret>`.
