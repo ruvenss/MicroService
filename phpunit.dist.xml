@@ -11,14 +11,14 @@
     failOnWarning="true"
     cacheDirectory="build/.phpunit.cache"
 >
-    <coverage pathCoverage="false" ignoreDeprecatedCodeUnits="true">
-        <report>
-            <clover outputFile="build/logs/clover.xml"/>
-            <html outputDirectory="build/logs/html"/>
-            <php outputFile="build/logs/coverage.serialized"/>
-            <text outputFile="php://stdout" showUncoveredFiles="false"/>
-        </report>
-    </coverage>
+    <!--
+        Coverage is opt-in: reports are generated only when a coverage driver
+        (pcov/xdebug) is present AND the run requests them via CLI flags, e.g.
+            composer test:coverage
+        This keeps the default `composer test` green on hosts without a driver.
+        Coverage scope is defined by the <source> block below.
+    -->
+    <coverage pathCoverage="false" ignoreDeprecatedCodeUnits="true"/>
 
     <testsuites>
         <testsuite name="App">
