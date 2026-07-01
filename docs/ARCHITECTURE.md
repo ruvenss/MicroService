@@ -830,9 +830,13 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
 
 ### 18.2 Web-server layer — Apache (`public/.htaccess` + vhost)
 
-- **Hide PHP in URLs:** any direct client request for a `.php` file (e.g. `/index.php/...`) returns
-  404; internal rewrites to the front controller still work (the rule keys off `THE_REQUEST`, which
-  holds only the original request line). Clean, extensionless URLs only.
+- **Hide PHP in URLs:** any request referencing a `.php` file (`/index.php`, `/phpinfo.php`,
+  `/index.php/<route>` PATH_INFO) returns the **same neutral problem+json 404 as any unknown path**,
+  via the application-layer `HidePhp` filter (inspects the raw `REQUEST_URI`). We **do not** block `.php`
+  with a server-context `RewriteRule ^ - [R=404]`: mod_rewrite's `R=404` *bypasses* `ErrorDocument` and
+  emits Apache's recognisable default 404 HTML — an engine leak (found and removed in the stealth
+  audit). Routing `.php` through the front controller keeps the response neutral. Clean, extensionless
+  URLs only.
 - `mod_headers` re-asserts the security headers and unsets `X-Powered-By` for static files too.
 - Dotfiles are denied; directory listing is off; `ServerSignature Off`.
 - **Server-token masking (implemented in the container):** the `Server` header is replaced entirely
@@ -841,11 +845,14 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   header) **and** `ServerTokens Full` (mod_security overwrites the signature in place, so the full
   string must exist — with `Prod` it is pre-truncated to `Apache` and cannot be replaced). No rule
   sets are loaded, so nothing is inspected/blocked. Verified: real container emits `Server: MicroService`.
-- **Neutral server-level errors:** the vhost sets `ErrorDocument 400/413/500/502/503` to a static
-  `public/error.json` (`application/problem+json`), so a failure Apache handles *itself* — an oversized
-  body, a malformed request line, or the backend being down — never returns Apache's branded default
-  HTML. The engine stays hidden even when the app isn't reached. App-level 4xx/5xx already return
-  problem+json from the front controller.
+- **Neutral server-level errors:** the vhost maps `ErrorDocument 400/403/404/405/406/413/500/501/502/503`
+  to a static `public/error.json` (`application/problem+json`), so **any** failure Apache handles
+  *itself* — a denied dotfile (`403`), a disabled method like `TRACE` (`405`), an oversized body
+  (`413`), a malformed request line (`400`), the backend being down (`5xx`) — never returns Apache's
+  branded default HTML. The engine stays hidden even when the app isn't reached. App-level 4xx/5xx
+  already return problem+json from the front controller. **Audited** by probing the live container:
+  `/index.php`, `/phpinfo.php`, `/.env`, `TRACE`, `OPTIONS`, unknown paths — all return neutral
+  problem+json with `Server: MicroService` and zero Apache/PHP/CodeIgniter markers in the body.
 
 > **Payload-size limits (DoS guard, "in case exposed"):** the vhost sets `LimitRequestBody 8388608`
 > (8 MiB) to refuse abusive bodies at the edge before PHP buffers them (answered by the neutral

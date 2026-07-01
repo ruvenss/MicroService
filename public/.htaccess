@@ -16,11 +16,11 @@ Options -Indexes
 	# http://httpd.apache.org/docs/current/mod/mod_rewrite.html#rewritebase
 	# RewriteBase /
 
-	# Hide the engine: any direct client request for a .php file (e.g.
-	# /index.php/...) returns 404. Internal rewrites to index.php still work
-	# because THE_REQUEST holds only the original request line, not rewrites.
-	RewriteCond %{THE_REQUEST} \s/+[^?]*\.php[\s?/] [NC]
-	RewriteRule ^ - [R=404,L]
+	# Hide the engine: .php requests are answered by the app's HidePhp filter with
+	# a neutral problem+json 404 (same as any unknown path). We do NOT block them
+	# here with `[R=404]` — mod_rewrite's R=404 bypasses ErrorDocument and leaks
+	# Apache's default 404 HTML. Letting the request reach the front controller
+	# keeps the response neutral and engine-agnostic.
 
 	# Redirect Trailing Slashes...
 	RewriteCond %{REQUEST_FILENAME} !-d
