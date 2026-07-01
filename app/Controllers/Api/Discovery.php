@@ -43,6 +43,10 @@ class Discovery extends BaseController
                 // Natural key for PUT upsert (null = upsert not supported here).
                 'upsertKey'  => $definition->upsertKey,
                 'perPage'    => ['default' => $definition->perPageDefault, 'max' => $definition->perPageMax],
+                // Max items per bulk create/update/upsert/delete request, so an n8n
+                // sync workflow can chunk a large batch to fit instead of discovering
+                // the limit by hitting a 422.
+                'bulkMax'    => ResourceController::BULK_MAX,
             ];
         }
 

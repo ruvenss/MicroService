@@ -54,6 +54,11 @@ final class DiscoveryTest extends FeatureTestCase
         $this->assertFalse($products['schema']['status']['required']);    // permit_empty
         $this->assertSame('string', $products['schema']['sku']['type']);
         $this->assertSame('float', $products['schema']['price']['type']); // from the declared cast
+
+        // Pagination + bulk limits, so an n8n workflow can size its page/batch calls
+        // to fit instead of discovering the caps by hitting a 4xx.
+        $this->assertSame(100, $products['perPage']['max']);
+        $this->assertSame(\App\Controllers\Api\ResourceController::BULK_MAX, $products['bulkMax']);
     }
 
     public function testAdvertisesEnumChoicesForConstrainedFields(): void
