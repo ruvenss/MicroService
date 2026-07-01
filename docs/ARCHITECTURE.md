@@ -967,6 +967,15 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   already return problem+json from the front controller. **Audited** by probing the live container:
   `/index.php`, `/phpinfo.php`, `/.env`, `TRACE`, `OPTIONS`, unknown paths — all return neutral
   problem+json with `Server: MicroService` and zero Apache/PHP/CodeIgniter markers in the body.
+  Because that body is a **static file** served by Apache (not PHP), it would otherwise carry
+  static-file *headers* the app never emits — a recognisable Apache-default `ETag`
+  (`size-mtime` shape; historically an inode leak, CVE-2003-1418), a `Last-Modified` disclosing the
+  image build time, and `Accept-Ranges: bytes`. `FileETag None` drops ETags globally, and the
+  `<Files "error.json">` block unsets `Last-Modified`/`Accept-Ranges` and re-adds the app's
+  `Cache-Control: no-store` + `X-Robots-Tag`, so an Apache-served error is byte-for-byte
+  indistinguishable (headers included) from an app-served one — no header tell that a request fell
+  through to the web server. `ApacheStealthTest` guards the vhost directives; verified live on
+  `403`/`405`.
 
 > **Payload-size limits (DoS guard, "in case exposed"):** the vhost sets `LimitRequestBody 8388608`
 > (8 MiB) to refuse abusive bodies at the edge before PHP buffers them (answered by the neutral
