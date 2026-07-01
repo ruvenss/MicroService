@@ -36,7 +36,7 @@ $routes->group('api/v1', ['filter' => ['apikey', 'usagetracker']], static functi
 // authorize scope → validate JSON body, then usage tracking on the way out.
 // Declared AFTER the reserved paths above so they win. The resource slug is
 // resolved against the registry; unknown slugs → neutral 404.
-$routes->group('api/v1', ['filter' => ['apikey', 'ratelimit', 'permission', 'contentguard', 'usagetracker']], static function (RouteCollection $routes): void {
+$routes->group('api/v1', ['filter' => ['apikey', 'ratelimit', 'permission', 'idempotency', 'contentguard', 'usagetracker']], static function (RouteCollection $routes): void {
     $routes->get('(:segment)', 'Api\ResourceController::index/$1');
     $routes->post('(:segment)', 'Api\ResourceController::create/$1');
     $routes->get('(:segment)/(:segment)', 'Api\ResourceController::show/$1/$2');

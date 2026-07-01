@@ -5,6 +5,7 @@ namespace Config;
 use App\Filters\ApiKeyAuth;
 use App\Filters\ContentGuard;
 use App\Filters\HidePhp;
+use App\Filters\Idempotency;
 use App\Filters\RateLimit;
 use App\Filters\RequestId;
 use App\Filters\RequirePermission;
@@ -50,6 +51,7 @@ class Filters extends BaseFilters
         'ratelimit'     => RateLimit::class,
         'usagetracker'  => UsageTracker::class,
         'hidephp'       => HidePhp::class,
+        'idempotency'   => Idempotency::class,
     ];
 
     /**

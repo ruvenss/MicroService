@@ -755,5 +755,10 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
 - **Unauthenticated `/api/v1/health`** for n8n schedule/health checks and uptime polling.
 - **Importable Postman collection** (`docs/postman/`) documents each endpoint for humans and serves
   as the reference when configuring the matching n8n node.
-- Idempotency keys on unsafe writes (§6/§7 roadmap) so n8n retries don't double-apply.
+- **Idempotency keys (implemented):** a client sends `Idempotency-Key: <key>` on a write; the first
+  response is recorded and any retry with the same key + request **replays** it (with
+  `Idempotency-Replayed: true`) instead of re-executing — so an n8n retry after a timeout never
+  double-creates or double-deletes. Reusing a key with a different request → 422. Scoped per API key,
+  24 h TTL (`idempotency_keys` table, `Idempotency` filter). Sequential-retry safe; concurrent-retry
+  de-dup (unique reserve + Redis lock) is a follow-up.
 

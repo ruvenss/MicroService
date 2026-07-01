@@ -282,6 +282,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -772,6 +781,17 @@
                         "bearerAuth": []
                     }
                 ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -995,6 +1015,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -1123,6 +1152,15 @@
                         "name": "id",
                         "in": "path",
                         "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
                         "schema": {
                             "type": "string"
                         }

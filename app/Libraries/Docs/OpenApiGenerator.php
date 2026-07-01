@@ -82,6 +82,15 @@ final class OpenApiGenerator
         foreach ($ep['query'] as $q) {
             $params[] = ['name' => $q['name'], 'in' => 'query', 'required' => false, 'description' => $q['description'], 'schema' => ['type' => 'string']];
         }
+        if (in_array($ep['method'], ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            $params[] = [
+                'name'        => 'Idempotency-Key',
+                'in'          => 'header',
+                'required'    => false,
+                'description' => 'Optional. A retry with the same key + request replays the first response (safe for n8n retries).',
+                'schema'      => ['type' => 'string'],
+            ];
+        }
         if ($params !== []) {
             $op['parameters'] = $params;
         }

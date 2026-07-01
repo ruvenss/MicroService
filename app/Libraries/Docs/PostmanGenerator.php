@@ -95,6 +95,15 @@ final class PostmanGenerator
             $request['auth'] = ['type' => 'noauth'];
         }
 
+        if (in_array($ep['method'], ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            $request['header'][] = [
+                'key'         => 'Idempotency-Key',
+                'value'       => '',
+                'description' => 'Optional. Retries with the same key replay the first response (n8n-safe).',
+                'disabled'    => true,
+            ];
+        }
+
         if (is_array($ep['body'])) {
             $request['header'][] = ['key' => 'Content-Type', 'value' => 'application/json'];
             $request['body']     = ['mode' => 'raw', 'raw' => self::exampleBody($ep['body'])];

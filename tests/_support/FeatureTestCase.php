@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Libraries\AuthContext;
+use App\Libraries\IdempotencyContext;
 use App\Libraries\RateLimitState;
 use App\Libraries\RequestContext;
 use CodeIgniter\Test\CIUnitTestCase;
@@ -33,5 +34,6 @@ abstract class FeatureTestCase extends CIUnitTestCase
         AuthContext::reset();
         RateLimitState::reset();
         RequestContext::reset();
+        IdempotencyContext::reset();
     }
 }
