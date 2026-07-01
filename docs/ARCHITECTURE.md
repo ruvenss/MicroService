@@ -930,6 +930,16 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   URLs only. **Generated URLs are clean too:** `Config\App::$indexPage` is empty and list responses
   strip the front controller from the `Link` path, so the create `Location` header and pagination `Link`
   header emit `/api/v1/…`, never `/index.php/api/v1/…` (which would both leak PHP and be non-clean).
+- **No engine-revealing redirects:** the stock CI4 `.htaccess` canonicalises URLs with two
+  `[R=301]` rewrites — a trailing-slash strip and a `www.`→apex redirect. Any mod_rewrite `R=3xx`
+  makes Apache emit **its own** `Content-Type: text/html; charset=iso-8859-1` "Moved Permanently"
+  page — an unmistakable Apache fingerprint that also skips our problem+json format and security
+  headers (found by probing `/wp-admin/` in the stealth audit). Both are removed: the `www.` redirect
+  is dropped outright (host canonicalisation is meaningless for a machine API behind n8n), and trailing
+  slashes are normalised **internally** by handing the request to the front controller
+  (`RewriteRule ^(.+?)/+$ index.php/$1 [L,QSA]`) — the router treats `/x/` as `/x`, so both return the
+  identical neutral response with no redirect. `StealthAuditTest` locks both halves: the router
+  normalises trailing slashes, and the `.htaccess` directives contain no `R=30x`.
 - `mod_headers` re-asserts the security headers and unsets `X-Powered-By` for static files too.
 - **No stock framework favicon:** the CodeIgniter starter ships `public/favicon.ico`, whose bytes are
   a byte-exact fingerprint — favicon-hash scanners (e.g. Shodan) would out the engine straight from

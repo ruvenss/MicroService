@@ -124,6 +124,55 @@ final class StealthAuditTest extends FeatureTestCase
         );
     }
 
+    public function testTrailingSlashIsNormalizedNotRedirected(): void
+    {
+        // The .htaccess deliberately drops the stock CI4 trailing-slash `R=301`
+        // redirect (it would emit Apache's own engine-revealing "Moved Permanently"
+        // HTML page). That is only safe because the app itself treats `/x/` as `/x`.
+        // Lock that router behaviour so a future change can't silently 404 every
+        // trailing-slash request that n8n or a human might send.
+        $slash = $this->get('api/v1/health/')->response();
+        $this->assertSame(200, $slash->getStatusCode(), 'trailing-slash health');
+        $this->assertStealthy($slash, '200 health trailing-slash');
+        $this->assertSame(
+            $this->get('api/v1/health')->response()->getStatusCode(),
+            $slash->getStatusCode(),
+            '`/x/` and `/x` must resolve identically',
+        );
+
+        // And an unauthenticated resource with a trailing slash still yields the
+        // normal neutral 401 — never an Apache redirect.
+        $this->assertSame(401, $this->get('api/v1/products/')->response()->getStatusCode());
+    }
+
+    public function testHtaccessEmitsNoEngineRevealingApacheRedirect(): void
+    {
+        // Apache generates its own text/html; charset=iso-8859-1 "Moved" page for any
+        // mod_rewrite `R=3xx` — a clear engine fingerprint that skips our headers and
+        // problem+json. The rewrite rules must never issue one; trailing slashes are
+        // normalized internally via the front controller instead.
+        $raw = (string) file_get_contents(dirname(__DIR__, 2) . '/public/.htaccess');
+        // Scan directives only — comment lines legitimately mention `[R=301]` to
+        // document why it was removed.
+        $htaccess = implode("\n", array_filter(
+            explode("\n", $raw),
+            static fn (string $line): bool => ! str_starts_with(ltrim($line), '#'),
+        ));
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/\[[^\]]*R=30[12][^\]]*\]/',
+            $htaccess,
+            '.htaccess issues an external redirect (R=30x) — Apache would serve its own HTML redirect page and out the engine.',
+        );
+        // The trailing-slash rule must hand off to the front controller (internal),
+        // not redirect.
+        $this->assertMatchesRegularExpression(
+            '#RewriteRule\s+\S*/\S*\$\s+index\.php#',
+            $htaccess,
+            'trailing-slash normalization must rewrite to index.php internally.',
+        );
+    }
+
     public function testUncaughtExceptionHandlerIsNeutral(): void
     {
         // Directly exercise the last-line-of-defence handler: even a message full

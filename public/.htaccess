@@ -22,15 +22,19 @@ Options -Indexes
 	# Apache's default 404 HTML. Letting the request reach the front controller
 	# keeps the response neutral and engine-agnostic.
 
-	# Redirect Trailing Slashes...
+	# Normalize trailing slashes transparently (engine-hiding). An external redirect
+	# here would emit Apache's built-in 301 "Moved Permanently" page
+	# (Content-Type: text/html; charset=iso-8859-1) — an unmistakable Apache
+	# fingerprint that also bypasses our problem+json format and security headers.
+	# Instead we hand the request to the front controller, which serves the canonical
+	# path, so `/x/` and `/x` return the identical neutral response. No R=301.
 	RewriteCond %{REQUEST_FILENAME} !-d
-	RewriteCond %{REQUEST_URI} (.+)/$
-	RewriteRule ^ %1 [L,R=301]
+	RewriteRule ^(.+?)/+$ index.php/$1 [L,QSA]
 
-	# Rewrite "www.example.com -> example.com"
-	RewriteCond %{HTTPS} !=on
-	RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
-	RewriteRule ^ http://%1%{REQUEST_URI} [R=301,L]
+	# NB: the stock CI4 ".htaccess" also ships a "www.example.com -> example.com"
+	# `[R=301]` rule. It is deliberately removed: it emits the same engine-revealing
+	# Apache redirect page, and host canonicalization is meaningless for a machine
+	# API sitting behind n8n. A `www.` host just gets the normal neutral response.
 
 	# Checks to see if the user is attempting to access a valid file,
 	# such as an image or css document, if this isn't true it sends the
