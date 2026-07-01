@@ -808,12 +808,26 @@ class ResourceController extends BaseController
                 'gte'   => $model->where("{$column} >=", $value),
                 'lt'    => $model->where("{$column} <", $value),
                 'lte'   => $model->where("{$column} <=", $value),
-                'like'  => $model->like($column, is_array($value) ? implode(',', $value) : (string) $value),
+                'like'  => $model->like($column, $this->escapeLikeWildcards(is_array($value) ? implode(',', $value) : (string) $value)),
                 'in'    => $model->whereIn($column, is_array($value) ? $value : [$value]),
                 'nin'   => $model->whereNotIn($column, is_array($value) ? $value : [$value]),
                 default => $model->where($column, $value), // 'eq'
             };
         }
+    }
+
+    /**
+     * Escape a caller's `%` and `_` before they reach a `LIKE` so they are matched
+     * literally, not as wildcards. Without this, `filter[col][like]=%` (or `_`)
+     * expands to a match-everything `LIKE '%%%'` — wrong results, and a full-table
+     * scan an attacker could weaponise against the external DB (a DoS lever on an
+     * exposed service). CI4 emits `ESCAPE '!'` and `escapeLikeString` uses `!` as
+     * the escape char, so the two line up; value quoting (SQL-injection defence) is
+     * unaffected — `$model->like()` still binds the value with default escaping.
+     */
+    private function escapeLikeWildcards(string $value): string
+    {
+        return db_connect()->escapeLikeString($value);
     }
 
     private function perPage(ResourceDefinition $definition): int

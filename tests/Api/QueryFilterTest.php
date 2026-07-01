@@ -44,6 +44,25 @@ final class QueryFilterTest extends FeatureTestCase
         $this->assertSame('cheap', $json['data'][0]['sku']);
     }
 
+    public function testLikeTreatsCallerWildcardsAsLiteralNotWildcard(): void
+    {
+        // A caller's `%` / `_` must match literally, never act as a SQL LIKE wildcard.
+        // Without escaping, `like=AA-%-BB` would also match `AA-XX-BB` (a match-anything
+        // scan), so a `%` search would silently over-match and could force full-table
+        // scans on the external DB. Seed a literal-`%` sku next to a decoy it must NOT catch.
+        $this->seedProduct('AA-%-BB', 'active', '1.00');
+        $this->seedProduct('AA-XX-BB', 'active', '1.00');
+
+        $rows = $this->list('filter[sku][like]=AA-%25-BB&perPage=100')['data'];
+        $this->assertCount(1, $rows);
+        $this->assertSame('AA-%-BB', $rows[0]['sku']);
+
+        // A bare `%` must not become a match-everything wildcard: it matches only skus
+        // that literally contain a percent — here just the one seeded above.
+        $skus = array_column($this->list('filter[sku][like]=%25&perPage=100')['data'], 'sku');
+        $this->assertSame(['AA-%-BB'], $skus);
+    }
+
     public function testFilterByPriceGreaterThan(): void
     {
         $json = $this->list('filter[price][gt]=10');

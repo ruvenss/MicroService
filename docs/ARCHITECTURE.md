@@ -199,7 +199,11 @@ authorized). Covered by `HeadRequestTest`.
   `eq` (also the bare `filter[col]=v` shorthand), `ne`, `gt`, `gte`, `lt`, `lte`, `like` (contains),
   `in` / `nin` (comma-separated set membership / exclusion). Combine two on one column for a range
   (`filter[price][gte]=10&filter[price][lte]=50`). Only `filterable` columns allowed; values are bound
-  as parameters (never interpolated). Every operator is covered by `QueryFilterTest`.
+  as parameters (never interpolated). For `like`, a caller's own `%` and `_` are **escaped** so they
+  match literally (via `escapeLikeString`, with the matching `ESCAPE` clause) — `filter[col][like]=%`
+  therefore finds a literal percent, not every row: no accidental match-everything, and no LIKE-wildcard
+  lever to force full-table scans on the external DB from an exposed endpoint. Every operator is covered
+  by `QueryFilterTest`.
 - **Sparse fields:** `?fields=id,name,price` — restrict returned columns (hidden fields always excluded).
 - **Conditional reads (caching):** every `GET` (show and list) returns a strong `ETag` — a content
   hash of the response body (no stored state, no engine fingerprint). Resend it as `If-None-Match`
