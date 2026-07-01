@@ -775,7 +775,7 @@
                     "Products"
                 ],
                 "operationId": "productsCreate",
-                "summary": "Create a products record. (scope: products:write)",
+                "summary": "Create a products record (send a JSON array of objects to bulk-create, all-or-nothing). (scope: products:write)",
                 "security": [
                     {
                         "bearerAuth": []

@@ -317,7 +317,7 @@
                     "response": []
                 },
                 {
-                    "name": "Create a products record.",
+                    "name": "Create a products record (send a JSON array of objects to bulk-create, all-or-nothing).",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -347,7 +347,7 @@
                                 "products"
                             ]
                         },
-                        "description": "Create a products record. Scope: products:write.",
+                        "description": "Create a products record (send a JSON array of objects to bulk-create, all-or-nothing). Scope: products:write.",
                         "body": {
                             "mode": "raw",
                             "raw": "{\n    \"sku\": \"string\",\n    \"name\": \"string\",\n    \"price\": \"0.00\",\n    \"status\": \"string\"\n}"

@@ -374,7 +374,9 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
 1. Rate-limit fail-open vs fail-closed when Redis is unavailable (current lean: closed for writes).
 2. ~~Soft-delete default~~ — **resolved**: deletes are archival framework-wide (§14).
 3. Relationship/embedding support (e.g. `?include=`) — out of scope for v1, revisit later.
-4. Bulk operations (batch create/update) — deferred past v1.
+4. **Bulk create implemented** — `POST /api/v1/{resource}` with a JSON array inserts up to 100 items
+   all-or-nothing in one transaction (per-index 422 errors, one audit row each, typed response). Batch
+   update/delete remain deferred.
 5. Audit/archive retention & purge policy — how long to keep `api_request_log`, `audit_log`,
    and `archived_records` before rollup/purge; whether purge is even allowed for compliance.
 6. Whether audit/archive payloads need encryption-at-rest or field redaction for sensitive resources.

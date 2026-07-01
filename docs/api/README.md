@@ -78,7 +78,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 
 ### `POST /api/v1/products`
 
-- **Summary:** Create a products record.
+- **Summary:** Create a products record (send a JSON array of objects to bulk-create, all-or-nothing).
 - **Auth:** bearer
 - **Scope:** products:write
 - **Body (JSON):**

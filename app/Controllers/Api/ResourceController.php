@@ -27,6 +27,9 @@ use CodeIgniter\HTTP\ResponseInterface;
  */
 class ResourceController extends BaseController
 {
+    /** Maximum items accepted in a single bulk-create request. */
+    private const BULK_MAX = 100;
+
     public function index(string $slug): ResponseInterface
     {
         $definition = $this->resolve($slug);
@@ -95,6 +98,11 @@ class ResourceController extends BaseController
             return $this->problem(400, 'Request body must be a JSON object.');
         }
 
+        // A JSON array of objects means bulk-create (all-or-nothing).
+        if ($data !== [] && array_is_list($data) && is_array($data[0] ?? null)) {
+            return $this->createBulk($definition, $data);
+        }
+
         $data   = $this->fireBeforeSave($definition, 'create', $data);
         $errors = $this->validateAgainst($data, $definition->createRules);
         if ($errors !== []) {
@@ -114,6 +122,65 @@ class ResourceController extends BaseController
             ->setStatusCode(201)
             ->setHeader('Location', site_url("api/v1/{$slug}/{$id}"))
             ->setJSON(ResponseEnvelope::wrap($this->present($row, $definition)));
+    }
+
+    /**
+     * Bulk create: validate every item first, then insert them all in one
+     * transaction (all-or-nothing). Any invalid item → 422 with per-index errors
+     * and nothing is written. Response: { data: [...], meta: { created: N } }.
+     * Lets an n8n workflow insert an array of records in a single call.
+     *
+     * @param list<mixed> $items each element should be an object; non-objects are rejected
+     */
+    private function createBulk(ResourceDefinition $definition, array $items): ResponseInterface
+    {
+        if (count($items) > self::BULK_MAX) {
+            return $this->problem(422, 'Bulk create is limited to ' . self::BULK_MAX . ' items per request.');
+        }
+
+        $errors   = [];
+        $prepared = [];
+        foreach ($items as $index => $item) {
+            if (! is_array($item)) {
+                $errors[$index] = ['_' => 'Each item must be a JSON object.'];
+
+                continue;
+            }
+            $item      = $this->fireBeforeSave($definition, 'create', $item);
+            $itemError = $this->validateAgainst($item, $definition->createRules);
+            if ($itemError !== []) {
+                $errors[$index] = $itemError;
+            } else {
+                $prepared[] = $this->onlyFillable($item, $definition);
+            }
+        }
+
+        if ($errors !== []) {
+            return $this->problem(422, 'One or more items are invalid.', ['errors' => $errors]);
+        }
+
+        $model = $this->model($definition);
+        $db    = db_connect();
+
+        $db->transStart();
+        $created = [];
+        foreach ($prepared as $clean) {
+            $id = $model->insert($clean, true);
+            if ($id === false) {
+                $db->transComplete();
+
+                return $this->problem(409, 'Bulk create failed; no records were created.');
+            }
+            $row = (array) $model->find($id);
+            AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
+            $created[] = $this->present($row, $definition);
+        }
+        $db->transComplete();
+
+        return $this->response->setStatusCode(201)->setJSON([
+            'data' => $created,
+            'meta' => ['created' => count($created)],
+        ]);
     }
 
     public function update(string $slug, string $id): ResponseInterface
