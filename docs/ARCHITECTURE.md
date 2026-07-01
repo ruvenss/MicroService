@@ -775,6 +775,11 @@ running **PHP 8.5 + Apache2 + Redis** with all extensions; **no database in the 
   caching, and query/index tuning. **Measure, don't guess** (`php-optimization-engineer`).
 - Tuned `realpath_cache`, FPM `pm` mode sized to memory + the connection rule above, HTTP/2 and
   `mod_brotli`/`mod_deflate` at Apache, sensible keepalive.
+- **FPM pool resilience (`docker/php/www.conf`):** `request_terminate_timeout = 30s` kills a hung
+  request (e.g. a stalled external DB) and recycles the worker, so a slow dependency can't pin the pool
+  and exhaust it under load (a self-inflicted DoS if the service is exposed); `pm.max_requests = 1000`
+  recycles workers to bound any leak; `security.limit_extensions = .php` restricts what the pool will
+  execute. Verified in the rebuilt container (`php-fpm -tt`).
 
 ### 17.4 Parallel execution
 
