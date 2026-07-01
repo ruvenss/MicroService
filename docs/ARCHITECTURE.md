@@ -509,7 +509,10 @@ to confirm indexing/retention; very high delete-volume resources may warrant a d
 > The generic engine also fires **lifecycle events** plugins subscribe to (CodeIgniter Events, via a
 > mutable `App\Core\Plugin\ResourceEvent`). **Before/around:** `resource.beforeSave` (mutate the
 > create/update payload before validation), `resource.beforeQuery` (constrain the list query — tenant
-> scoping), `resource.serialize` (transform each outgoing row). **Post-commit:** `resource.afterCreate`,
+> scoping), `resource.beforeDelete` (inspect the row about to be archived and optionally **`cancel()`**
+> it — the engine returns a neutral `409`, e.g. refuse to delete a row still referenced elsewhere; a
+> veto aborts a bulk delete entirely, all-or-nothing), `resource.serialize` (transform each outgoing
+> row). **Post-commit:** `resource.afterCreate`,
 > `resource.afterUpdate` (carries prior state in `->data`), `resource.afterDelete`, and
 > `resource.afterRestore` — fired **after** the transaction commits, so a plugin can safely react to a
 > durable change: invalidate a cache, cascade, or notify. (The built-in **n8n webhook** enqueue is *not*
