@@ -52,4 +52,22 @@ final class AuthorizationTest extends CIUnitTestCase
     {
         $this->assertFalse(Authorization::satisfies([], 'products:read'));
     }
+
+    public function testPermitsResourceForAnyAction(): void
+    {
+        // Any single action, or a wildcard, grants discovery of the resource.
+        $this->assertTrue(Authorization::permitsResource(['products:read'], 'products'));
+        $this->assertTrue(Authorization::permitsResource(['products:write'], 'products'));
+        $this->assertTrue(Authorization::permitsResource(['products:delete'], 'products'));
+        $this->assertTrue(Authorization::permitsResource(['products:*'], 'products'));
+        $this->assertTrue(Authorization::permitsResource(['*:read'], 'products'));
+        $this->assertTrue(Authorization::permitsResource(['*'], 'products'));
+    }
+
+    public function testPermitsResourceDeniesUnscopedResource(): void
+    {
+        $this->assertFalse(Authorization::permitsResource(['orders:read'], 'products'));
+        $this->assertFalse(Authorization::permitsResource(['audit:read'], 'products'));
+        $this->assertFalse(Authorization::permitsResource([], 'products'));
+    }
 }

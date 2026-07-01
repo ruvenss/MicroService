@@ -34,6 +34,22 @@ final class DiscoveryTest extends FeatureTestCase
         $this->assertContains('id', $products['fields']);
     }
 
+    public function testDiscoveryIsScopedToWhatTheKeyCanUse(): void
+    {
+        // Least privilege: a key with no scope for products must not discover it —
+        // it never learns the resource exists or its schema (matters most if a
+        // limited key is exposed). The endpoint still 200s with the accessible subset.
+        $result = $this->withHeaders($this->authHeaders(['audit:read']))->get('api/v1/_resources');
+        $result->assertStatus(200);
+        $slugs = array_map(static fn (array $e): string => $e['resource'], json_decode((string) $result->response()->getBody(), true)['data']);
+        $this->assertNotContains('products', $slugs);
+
+        // A products-scoped key does discover it.
+        $result2 = $this->withHeaders($this->authHeaders(['products:read']))->get('api/v1/_resources');
+        $slugs2  = array_map(static fn (array $e): string => $e['resource'], json_decode((string) $result2->response()->getBody(), true)['data']);
+        $this->assertContains('products', $slugs2);
+    }
+
     public function testAdvertisesUpsertKeyAndFieldSchema(): void
     {
         $result = $this->withHeaders($this->authHeaders(['*:read']))->get('api/v1/_resources');

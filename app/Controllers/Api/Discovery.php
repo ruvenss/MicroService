@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
+use App\Libraries\AuthContext;
+use App\Libraries\Authorization;
 use App\Libraries\QueryParser;
 use App\Libraries\ResourceDefinition;
 use App\Libraries\ResourceRegistry;
@@ -13,19 +15,27 @@ use CodeIgniter\HTTP\ResponseInterface;
 
 /**
  * Self-description of the API surface: lists registered resources and how each
- * may be queried. Describes only the resources already exposed via CRUD (no
- * engine disclosure). Will be gated behind an admin scope once auth lands.
+ * may be queried. Describes only the resources the calling key can actually use
+ * (least privilege — see below) and never the engine behind them.
  */
 class Discovery extends BaseController
 {
     public function resources(): ResponseInterface
     {
         $registry = ResourceRegistry::instance();
+        $scopes   = AuthContext::scopes();
         $data     = [];
 
         foreach ($registry->slugs() as $slug) {
             $definition = $registry->get($slug);
             if ($definition === null) {
+                continue;
+            }
+
+            // Least privilege: only advertise a resource this key can read/write/
+            // delete, so a limited (or leaked) key never discovers the names and
+            // schemas of resources it has no scope for.
+            if (! Authorization::permitsResource($scopes, $slug)) {
                 continue;
             }
 

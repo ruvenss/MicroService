@@ -60,4 +60,23 @@ final class Authorization
 
         return false;
     }
+
+    /**
+     * May a key holding these scopes touch this resource at all — read, write, or
+     * delete it? Used to scope resource discovery to what the key can actually use
+     * (least privilege: a limited or leaked key never learns the names/schemas of
+     * resources it has no scope for).
+     *
+     * @param list<string> $heldScopes
+     */
+    public static function permitsResource(array $heldScopes, string $resource): bool
+    {
+        foreach (['read', 'write', 'delete'] as $action) {
+            if (self::satisfies($heldScopes, $resource . ':' . $action)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
