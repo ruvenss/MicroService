@@ -295,9 +295,11 @@ and busts the Redis cache. No key secret is ever logged or retrievable after cre
 > **Status (implemented):** per-key **fixed-window** limiter (`RateLimit` filter) backed by the CI4
 > cache service — **file** cache in dev/test, **Redis** in production (`cache.handler=redis`; a Redis
 > sidecar is in `docker-compose.dev.yml`). Global default 120/min, overridable per key
-> (`api_keys.rate_limit`, e.g. `key:create --rate-limit N`). On exceed → `429` + `Retry-After`;
-> `X-RateLimit-Limit`/`X-RateLimit-Remaining` on every response. Each request is also logged to
-> `api_request_log` by the `UsageTracker` after-filter, stamping `last_used_at`.
+> (`api_keys.rate_limit`, e.g. `key:create --rate-limit N`). On exceed → `429` + `Retry-After`. The
+> full trio `X-RateLimit-Limit` / `X-RateLimit-Remaining` / `X-RateLimit-Reset` (epoch second the window
+> frees up) rides on **every** response, so an n8n workflow can self-throttle proactively instead of only
+> reacting to a `429`. Each request is also logged to `api_request_log` by the `UsageTracker`
+> after-filter, stamping `last_used_at`.
 
 Target end state: a **sliding-window / token-bucket** limiter as an **atomic Redis Lua script**
 (see `php-redis-specialist`) plus an `api_key_usage_daily` rollup. Fail open or closed per config

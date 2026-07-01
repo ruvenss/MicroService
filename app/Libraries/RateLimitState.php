@@ -13,12 +13,17 @@ final class RateLimitState
     private static bool $set = false;
     private static int $limit = 0;
     private static int $remaining = 0;
+    private static int $resetAt = 0;
 
-    public static function set(int $limit, int $remaining): void
+    /**
+     * @param int $resetAt epoch second at which the current window resets
+     */
+    public static function set(int $limit, int $remaining, int $resetAt = 0): void
     {
         self::$set       = true;
         self::$limit     = $limit;
         self::$remaining = $remaining;
+        self::$resetAt   = $resetAt;
     }
 
     public static function isSet(): bool
@@ -36,10 +41,16 @@ final class RateLimitState
         return self::$remaining;
     }
 
+    public static function resetAt(): int
+    {
+        return self::$resetAt;
+    }
+
     public static function reset(): void
     {
         self::$set       = false;
         self::$limit     = 0;
         self::$remaining = 0;
+        self::$resetAt   = 0;
     }
 }

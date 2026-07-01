@@ -147,12 +147,15 @@ final class OpenApiGenerator
     {
         $responses = [];
 
+        $successHeaders = self::responseHeaders($ep);
+
         if ($ep['successKind'] === 'none') {
-            $responses[(string) $ep['success']] = ['description' => 'No content'];
+            $responses[(string) $ep['success']] = ['description' => 'No content', 'headers' => $successHeaders];
         } elseif ($ep['successKind'] === 'meta') {
             $envelope = ['type' => 'object', 'properties' => ['meta' => ['type' => 'object']]];
             $responses[(string) $ep['success']] = [
                 'description' => 'Success',
+                'headers'     => $successHeaders,
                 'content'     => ['application/json' => ['schema' => $envelope]],
             ];
         } else {
@@ -162,6 +165,7 @@ final class OpenApiGenerator
             $envelope = ['type' => 'object', 'properties' => ['data' => $data, 'meta' => ['type' => 'object']]];
             $responses[(string) $ep['success']] = [
                 'description' => 'Success',
+                'headers'     => $successHeaders,
                 'content'     => ['application/json' => ['schema' => $envelope]],
             ];
         }
@@ -179,12 +183,55 @@ final class OpenApiGenerator
             sort($errors);
         }
         foreach ($errors as $code) {
-            $responses[(string) $code] = [
+            $response = [
                 'description' => 'Error',
                 'content'     => ['application/problem+json' => ['schema' => ['$ref' => '#/components/schemas/Problem']]],
             ];
+            if ($code === 429) {
+                $response['headers'] = [
+                    'Retry-After'           => self::header('Seconds to wait before retrying.'),
+                    'X-RateLimit-Limit'     => self::header('Requests allowed per window.'),
+                    'X-RateLimit-Remaining' => self::header('Requests remaining in the current window.'),
+                    'X-RateLimit-Reset'     => self::header('Epoch second when the window resets.'),
+                ];
+            }
+            $responses[(string) $code] = $response;
         }
 
         return $responses;
+    }
+
+    /**
+     * Standard success-response headers: the correlation id always, per-key
+     * rate-limit signalling on authenticated endpoints (so n8n can self-throttle),
+     * and the ETag validator on reads.
+     *
+     * @param array<string, mixed> $ep
+     *
+     * @return array<string, array{description: string, schema: array{type: string}}>
+     */
+    private static function responseHeaders(array $ep): array
+    {
+        $headers = ['X-Request-Id' => self::header('Correlation id (echoes an inbound one).')];
+
+        if ($ep['auth']) {
+            $headers['X-RateLimit-Limit']     = self::header('Requests allowed per window.');
+            $headers['X-RateLimit-Remaining'] = self::header('Requests remaining in the current window.');
+            $headers['X-RateLimit-Reset']     = self::header('Epoch second when the window resets.');
+        }
+
+        if ($ep['method'] === 'GET') {
+            $headers['ETag'] = self::header('Validator for conditional requests (send back as If-None-Match).');
+        }
+
+        return $headers;
+    }
+
+    /**
+     * @return array{description: string, schema: array{type: string}}
+     */
+    private static function header(string $description): array
+    {
+        return ['description' => $description, 'schema' => ['type' => 'string']];
     }
 }

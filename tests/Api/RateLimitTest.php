@@ -23,6 +23,8 @@ final class RateLimitTest extends FeatureTestCase
         $this->assertNotSame('', $response->getHeaderLine('Retry-After'));
         $this->assertSame('2', $response->getHeaderLine('X-RateLimit-Limit'));
         $this->assertSame('0', $response->getHeaderLine('X-RateLimit-Remaining'));
+        // Reset tells a client (n8n) exactly when the window frees up.
+        $this->assertGreaterThan(time(), (int) $response->getHeaderLine('X-RateLimit-Reset'));
     }
 
     public function testRateLimitHeadersOnSuccess(): void
@@ -32,5 +34,9 @@ final class RateLimitTest extends FeatureTestCase
 
         $this->assertSame('10', $response->getHeaderLine('X-RateLimit-Limit'));
         $this->assertSame('9', $response->getHeaderLine('X-RateLimit-Remaining'));
+        // Reset is a future epoch second (proactive self-throttling, not just reactive 429s).
+        $reset = (int) $response->getHeaderLine('X-RateLimit-Reset');
+        $this->assertGreaterThan(time(), $reset);
+        $this->assertLessThanOrEqual(time() + 60, $reset);
     }
 }

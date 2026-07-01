@@ -17,7 +17,9 @@ use CodeIgniter\HTTP\ResponseInterface;
  * Counters live in the cache service (file in dev/test, Redis in production —
  * see Config\Cache), so the limiter is Redis-backed without a hard dependency
  * on the extension in tests. Exceeding the limit returns 429 + Retry-After; the
- * limit/remaining are surfaced as X-RateLimit-* headers on every response.
+ * full trio X-RateLimit-Limit / -Remaining / -Reset (epoch second the window
+ * frees up) is surfaced on every response so a client (n8n) can self-throttle
+ * proactively instead of only reacting to a 429.
  */
 class RateLimit implements FilterInterface
 {
@@ -43,17 +45,18 @@ class RateLimit implements FilterInterface
         $count    = (int) $cache->get($bucket);
 
         if ($count >= $limit) {
-            RateLimitState::set($limit, 0);
+            RateLimitState::set($limit, 0, $resetAt);
 
             return ApiProblem::respond(429, 'Rate limit exceeded.')
                 ->setHeader('Retry-After', (string) max(1, $resetAt - time()))
                 ->setHeader('X-RateLimit-Limit', (string) $limit)
-                ->setHeader('X-RateLimit-Remaining', '0');
+                ->setHeader('X-RateLimit-Remaining', '0')
+                ->setHeader('X-RateLimit-Reset', (string) $resetAt);
         }
 
         $count++;
         $cache->save($bucket, $count, self::WINDOW);
-        RateLimitState::set($limit, max(0, $limit - $count));
+        RateLimitState::set($limit, max(0, $limit - $count), $resetAt);
 
         return null;
     }
@@ -63,6 +66,7 @@ class RateLimit implements FilterInterface
         if (RateLimitState::isSet()) {
             $response->setHeader('X-RateLimit-Limit', (string) RateLimitState::limit());
             $response->setHeader('X-RateLimit-Remaining', (string) RateLimitState::remaining());
+            $response->setHeader('X-RateLimit-Reset', (string) RateLimitState::resetAt());
         }
 
         return $response;
