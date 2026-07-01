@@ -832,6 +832,11 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   slow/unavailable n8n never affects the API response. Subscriptions filter by
   `{resource}.{afterCreate|afterUpdate|afterDelete|afterRestore}` / wildcards. This is the service→n8n
   push channel (n8n workflows triggered by data changes).
+  **No double-delivery under concurrency:** `dispatch()` first *claims* a batch with a single row-locked
+  `UPDATE … SET status='dispatching', claim_token=? … ORDER BY id LIMIT n`, so overlapping
+  `webhooks:dispatch` runs partition the work and never POST the same row twice. The claim is released
+  (back to `failed`, retriable) on failure and cleared on delivery; a row stuck in `dispatching` past
+  300 s (a crashed dispatcher) is reclaimed. Covered by `WebhookTest` (concurrent-claim, stale-reclaim).
 - **Idempotency keys (implemented):** a client sends `Idempotency-Key: <key>` on a write; the first
   response is recorded and any retry with the same key + request **replays** it (with
   `Idempotency-Replayed: true`) instead of re-executing — so an n8n retry after a timeout never

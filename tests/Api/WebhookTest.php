@@ -121,6 +121,48 @@ final class WebhookTest extends FeatureTestCase
         $this->assertSame(1, WebhookDispatcher::dispatch()['sent']);
     }
 
+    public function testConcurrentClaimsPartitionRowsWithoutOverlap(): void
+    {
+        for ($i = 1; $i <= 4; $i++) {
+            $this->createProduct("WH-C{$i}");
+        }
+        $model = new WebhookOutboxModel();
+
+        // Two dispatchers claim concurrently — each must own a disjoint set, so no
+        // row is ever POSTed to n8n twice.
+        $idsA = array_map('strval', array_column($model->claim('tokenA', 5, 2, 300), 'id'));
+        $idsB = array_map('strval', array_column($model->claim('tokenB', 5, 2, 300), 'id'));
+
+        $this->assertCount(2, $idsA);
+        $this->assertCount(2, $idsB);
+        $this->assertSame([], array_intersect($idsA, $idsB));
+    }
+
+    public function testStaleDispatchingRowIsReclaimed(): void
+    {
+        $this->createProduct('WH-STALE');
+        $model = new WebhookOutboxModel();
+        $id    = $model->first()['id'];
+
+        // A crashed dispatcher left the row claimed an hour ago and never finished.
+        $model->update($id, ['status' => 'dispatching', 'claim_token' => 'dead', 'claimed_at' => date('Y-m-d H:i:s', time() - 3600)]);
+
+        $claimed = $model->claim('fresh', 5, 10, 300);
+        $this->assertSame([(string) $id], array_map('strval', array_column($claimed, 'id')));
+    }
+
+    public function testFreshlyClaimedRowIsNotStolen(): void
+    {
+        $this->createProduct('WH-ACTIVE');
+        $model = new WebhookOutboxModel();
+        $id    = $model->first()['id'];
+
+        // An in-flight claim (just now) must not be reclaimed by another run.
+        $model->update($id, ['status' => 'dispatching', 'claim_token' => 'live', 'claimed_at' => date('Y-m-d H:i:s')]);
+
+        $this->assertSame([], $model->claim('other', 5, 10, 300));
+    }
+
     public function testEventFilterOnlyEnqueuesMatchingEvents(): void
     {
         $this->subscribe([['url' => 'https://n8n.example/webhook/del', 'secret' => '', 'events' => ['products.afterDelete']]]);

@@ -81,8 +81,12 @@ final class WebhookDispatcher
         }
     }
 
+    /** A row left in `dispatching` longer than this (crashed dispatcher) is reclaimable. */
+    private const CLAIM_STALE_SECONDS = 300;
+
     /**
-     * Deliver pending/retriable outbox rows.
+     * Deliver pending/retriable outbox rows. Rows are first claimed atomically so
+     * that overlapping `webhooks:dispatch` runs never deliver the same row twice.
      *
      * @return array{processed: int, sent: int, failed: int}
      */
@@ -90,7 +94,8 @@ final class WebhookDispatcher
     {
         $config = self::config();
         $model  = new WebhookOutboxModel();
-        $rows   = $model->deliverable($config->maxAttempts, $limit);
+        $token  = bin2hex(random_bytes(16));
+        $rows   = $model->claim($token, $config->maxAttempts, $limit, self::CLAIM_STALE_SECONDS);
 
         $sent   = 0;
         $failed = 0;
@@ -108,13 +113,18 @@ final class WebhookDispatcher
                     'attempts'     => (int) $row['attempts'] + 1,
                     'delivered_at' => date('Y-m-d H:i:s'),
                     'last_error'   => null,
+                    'claim_token'  => null,
+                    'claimed_at'   => null,
                 ]);
                 $sent++;
             } else {
+                // Release the claim so a later run can retry (until the attempt cap).
                 $model->update($row['id'], [
-                    'status'     => 'failed',
-                    'attempts'   => (int) $row['attempts'] + 1,
-                    'last_error' => 'HTTP ' . $status,
+                    'status'      => 'failed',
+                    'attempts'    => (int) $row['attempts'] + 1,
+                    'last_error'  => 'HTTP ' . $status,
+                    'claim_token' => null,
+                    'claimed_at'  => null,
                 ]);
                 $failed++;
             }
