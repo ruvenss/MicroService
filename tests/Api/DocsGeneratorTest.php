@@ -115,6 +115,37 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertSame(['active', 'archived'], $props['status']['enum']);
     }
 
+    public function testCreateRequestCapturesIdForTheChain(): void
+    {
+        // The README promises the create → show/update/delete chain "just runs":
+        // creating a record must stash its id into the {slug}Id collection variable
+        // so the {{productsId}} path in later requests resolves without hand-copying.
+        // Regression: captureId was gated on the request's own {id} path param, which
+        // the create endpoint doesn't have, so no script was emitted.
+        $collection = PostmanGenerator::generate();
+
+        $create = null;
+        foreach ($collection['item'] as $folder) {
+            foreach ($folder['item'] as $req) {
+                if (str_starts_with($req['name'], 'Create a products')) {
+                    $create = $req;
+                }
+            }
+        }
+
+        $this->assertNotNull($create, 'create request missing');
+        $this->assertArrayHasKey('event', $create, 'create request has no test script to capture the id');
+
+        $script = implode("\n", $create['event'][0]['script']['exec']);
+        $this->assertStringContainsString("pm.collectionVariables.set('productsId'", $script);
+        $this->assertStringContainsString('.id', $script);          // captures the primary key
+        $this->assertStringContainsString('201', $script);          // only on a successful create
+
+        // The variable the script writes must be declared on the collection.
+        $varKeys = array_map(static fn (array $v): string => $v['key'], $collection['variable']);
+        $this->assertContains('productsId', $varKeys);
+    }
+
     public function testMarkdownReferenceContainsResources(): void
     {
         $md = MarkdownGenerator::generate();

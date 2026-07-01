@@ -446,7 +446,22 @@
                             "raw": "{\n    \"sku\": \"sku\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
                         }
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const ct = pm.response.headers.get(\"Content-Type\") || \"\";",
+                                    "if (pm.response.code === 201 && ct.indexOf('json') !== -1) {",
+                                    "    const d = pm.response.json().data;",
+                                    "    if (d && d.id !== undefined) { pm.collectionVariables.set('productsId', d.id); }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100).",

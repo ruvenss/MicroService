@@ -131,17 +131,25 @@ final class PostmanGenerator
 
         $item = ['name' => $ep['summary'], 'request' => $request, 'response' => []];
 
-        if ($ep['captureId'] === true && $idVar !== null) {
-            // Capture the resource's actual primary key (not a hardcoded `id`), so
-            // the create → show/update/delete chain works for any keyed resource.
-            $pk = $ep['primaryKey'] ?? 'id';
+        // Capture the created id into the resource's id variable so a human can run
+        // create → show/update/delete in order without copying ids by hand. The
+        // capture target is derived from the RESOURCE ({slug}Id), not the request's
+        // own path — the create endpoint (POST /api/v1/products) has no {id} segment,
+        // so $idVar is null here even though it must still populate `productsId`.
+        $captureVar = $ep['captureId'] === true && $ep['resource'] !== null
+            ? $ep['resource'] . 'Id'
+            : null;
+        if ($captureVar !== null) {
+            $pk            = $ep['primaryKey'] ?? 'id';
             $item['event'] = [[
                 'listen' => 'test',
                 'script' => [
                     'type' => 'text/javascript',
                     'exec' => [
-                        "if (pm.response.code === 201) {",
-                        "    pm.collectionVariables.set('{$idVar}', pm.response.json().data.{$pk});",
+                        'const ct = pm.response.headers.get("Content-Type") || "";',
+                        "if (pm.response.code === 201 && ct.indexOf('json') !== -1) {",
+                        '    const d = pm.response.json().data;',
+                        "    if (d && d.{$pk} !== undefined) { pm.collectionVariables.set('{$captureVar}', d.{$pk}); }",
                         '}',
                     ],
                 ],
