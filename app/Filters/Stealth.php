@@ -69,5 +69,11 @@ class Stealth implements FilterInterface
         $response->setHeader('Referrer-Policy', 'no-referrer');
         $response->setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
         $response->setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+
+        // A machine-to-machine API is never something a search engine should index —
+        // being indexed would make an exposed instance discoverable via search (a recon
+        // vector). Belt-and-suspenders with public/robots.txt (which a crawler only
+        // reads if it already found the host); this rides on every fetched response.
+        $response->setHeader('X-Robots-Tag', 'noindex, nofollow');
     }
 }

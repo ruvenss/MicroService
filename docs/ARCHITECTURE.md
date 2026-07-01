@@ -895,6 +895,9 @@ last, so it sees the final headers — even on 404s and errors). It:
 - sets an engine-neutral `Server: MicroService`;
 - adds baseline security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
   a restrictive `Content-Security-Policy` (`default-src 'none'`), and `Permissions-Policy`.
+- **Not indexable:** every response carries `X-Robots-Tag: noindex, nofollow` and `public/robots.txt`
+  is `Disallow: /`, so a compliant search engine never indexes an exposed instance — being indexed
+  would turn the API into a searchable discovery/recon target. Asserted on every path by `StealthAuditTest`.
 - every response carries `Cache-Control: no-store` (max-age=0, no-cache), so a shared cache/CDN never
   stores a per-key/sensitive response if the service is exposed behind one — n8n's manual
   `ETag`/`If-None-Match` revalidation is unaffected. Asserted across every response path by

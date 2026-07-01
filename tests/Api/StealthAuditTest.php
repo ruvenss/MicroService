@@ -36,6 +36,9 @@ final class StealthAuditTest extends FeatureTestCase
         // Baseline security headers present on every response.
         $this->assertSame('nosniff', $response->getHeaderLine('X-Content-Type-Options'), "{$context}: nosniff");
 
+        // The API must never be search-indexed (discovery vector if exposed).
+        $this->assertStringContainsString('noindex', $response->getHeaderLine('X-Robots-Tag'), "{$context}: X-Robots-Tag noindex");
+
         // Per-key/sensitive responses must never be storable by a shared cache/CDN
         // (defence if the service is exposed behind one); manual ETag/If-None-Match
         // revalidation is unaffected.
