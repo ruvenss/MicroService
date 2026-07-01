@@ -49,7 +49,7 @@ class Health extends BaseController
         [$database, $cache] = $this->readiness();
         $healthy            = $database && $cache;
 
-        return $this->response
+        $response = $this->response
             ->setStatusCode($healthy ? 200 : 503)
             ->setJSON(ResponseEnvelope::wrap([
                 'status'  => $healthy ? 'ok' : 'degraded',
@@ -60,6 +60,16 @@ class Health extends BaseController
                     'cache'    => $cache ? 'up' : 'down',
                 ],
             ]));
+
+        if (! $healthy) {
+            // RFC 7231 §6.6.4: a 503 should say when to retry. The readiness result is
+            // cached for READINESS_TTL, so it cannot change before then — that is the
+            // natural backoff for a monitor / n8n health-gate / load balancer, and it
+            // stops a degraded service from being hammered every poll.
+            $response->setHeader('Retry-After', (string) self::READINESS_TTL);
+        }
+
+        return $response;
     }
 
     /**

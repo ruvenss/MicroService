@@ -843,7 +843,9 @@ Makefile / spark command     # `make build` / `make up` — the "auto-docker" en
   tests — never used in production.
 - Healthchecks hit `GET /api/v1/health`, which distinguishes **readiness** (default — pings the
   external MySQL **and** the cache/Redis backend; `200` when all up, `503 degraded` with per-check
-  status otherwise) from **liveness** (`?probe=live` — dependency-free, always `200`, so an
+  status **and a `Retry-After` equal to the readiness cache TTL** — RFC 7231, so a monitor / n8n
+  health-gate / load balancer backs off instead of hammering a degraded service) from **liveness**
+  (`?probe=live` — dependency-free, always `200`, so an
   orchestrator never restarts the container over a transient DB/cache blip). The image ships a Docker
   `HEALTHCHECK` (a dependency-free PHP probe — no curl/wget added) that hits **`?probe=live`**, so the
   container's restart decision tracks **liveness**, not readiness: restarting the app can never fix an

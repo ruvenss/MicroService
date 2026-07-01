@@ -66,6 +66,10 @@ final class ApiHealthTest extends CIUnitTestCase
         $json = json_decode($result->getJSON() ?: '{}', true);
         $this->assertSame('degraded', $json['data']['status']);
         $this->assertSame('down', $json['data']['checks']['database']);
+
+        // A 503 tells the client when to retry (RFC 7231); the value is the readiness
+        // cache TTL (5 s), since the state cannot change before then.
+        $this->assertSame('5', $result->response()->getHeaderLine('Retry-After'));
     }
 
     public function testLivenessIgnoresTheReadinessCache(): void
