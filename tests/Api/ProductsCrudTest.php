@@ -34,7 +34,11 @@ final class ProductsCrudTest extends FeatureTestCase
             ->post('api/v1/products', ['sku' => 'SKU-1', 'name' => 'Widget', 'price' => '9.99']);
 
         $result->assertStatus(201);
-        $this->assertStringContainsString('/api/v1/products/', $result->response()->getHeaderLine('Location'));
+        $location = $result->response()->getHeaderLine('Location');
+        $this->assertStringContainsString('/api/v1/products/', $location);
+        // Clean URL — must not leak the PHP front controller (indexPage is empty
+        // because Apache rewrites index.php away).
+        $this->assertStringNotContainsString('index.php', $location);
 
         $json = json_decode((string) $result->response()->getBody(), true);
         $this->assertSame('SKU-1', $json['data']['sku']);

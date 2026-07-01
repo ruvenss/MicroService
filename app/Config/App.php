@@ -51,8 +51,12 @@ class App extends BaseConfig
      * Typically, this will be your `index.php` file, unless you've renamed it to
      * something else. If you have configured your web server to remove this file
      * from your site URIs, set this variable to an empty string.
+     *
+     * Empty here: Apache rewrites clean URLs to the front controller, so generated
+     * URLs (site_url()/base_url(), e.g. the create `Location` header) must NOT carry
+     * `index.php` — that would both leak PHP and be a non-clean URL.
      */
-    public string $indexPage = 'index.php';
+    public string $indexPage = '';
 
     /**
      * --------------------------------------------------------------------------

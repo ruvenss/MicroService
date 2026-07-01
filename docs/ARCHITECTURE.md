@@ -927,7 +927,9 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   with a server-context `RewriteRule ^ - [R=404]`: mod_rewrite's `R=404` *bypasses* `ErrorDocument` and
   emits Apache's recognisable default 404 HTML — an engine leak (found and removed in the stealth
   audit). Routing `.php` through the front controller keeps the response neutral. Clean, extensionless
-  URLs only.
+  URLs only. **Generated URLs are clean too:** `Config\App::$indexPage` is empty and list responses
+  strip the front controller from the `Link` path, so the create `Location` header and pagination `Link`
+  header emit `/api/v1/…`, never `/index.php/api/v1/…` (which would both leak PHP and be non-clean).
 - `mod_headers` re-asserts the security headers and unsets `X-Powered-By` for static files too.
 - **No stock framework favicon:** the CodeIgniter starter ships `public/favicon.ico`, whose bytes are
   a byte-exact fingerprint — favicon-hash scanners (e.g. Shodan) would out the engine straight from
