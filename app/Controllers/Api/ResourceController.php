@@ -851,6 +851,14 @@ class ResourceController extends BaseController
             $orders[$column]     = [$column, str_starts_with($default, '-') ? 'DESC' : 'ASC'];
         }
 
+        // Always break ties on the primary key so the ordering is a total order —
+        // otherwise rows equal on a non-unique sort column (e.g. price, created_at)
+        // have undefined order and offset pagination can skip/duplicate rows across
+        // pages. Harmless when the caller already sorts by the primary key.
+        if (! isset($orders[$definition->primaryKey])) {
+            $orders[$definition->primaryKey] = [$definition->primaryKey, 'ASC'];
+        }
+
         return array_values($orders);
     }
 

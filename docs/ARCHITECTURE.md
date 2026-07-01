@@ -188,8 +188,10 @@ authorized). Covered by `HeadRequestTest`.
     versioned tokens (not a security boundary). Meta returns `perPage, cursor, hasMore, nextCursor`.
 - **Sorting:** `?sort=-created_at,name` — one or more comma-separated columns applied in order (`-` =
   descending). Only `sortable` columns are honoured (each is allow-listed, never interpolated); an
-  unknown column is ignored, and if none remain the resource's `defaultSort` applies. Covered by
-  `QueryFilterTest`.
+  unknown column is ignored, and if none remain the resource's `defaultSort` applies. The **primary key
+  is always appended as a final tiebreaker**, so rows equal on a non-unique sort column (e.g. `price`,
+  `created_at`) get a deterministic total order — offset pagination never skips or duplicates a row at a
+  page boundary. Covered by `QueryFilterTest`.
 - **Filtering:** `?filter[status]=active&filter[price][gte]=100`. Operators:
   `eq` (also the bare `filter[col]=v` shorthand), `ne`, `gt`, `gte`, `lt`, `lte`, `like` (contains),
   `in` / `nin` (comma-separated set membership / exclusion). Combine two on one column for a range

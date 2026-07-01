@@ -152,4 +152,34 @@ final class QueryFilterTest extends FeatureTestCase
         $skus = array_column($this->list('sort=bogus,-price&perPage=100')['data'], 'sku');
         $this->assertSame('pricey', $skus[0]); // -price → highest first
     }
+
+    public function testTiesAreBrokenByPrimaryKeyForStablePagination(): void
+    {
+        // Several rows share the same price → the sort column alone is not a total
+        // order. The implicit id tiebreaker must make the order deterministic, so
+        // paging never skips or duplicates a row.
+        $ids = [];
+        foreach (['a', 'b', 'c', 'd'] as $s) {
+            $body = json_decode((string) $this->withHeaders($this->auth)->withBodyFormat('json')
+                ->post('api/v1/products', ['sku' => "tie-{$s}", 'name' => 'N', 'price' => '7.00'])
+                ->response()->getBody(), true);
+            $ids[] = (int) $body['data']['id'];
+        }
+
+        // Filter to just our tied rows; sort by the non-unique price.
+        $ordered = array_map(
+            static fn (array $r): int => (int) $r['id'],
+            $this->list('filter[price][eq]=7.00&sort=price&perPage=100')['data'],
+        );
+        $mine = array_values(array_intersect($ordered, $ids));
+        $this->assertSame($ids, $mine); // ties resolved by id ascending (insertion order)
+
+        // Page through one at a time: every row seen exactly once, no dupes.
+        $seen = [];
+        for ($page = 1; $page <= 4; $page++) {
+            $row    = $this->list("filter[price][eq]=7.00&sort=price&perPage=1&page={$page}")['data'][0];
+            $seen[] = (int) $row['id'];
+        }
+        $this->assertSame($ids, $seen);
+    }
 }
