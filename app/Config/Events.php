@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Libraries\WebhookDispatcher;
 use CodeIgniter\Events\Events;
 use CodeIgniter\Exceptions\FrameworkException;
 use CodeIgniter\HotReloader\HotReloader;
@@ -55,3 +56,9 @@ Events::on('pre_system', static function (): void {
         }
     }
 });
+
+// Enqueue outbound webhooks (to n8n) on resource mutations. Delivery is handled
+// out-of-band by `spark webhooks:dispatch`. No-op unless a subscription is set.
+foreach (['afterCreate', 'afterUpdate', 'afterDelete', 'afterRestore'] as $webhookEvent) {
+    Events::on('resource.' . $webhookEvent, [WebhookDispatcher::class, 'enqueue']);
+}

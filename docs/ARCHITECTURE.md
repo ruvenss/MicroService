@@ -779,6 +779,13 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
 - **Unauthenticated `/api/v1/health`** for n8n schedule/health checks and uptime polling.
 - **Importable Postman collection** (`docs/postman/`) documents each endpoint for humans and serves
   as the reference when configuring the matching n8n node.
+- **Outbound webhooks (implemented):** on a resource mutation the framework enqueues a signed event to
+  a transactional-style **outbox** (`webhook_outbox`) for each matching subscription (`Config\Webhooks`
+  / `WEBHOOK_URL`), and `php spark webhooks:dispatch` (run on a schedule) POSTs them to the n8n webhook
+  node with an `X-Signature` HMAC-SHA256 header and `X-Event`. Enqueue is DB-only on the request thread;
+  delivery is out-of-band with retries (`maxAttempts`), so a slow/unavailable n8n never affects the API
+  response. Subscriptions filter by `{resource}.{afterCreate|afterUpdate|afterDelete|afterRestore}` /
+  wildcards. This is the service→n8n push channel (n8n workflows triggered by data changes).
 - **Idempotency keys (implemented):** a client sends `Idempotency-Key: <key>` on a write; the first
   response is recorded and any retry with the same key + request **replays** it (with
   `Idempotency-Replayed: true`) instead of re-executing — so an n8n retry after a timeout never
