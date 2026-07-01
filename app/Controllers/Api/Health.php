@@ -25,6 +25,16 @@ use Throwable;
  */
 class Health extends BaseController
 {
+    /**
+     * Readiness result cached this long (seconds). Since the endpoint is open and
+     * unauthenticated, a burst of probes (or a flood) would otherwise run a DB
+     * `SELECT 1` + cache round-trip per request; caching bounds that to one real
+     * probe per window — cheap for monitors, and a guard against health-flood DoS
+     * on the external DB if the service is exposed. Short enough that a genuine
+     * outage still surfaces well within a Docker healthcheck's retry budget.
+     */
+    private const READINESS_TTL = 5;
+
     public function index(): ResponseInterface
     {
         if ($this->request->getGet('probe') === 'live') {
@@ -35,21 +45,51 @@ class Health extends BaseController
             ]));
         }
 
-        $database = $this->checkDatabase();
-        $cache    = $this->checkCache();
-        $healthy  = $database && $cache;
+        [$database, $cache] = $this->readiness();
+        $healthy            = $database && $cache;
 
         return $this->response
             ->setStatusCode($healthy ? 200 : 503)
             ->setJSON(ResponseEnvelope::wrap([
                 'status'  => $healthy ? 'ok' : 'degraded',
                 'service' => 'microservice',
-                'time'    => gmdate('c'),
+                'time'    => gmdate('c'), // always current; only the check results are cached
                 'checks'  => [
                     'database' => $database ? 'up' : 'down',
                     'cache'    => $cache ? 'up' : 'down',
                 ],
             ]));
+    }
+
+    /**
+     * The [database, cache] up/down pair, served from a short-lived cache entry
+     * when fresh so repeated probes don't hit the DB each time.
+     *
+     * @return array{0: bool, 1: bool}
+     */
+    private function readiness(): array
+    {
+        $store = service('cache');
+
+        try {
+            $cached = $store->get('health_readiness');
+            if (is_array($cached) && isset($cached['database'], $cached['cache'])) {
+                return [(bool) $cached['database'], (bool) $cached['cache']];
+            }
+        } catch (Throwable) {
+            // Cache unavailable — fall through and probe directly.
+        }
+
+        $database = $this->checkDatabase();
+        $cache    = $this->checkCache();
+
+        try {
+            $store->save('health_readiness', ['database' => $database, 'cache' => $cache], self::READINESS_TTL);
+        } catch (Throwable) {
+            // Best effort — never fail the probe over caching bookkeeping.
+        }
+
+        return [$database, $cache];
     }
 
     private function checkDatabase(): bool

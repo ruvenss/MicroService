@@ -817,7 +817,11 @@ Makefile / spark command     # `make build` / `make up` — the "auto-docker" en
   orchestrator never restarts the container over a transient DB/cache blip). The image ships a Docker
   `HEALTHCHECK` (a dependency-free PHP probe — no curl/wget added) that marks the container
   healthy/unhealthy on readiness; verified reaching `healthy`. The endpoint is open (no key) and
-  engine-neutral.
+  engine-neutral. **The readiness result is cached ~5 s** (`health_readiness`), so a burst of monitor
+  probes — or a flood against the open endpoint — runs at most one real `SELECT 1` + cache round-trip
+  per window instead of one per request (a guard against health-flood DoS on the external DB if the
+  service is exposed); short enough that a genuine outage still surfaces within the healthcheck retry
+  budget. Covered by `ApiHealthTest`.
 - `.env`/secrets injected at runtime (DB host/user/pass, Redis, signing material) — never baked
   into the image.
 

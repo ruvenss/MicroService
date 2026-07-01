@@ -12,6 +12,12 @@ final class ApiHealthTest extends CIUnitTestCase
 {
     use FeatureTestTrait;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        cache()->clean(); // isolate the short-lived readiness cache between tests
+    }
+
     public function testReadinessChecksDatabaseAndCache(): void
     {
         $result = $this->get('api/v1/health');
@@ -42,5 +48,28 @@ final class ApiHealthTest extends CIUnitTestCase
     {
         // Open endpoint (no Authorization) — monitors/orchestrators hit it directly.
         $this->get('api/v1/health')->assertStatus(200);
+    }
+
+    public function testReadinessIsServedFromCacheWhenFresh(): void
+    {
+        // Seed a fresh readiness result marking the DB down. The endpoint must
+        // report it straight from cache — without re-probing the (actually up) DB —
+        // proving repeated probes don't hit the database each time.
+        cache()->save('health_readiness', ['database' => false, 'cache' => true], 5);
+
+        $result = $this->get('api/v1/health');
+        $result->assertStatus(503);
+
+        $json = json_decode($result->getJSON() ?: '{}', true);
+        $this->assertSame('degraded', $json['data']['status']);
+        $this->assertSame('down', $json['data']['checks']['database']);
+    }
+
+    public function testLivenessIgnoresTheReadinessCache(): void
+    {
+        // Even a "degraded" cached readiness must not affect liveness (process-up).
+        cache()->save('health_readiness', ['database' => false, 'cache' => false], 5);
+
+        $this->get('api/v1/health?probe=live')->assertStatus(200);
     }
 }
