@@ -29,4 +29,14 @@ final class Timestamp
             return $value;
         }
     }
+
+    /**
+     * The current instant in the same `Z`-suffixed UTC form as {@see iso()}, for
+     * server-generated envelope timestamps (health `time`, webhook `timestamp`) so
+     * every timestamp on the wire — stored or live — is a single, uniform format.
+     */
+    public static function now(): string
+    {
+        return gmdate('Y-m-d\TH:i:s\Z');
+    }
 }

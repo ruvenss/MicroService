@@ -61,7 +61,7 @@ final class WebhookDispatcher
                 'data'      => $event->row,
                 'previous'  => $event->action === 'afterUpdate' ? $event->data : null,
                 'requestId' => RequestContext::id(),
-                'timestamp' => gmdate('c'),
+                'timestamp' => Timestamp::now(),
             ]);
 
             $model = new WebhookOutboxModel();

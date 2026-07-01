@@ -6,6 +6,7 @@ namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use App\Libraries\ResponseEnvelope;
+use App\Libraries\Timestamp;
 use CodeIgniter\HTTP\ResponseInterface;
 use Config\Database;
 use Throwable;
@@ -41,7 +42,7 @@ class Health extends BaseController
             return $this->response->setStatusCode(200)->setJSON(ResponseEnvelope::wrap([
                 'status'  => 'ok',
                 'service' => 'microservice',
-                'time'    => gmdate('c'),
+                'time'    => Timestamp::now(),
             ]));
         }
 
@@ -53,7 +54,7 @@ class Health extends BaseController
             ->setJSON(ResponseEnvelope::wrap([
                 'status'  => $healthy ? 'ok' : 'degraded',
                 'service' => 'microservice',
-                'time'    => gmdate('c'), // always current; only the check results are cached
+                'time'    => Timestamp::now(), // always current; only the check results are cached
                 'checks'  => [
                     'database' => $database ? 'up' : 'down',
                     'cache'    => $cache ? 'up' : 'down',

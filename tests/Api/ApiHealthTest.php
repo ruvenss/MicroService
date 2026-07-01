@@ -29,7 +29,9 @@ final class ApiHealthTest extends CIUnitTestCase
         $this->assertSame('microservice', $json['data']['service']);
         $this->assertSame('up', $json['data']['checks']['database']);
         $this->assertSame('up', $json['data']['checks']['cache']);
-        $this->assertArrayHasKey('time', $json['data']);
+        // `time` is the same Z-suffixed UTC shape as every stored timestamp on the
+        // wire (not an offset like +00:00), so a consumer parses all with one rule.
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $json['data']['time']);
     }
 
     public function testLivenessProbeIsDependencyFree(): void
@@ -40,6 +42,7 @@ final class ApiHealthTest extends CIUnitTestCase
 
         $json = json_decode($result->getJSON() ?: '{}', true);
         $this->assertSame('ok', $json['data']['status']);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $json['data']['time']);
         // Liveness must not report dependency checks — it only says "process is up".
         $this->assertArrayNotHasKey('checks', $json['data']);
     }

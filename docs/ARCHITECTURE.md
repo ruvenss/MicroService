@@ -928,9 +928,12 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   conversion nodes. The **`datetime`** cast emits **ISO-8601 UTC** (`2026-07-01T10:19:30Z`) rather than a
   bare `Y-m-d H:i:s`, so n8n's date handling never has to guess the zone (the sample `products` casts
   `created_at`/`updated_at`). The **meta endpoints** (`_audit`, `_archive`, `_me`) format their
-  timestamps through the same `App\Libraries\Timestamp` helper, so **every** timestamp on the wire — CRUD
-  data, the `_audit?sinceId` change feed, the recycle bin, key metadata — is consistent ISO-8601 UTC.
-  Covered by `OutputCastsTest`, `TimestampTest`, `AuditTrailTest`.
+  timestamps through the same `App\Libraries\Timestamp` helper, and **server-generated** envelope
+  timestamps — the `health` `time` and the webhook payload `timestamp` — go through its `Timestamp::now()`
+  companion (both emit the identical `…Z` shape, never a `+00:00` offset). So **every** timestamp on the
+  wire — CRUD data, the `_audit?sinceId` change feed, the recycle bin, key metadata, health, and webhook
+  envelopes alike — is one uniform ISO-8601 UTC format a consumer parses with a single rule. Covered by
+  `OutputCastsTest`, `TimestampTest`, `AuditTrailTest`, `ApiHealthTest`, `WebhookTest`.
 - **`GET /api/v1/_me`** lets a workflow introspect its own key (name, scopes, rate limit, expiry — never
   the secret) to verify connectivity and permissions before running.
 - **Unauthenticated `/api/v1/health`** for n8n schedule/health checks and uptime polling.

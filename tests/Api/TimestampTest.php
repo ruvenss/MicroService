@@ -34,4 +34,12 @@ final class TimestampTest extends CIUnitTestCase
         // An input that carries an offset is normalised to Z (same instant).
         $this->assertSame('2026-07-01T10:19:30Z', Timestamp::iso('2026-07-01T10:19:30+00:00'));
     }
+
+    public function testNowMatchesTheSameZSuffixedShape(): void
+    {
+        // Server-generated envelope timestamps (health `time`, webhook `timestamp`)
+        // must be byte-for-byte the same format as stored ones — Z, no offset — so a
+        // consumer parses every timestamp on the wire with one rule.
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', Timestamp::now());
+    }
 }

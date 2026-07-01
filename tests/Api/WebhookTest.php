@@ -70,6 +70,9 @@ final class WebhookTest extends FeatureTestCase
         $payload = json_decode((string) $row['payload_json'], true);
         $this->assertSame('products.afterCreate', $payload['event']);
         $this->assertSame($id, $payload['id']);
+        // The envelope `timestamp` is the same Z-suffixed UTC shape as the `data`
+        // record timestamps it wraps — one parse rule for the whole payload in n8n.
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $payload['timestamp']);
     }
 
     public function testEnqueueIsControllerDrivenNotPostCommitEvent(): void
