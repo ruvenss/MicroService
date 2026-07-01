@@ -543,10 +543,11 @@ class ResourceController extends BaseController
             return $this->problem(422, 'Bulk update is limited to ' . self::BULK_MAX . ' items per request.');
         }
 
-        $model  = $this->model($definition);
-        $pk     = $definition->primaryKey;
-        $errors = [];
-        $plan   = [];
+        $model   = $this->model($definition);
+        $pk      = $definition->primaryKey;
+        $errors  = [];
+        $plan    = [];
+        $seenIds = [];
         foreach ($items as $index => $item) {
             if (! is_array($item)) {
                 $errors[$index] = ['_' => 'Each item must be a JSON object.'];
@@ -559,6 +560,17 @@ class ResourceController extends BaseController
 
                 continue;
             }
+            // The same id twice in one batch would update the row twice and echo it twice
+            // in `data` (with a stale intermediate snapshot) while overcounting `updated`.
+            // Reject it as a clean per-item 422 — the intent is ambiguous.
+            $idKey = (string) $id;
+            if (isset($seenIds[$idKey])) {
+                $errors[$index] = [$pk => "Duplicate {$pk} '{$idKey}' within this batch (also item {$seenIds[$idKey]})."];
+
+                continue;
+            }
+            $seenIds[$idKey] = $index;
+
             $before = $model->find($id);
             if ($before === null) {
                 $errors[$index] = [$pk => 'No record matches this identifier.'];

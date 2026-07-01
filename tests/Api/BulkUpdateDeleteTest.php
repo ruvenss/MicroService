@@ -90,6 +90,42 @@ final class BulkUpdateDeleteTest extends FeatureTestCase
             ->assertStatus(422);
     }
 
+    public function testBulkUpdateRejectsDuplicateIdInBatch(): void
+    {
+        // The same id twice would update the row twice and echo it twice in `data` (with a
+        // stale intermediate snapshot) while overcounting `updated`. It must be a clean
+        // per-item 422 and write nothing (ambiguous intent).
+        [$a] = $this->seedProducts(1);
+
+        $result = $this->withHeaders($this->auth)->withBodyFormat('json')->patch('api/v1/products', [
+            ['id' => $a, 'name' => 'First'],
+            ['id' => $a, 'name' => 'Second'],
+        ]);
+
+        $result->assertStatus(422);
+        $json = json_decode((string) $result->response()->getBody(), true);
+        $this->assertArrayHasKey('1', $json['errors']);
+        $this->assertStringContainsStringIgnoringCase('duplicate', $json['errors']['1']['id']);
+
+        // untouched
+        $row = json_decode((string) $this->withHeaders($this->auth)->get("api/v1/products/{$a}")->response()->getBody(), true)['data'];
+        $this->assertSame('Name 1', $row['name']);
+    }
+
+    public function testBulkDeleteDedupesRepeatedIds(): void
+    {
+        // A repeated id in a delete batch archives the row once and reports one deletion
+        // (it can't be deleted twice) — no error, no double-count.
+        [$a] = $this->seedProducts(1);
+
+        $result = $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->delete('api/v1/products', ['ids' => [$a, $a]]);
+
+        $result->assertStatus(200);
+        $this->assertSame(1, json_decode((string) $result->response()->getBody(), true)['meta']['deleted']);
+        $this->assertSame(0, $this->total());
+    }
+
     public function testBulkDeleteArchivesEveryId(): void
     {
         [$a, $b] = $this->seedProducts(3); // a third row is seeded and must survive
