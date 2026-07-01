@@ -139,7 +139,9 @@ today; FPM+event is a Phase 6 perf upgrade).
 - [x] **Markdown** output → `docs/api/README.md`: every endpoint to a fixed template (LLM-friendly).
 - [x] **Postman** collection generated from the same catalog (`docs/postman/`), so it never drifts.
 - [x] Spark command `docs:generate` (writes all four artefacts).
-- [ ] `docs:check` (fail on drift) + CI gate — follow-up.
+- [x] `docs:check` (fail on drift) + CI gate. `DocsBundle` is the single source both `docs:generate`
+      (writes) and `docs:check` (verifies) use; `DocsInSyncTest` makes `composer test` fail on drift too;
+      `.github/workflows/ci.yml` runs stan + cs + docs:check + PHPUnit (MySQL service) on push/PR.
 - [x] Standing workflow rule in `CLAUDE.md`: regenerate on every endpoint change.
 - [x] Tests: `DocsGeneratorTest` asserts OpenAPI/Postman/Markdown/catalog cover the resources (84 green).
 - [x] Generated docs excluded from the production image (`.dockerignore`) — not exposed if the service is.

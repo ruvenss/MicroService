@@ -50,8 +50,10 @@ These are settled. Don't change one without recording the new decision in
 - **Regenerate docs in the same change** as any new/changed endpoint: run `php spark docs:generate`
   and commit the output — OpenAPI (`public/docs/openapi.json`), searchable HTML viewer
   (`public/docs/index.html`), Markdown (`docs/api/README.md`), and the Postman collection
-  (`docs/postman/`). All four are generated from the resource registry by `App\Libraries\Docs`,
-  so they never drift. (Generated docs are excluded from the production image — see `.dockerignore`.)
+  (`docs/postman/`). All four are generated from the resource registry by `App\Libraries\Docs`.
+  **Drift is enforced:** `composer test` (`DocsInSyncTest`), `php spark docs:check`, and CI all fail
+  if the committed docs don't match generation. (Generated docs are excluded from the production
+  image — see `.dockerignore`.)
 - **Test in the same change** (see Testing policy below).
 - Build in the **phase order** of [docs/PLAN.md](docs/PLAN.md); each phase ends green.
 

@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Commands;
 
-use App\Libraries\Docs\MarkdownGenerator;
-use App\Libraries\Docs\OpenApiGenerator;
-use App\Libraries\Docs\PostmanGenerator;
+use App\Libraries\Docs\DocsBundle;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 
@@ -23,13 +21,10 @@ class DocsGenerate extends BaseCommand
 
     public function run(array $params)
     {
-        $openapi = (string) json_encode(OpenApiGenerator::generate(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        $postman = (string) json_encode(PostmanGenerator::generate(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-        $this->write(FCPATH . 'docs/openapi.json', $openapi);
+        foreach (DocsBundle::artifacts() as $path => $contents) {
+            $this->write($path, $contents);
+        }
         $this->write(FCPATH . 'docs/index.html', $this->html());
-        $this->write(ROOTPATH . 'docs/api/README.md', MarkdownGenerator::generate());
-        $this->write(ROOTPATH . 'docs/postman/MicroService.postman_collection.json', $postman . "\n");
 
         CLI::write('Documentation generated:', 'green');
         CLI::write('  public/docs/openapi.json   (OpenAPI 3.1)');
