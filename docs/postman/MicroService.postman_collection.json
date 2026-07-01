@@ -400,7 +400,7 @@
                                 {
                                     "key": "filter[sku]",
                                     "value": "",
-                                    "description": "Filter. Columns: sku, status, price. Operators: eq, ne, gt, gte, lt, lte, like, in, nin (e.g. filter[col][gte]=10).",
+                                    "description": "Filter. Columns: sku, status, price. Operators: eq, ne, gt, gte, lt, lte, like, in, nin (e.g. filter[col][gte]=10). Numeric columns require numeric values (a non-numeric value is rejected with 400, never coerced); for like, % and _ match literally.",
                                     "disabled": true
                                 }
                             ]

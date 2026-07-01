@@ -20,6 +20,7 @@ final class QueryParserTest extends CIUnitTestCase
             'filterable' => ['sku', 'status', 'price'],
             'sortable'   => ['sku', 'name'],
             'timestamps' => true,
+            'casts'      => ['id' => 'int', 'price' => 'float'],
         ]);
     }
 
@@ -97,6 +98,31 @@ final class QueryParserTest extends CIUnitTestCase
             $spec = QueryParser::parse(['sort' => $sort], $this->definition());
             $this->assertTrue($spec->isValid(), "sort={$sort} should be valid");
         }
+    }
+
+    public function testRejectsNonNumericValueOnNumericColumn(): void
+    {
+        // price is cast float → `price > abc` would silently become `price > 0`
+        // (matches everything) in MySQL, so a non-numeric value must be rejected.
+        foreach (['gt', 'gte', 'lt', 'lte', 'eq', 'ne'] as $op) {
+            $spec = QueryParser::parse(['filter' => ['price' => [$op => 'abc']]], $this->definition());
+            $this->assertFalse($spec->isValid(), "price {$op} abc should be invalid");
+            $this->assertStringContainsString('numeric', $spec->errors[0]);
+        }
+
+        // Bare-equality shorthand and set membership are validated too.
+        $this->assertFalse(QueryParser::parse(['filter' => ['price' => 'abc']], $this->definition())->isValid());
+        $this->assertFalse(QueryParser::parse(['filter' => ['price' => ['in' => '1,x,3']]], $this->definition())->isValid());
+    }
+
+    public function testAcceptsNumericValuesAndAnyValueOnStringColumns(): void
+    {
+        $this->assertTrue(QueryParser::parse(['filter' => ['price' => ['gte' => '10.5']]], $this->definition())->isValid());
+        $this->assertTrue(QueryParser::parse(['filter' => ['price' => ['in' => '1,2,3']]], $this->definition())->isValid());
+        $this->assertTrue(QueryParser::parse(['filter' => ['price' => '-3']], $this->definition())->isValid());
+        // A string column accepts any value, including one that looks non-numeric.
+        $this->assertTrue(QueryParser::parse(['filter' => ['sku' => ['like' => 'abc']]], $this->definition())->isValid());
+        $this->assertTrue(QueryParser::parse(['filter' => ['status' => 'active']], $this->definition())->isValid());
     }
 
     public function testRejectsNonSortableColumn(): void

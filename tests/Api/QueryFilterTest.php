@@ -44,6 +44,19 @@ final class QueryFilterTest extends FeatureTestCase
         $this->assertSame('cheap', $json['data'][0]['sku']);
     }
 
+    public function testNonNumericFilterOnNumericColumnIsRejectedNotCoercedToEverything(): void
+    {
+        // `price > abc` would coerce to `price > 0` in MySQL and silently return the
+        // whole table; a numeric column must reject a non-numeric value with 400,
+        // like an unknown column/sort — no silent wrong result for an n8n workflow.
+        $result = $this->withHeaders($this->auth)->get('api/v1/products?filter[price][gt]=abc');
+        $result->assertStatus(400);
+        $this->assertStringContainsString('numeric', (string) $result->response()->getBody());
+
+        // A valid numeric filter still works.
+        $this->withHeaders($this->auth)->get('api/v1/products?filter[price][gt]=10')->assertStatus(200);
+    }
+
     public function testLikeTreatsCallerWildcardsAsLiteralNotWildcard(): void
     {
         // A caller's `%` / `_` must match literally, never act as a SQL LIKE wildcard.

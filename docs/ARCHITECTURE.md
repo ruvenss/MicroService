@@ -202,8 +202,11 @@ authorized). Covered by `HeadRequestTest`.
   as parameters (never interpolated). For `like`, a caller's own `%` and `_` are **escaped** so they
   match literally (via `escapeLikeString`, with the matching `ESCAPE` clause) — `filter[col][like]=%`
   therefore finds a literal percent, not every row: no accidental match-everything, and no LIKE-wildcard
-  lever to force full-table scans on the external DB from an exposed endpoint. Every operator is covered
-  by `QueryFilterTest`.
+  lever to force full-table scans on the external DB from an exposed endpoint. **Numeric columns** (cast
+  `int`/`float`) require **numeric values** on comparison/equality/set operators: a non-numeric value is
+  rejected with `400` rather than let through to MySQL, which would silently coerce `price > 'abc'` to
+  `price > 0` and return the whole table — the same "fail loudly, never silently return the wrong rows"
+  rule as `sort`/`fields`. Every operator is covered by `QueryFilterTest`, `QueryParserTest`.
 - **Sparse fields:** `?fields=id,name,price` — restrict returned columns (hidden fields always excluded).
 - **Conditional reads (caching):** every `GET` (show and list) returns a strong `ETag` — a content
   hash of the response body (no stored state, no engine fingerprint). Resend it as `If-None-Match`

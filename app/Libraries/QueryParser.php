@@ -67,16 +67,61 @@ final class QueryParser
 
                         continue;
                     }
+                    if (! self::valueTypeMatches((string) $column, $operator, $value, $definition)) {
+                        $errors[] = "Filter value for {$column} must be numeric.";
+
+                        continue;
+                    }
                     $filters[] = self::buildFilter((string) $column, $operator, $value);
                 }
 
                 continue;
             }
 
+            if (! self::valueTypeMatches((string) $column, 'eq', $spec, $definition)) {
+                $errors[] = "Filter value for {$column} must be numeric.";
+
+                continue;
+            }
             $filters[] = self::buildFilter((string) $column, 'eq', $spec);
         }
 
         return $filters;
+    }
+
+    /**
+     * For a numeric column (cast `int`/`float`), every value on a comparison /
+     * equality / set operator must itself be numeric. Otherwise MySQL silently
+     * coerces a non-numeric string to 0 — `filter[price][gt]=abc` becomes
+     * `price > 0`, quietly matching every row — and the caller (e.g. an n8n
+     * workflow with an empty/garbage variable) gets wrong results with no error.
+     * `like` is exempt (a substring match, cast to text); non-numeric columns
+     * accept any value. Consistent with the loud rejection of bad filter/sort/fields.
+     *
+     * @param mixed $value
+     */
+    private static function valueTypeMatches(string $column, string $operator, $value, ResourceDefinition $definition): bool
+    {
+        if ($operator === 'like') {
+            return true;
+        }
+
+        $type = $definition->casts[$column] ?? null;
+        if ($type !== 'int' && $type !== 'float') {
+            return true;
+        }
+
+        $values = is_array($value)
+            ? $value
+            : (($operator === 'in' || $operator === 'nin') ? explode(',', (string) $value) : [$value]);
+
+        foreach ($values as $single) {
+            if (is_array($single) || ! is_numeric($single)) {
+                return false;
+            }
+        }
+
+        return $values !== [];
     }
 
     /**
