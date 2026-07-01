@@ -206,8 +206,10 @@ authorized). Covered by `HeadRequestTest`.
 - **Filtering:** `?filter[status]=active&filter[price][gte]=100`. Operators:
   `eq` (also the bare `filter[col]=v` shorthand), `ne`, `gt`, `gte`, `lt`, `lte`, `like` (contains),
   `in` / `nin` (comma-separated set membership / exclusion). Combine two on one column for a range
-  (`filter[price][gte]=10&filter[price][lte]=50`). Only `filterable` columns allowed; values are bound
-  as parameters (never interpolated). For `like`, a caller's own `%` and `_` are **escaped** so they
+  (`filter[price][gte]=10&filter[price][lte]=50`). Only `filterable` columns allowed — **plus the primary
+  key, which is always filterable** (as it is always sortable): it is in every response and reachable via
+  `GET /{id}`, so `filter[id][in]=1,2,3` lets an n8n workflow fetch a set of records by id, and
+  `filter[id][gt]=N` pages by key range. Values are bound as parameters (never interpolated). For `like`, a caller's own `%` and `_` are **escaped** so they
   match literally (via `escapeLikeString`, with the matching `ESCAPE` clause) — `filter[col][like]=%`
   therefore finds a literal percent, not every row: no accidental match-everything, and no LIKE-wildcard
   lever to force full-table scans on the external DB from an exposed endpoint. **Numeric columns** (cast

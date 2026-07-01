@@ -47,8 +47,11 @@ class Discovery extends BaseController
                 // Per-field input schema (type + required) so a client — e.g. an n8n
                 // node — can build a request/form without guessing.
                 'schema'     => $this->schemaFor($definition),
-                'sortable'   => $definition->sortable,
-                'filterable' => $definition->filterable,
+                // The primary key is always sortable AND filterable (it is in every
+                // response and reachable via GET /{id}), so advertise it even when a
+                // resource does not list it — n8n can sort or fetch-by-id set on it.
+                'sortable'   => $this->withPrimaryKey($definition->sortable, $definition->primaryKey),
+                'filterable' => $this->withPrimaryKey($definition->filterable, $definition->primaryKey),
                 'operators'  => QueryParser::OPERATORS,
                 // Natural key for PUT upsert (null = upsert not supported here).
                 'upsertKey'  => $definition->upsertKey,
@@ -92,6 +95,20 @@ class Discovery extends BaseController
         }
 
         return $schema;
+    }
+
+    /**
+     * A copy of the allow-list with the primary key included (at the front if it was
+     * not already declared), so discovery reflects that the pk is always sortable and
+     * filterable.
+     *
+     * @param list<string> $columns
+     *
+     * @return list<string>
+     */
+    private function withPrimaryKey(array $columns, string $primaryKey): array
+    {
+        return in_array($primaryKey, $columns, true) ? $columns : [$primaryKey, ...$columns];
     }
 
     /**

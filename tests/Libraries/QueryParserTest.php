@@ -59,6 +59,16 @@ final class QueryParserTest extends CIUnitTestCase
         $this->assertStringContainsString('bogus', $spec->errors[0]);
     }
 
+    public function testPrimaryKeyIsAlwaysFilterable(): void
+    {
+        // id is not in `filterable`, but the primary key is always allowed (as it is
+        // always sortable) so a client can fetch a set of records by id.
+        $spec = QueryParser::parse(['filter' => ['id' => ['in' => '1,2,3']]], $this->definition());
+
+        $this->assertTrue($spec->isValid());
+        $this->assertSame(['1', '2', '3'], $spec->filters[0]['value']);
+    }
+
     public function testRejectsUnknownOperator(): void
     {
         $spec = QueryParser::parse(['filter' => ['price' => ['bad' => '1']]], $this->definition());

@@ -54,7 +54,11 @@ final class QueryParser
         $filters = [];
 
         foreach ($raw as $column => $spec) {
-            if (! in_array($column, $definition->filterable, true)) {
+            // The primary key is always filterable (as it is always sortable): it is
+            // in every response and reachable via GET /{id}, so exposing it to filters
+            // leaks nothing new and lets an n8n workflow fetch a set of records by id
+            // (filter[id][in]=1,2,3) or page by key range (filter[id][gt]=N).
+            if (! in_array($column, $definition->filterable, true) && $column !== $definition->primaryKey) {
                 $errors[] = "Unknown or non-filterable column: {$column}.";
 
                 continue;

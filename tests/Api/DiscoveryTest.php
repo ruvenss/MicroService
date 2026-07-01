@@ -32,6 +32,11 @@ final class DiscoveryTest extends FeatureTestCase
         $this->assertContains('status', $products['filterable']);
         $this->assertContains('eq', $products['operators']);
         $this->assertContains('id', $products['fields']);
+
+        // The primary key is always filterable and sortable, so discovery advertises
+        // it even though the resource does not list it (n8n can filter/sort by id).
+        $this->assertContains('id', $products['filterable']);
+        $this->assertContains('id', $products['sortable']);
     }
 
     public function testDiscoveryIsScopedToWhatTheKeyCanUse(): void

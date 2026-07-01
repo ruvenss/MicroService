@@ -44,6 +44,26 @@ final class QueryFilterTest extends FeatureTestCase
         $this->assertSame('cheap', $json['data'][0]['sku']);
     }
 
+    public function testFetchRecordsByPrimaryKeySet(): void
+    {
+        // n8n's "fetch these records by id" pattern: the primary key is always
+        // filterable even though it is not in `filterable`.
+        $ids = [];
+        foreach (['byid-a', 'byid-b', 'byid-c'] as $sku) {
+            $ids[$sku] = json_decode((string) $this->withHeaders($this->auth)->withBodyFormat('json')
+                ->post('api/v1/products', ['sku' => $sku, 'name' => 'N', 'price' => '1.00'])
+                ->response()->getBody(), true)['data']['id'];
+        }
+
+        $want = [$ids['byid-a'], $ids['byid-c']];
+        $rows = $this->list('filter[id][in]=' . implode(',', $want) . '&perPage=100')['data'];
+
+        $got = array_column($rows, 'id');
+        sort($got);
+        sort($want);
+        $this->assertSame($want, $got); // exactly the two requested, not byid-b
+    }
+
     public function testNonNumericFilterOnNumericColumnIsRejectedNotCoercedToEverything(): void
     {
         // `price > abc` would coerce to `price > 0` in MySQL and silently return the
