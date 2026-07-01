@@ -26,10 +26,11 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # OPcache is compiled into the php:8.5 base image; it is configured (with JIT and
-# preload) in docker/php/php.ini — no install step needed. The redis extension
-# does not yet build cleanly on PHP 8.5 (docker-php-ext quirk); the app runs
-# without it (file cache instead of Redis). Enable once its 8.5 build is stable:
-#   RUN pecl install redis && docker-php-ext-enable redis
+# preload) in docker/php/php.ini — no install step needed. Redis is reached through
+# the pure-PHP Predis client (a Composer dep, installed below), so the phpredis C
+# extension — which does not yet build cleanly on PHP 8.5 — is not required. The app
+# uses Redis for shared cache/rate-limit/idempotency when REDIS_HOST is set
+# (docker-compose), and falls back to file cache when it is absent or unreachable.
 
 # --- Stealth + performance config ------------------------------------------
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-microservice.ini

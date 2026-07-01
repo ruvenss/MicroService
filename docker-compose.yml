@@ -32,6 +32,11 @@ services:
       DB_USER: ${MYSQL_USER:-microservice}
       DB_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
       DB_PERSISTENT: "true"
+      # Shared cache / rate-limit / idempotency / counters via the Redis sidecar
+      # (Config\Cache switches to the pure-PHP Predis handler when REDIS_HOST is set;
+      # falls back to file cache automatically if Redis is unreachable).
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: "${REDIS_PORT:-6379}"
       # Outbound webhooks to n8n (empty = disabled). Delivered by webhooks:dispatch.
       WEBHOOK_URL: ${WEBHOOK_URL:-}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}

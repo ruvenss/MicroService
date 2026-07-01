@@ -21,7 +21,7 @@ between services with zero relearning.
 | Framework | **CodeIgniter 4.7.x** (latest 4.7.3) | Chosen for org standardization & continuity. |
 | Language | **PHP 8.5** (container runtime), **ZTS** build for `parallel` | PHP 8.5 needs CI ≥ 4.7.0. Code stays 8.4-compatible. |
 | Database | **MySQL 8.0+**, InnoDB, `utf8mb4`, **external**, **persistent connections** | Single DB per service; never inside the container (§17). |
-| Cache / counters | **Redis** (phpredis), bundled with the deployment | Rate limiting, API-key lookup cache, usage counters. Not data-of-record. |
+| Cache / counters | **Redis** via the pure-PHP **Predis** client (no phpredis extension), file-cache fallback | Rate limiting, API-key lookup cache, idempotency, usage counters. Not data-of-record. |
 | Web server | **Apache2** + **PHP-FPM** via `mpm_event` + `mod_proxy_fcgi` | See `apache2-infrastructure-expert`. |
 | Packaging | **Docker** image: PHP 8.5 + Apache2 + Redis, OPcache/JIT/preload | Self-contained, DB-external (§17). |
 | Dep mgmt | **Composer** | |
@@ -331,8 +331,13 @@ and busts the Redis cache. No key secret is ever logged or retrievable after cre
 ## 8. Rate limiting
 
 > **Status (implemented):** per-key **fixed-window** limiter (`RateLimit` filter) backed by the CI4
-> cache service — **file** cache in dev/test, **Redis** in production (`cache.handler=redis`; a Redis
-> sidecar is in `docker-compose.dev.yml`). Global default 120/min, overridable per key
+> cache service — **file** cache in dev/test, **Redis** in production. `Config\Cache` switches to the
+> **Predis** handler (pure PHP — no phpredis C extension, so it builds on PHP 8.5) whenever `REDIS_HOST`
+> is set, which the docker-compose stack does (a Redis sidecar, `allkeys-lru`, 256 MB); `backupHandler`
+> is `file`, and CI4 catches a Redis-connection failure and degrades to it, so a Redis outage never 500s
+> (verified: with Redis stopped, reads/writes still succeed). Using Redis — not the container-local file
+> cache — is what lets rate-limit, idempotency, and counter state stay correct across **multiple app
+> replicas**. Global default 120/min, overridable per key
 > (`api_keys.rate_limit`, e.g. `key:create --rate-limit N`). On exceed → `429` + `Retry-After`. The
 > full trio `X-RateLimit-Limit` / `X-RateLimit-Remaining` / `X-RateLimit-Reset` (epoch second the window
 > frees up) rides on **every** response, so an n8n workflow can self-throttle proactively instead of only

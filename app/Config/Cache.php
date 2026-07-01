@@ -30,10 +30,11 @@ class Cache extends BaseConfig
      * --------------------------------------------------------------------------
      *
      * The name of the handler that will be used in case the first one is
-     * unreachable. Often, 'file' is used here since the filesystem is
-     * always available, though that's not always practical for the app.
+     * unreachable. `file` (always available) so a Redis outage degrades to the
+     * local filesystem cache instead of failing — CI4's CacheFactory catches the
+     * primary handler's connection CriticalError and falls back here automatically.
      */
-    public string $backupHandler = 'dummy';
+    public string $backupHandler = 'file';
 
     /**
      * --------------------------------------------------------------------------
@@ -195,4 +196,31 @@ class Cache extends BaseConfig
      * @var list<int>
      */
     public array $cacheStatusCodes = [];
+
+    /**
+     * When `REDIS_HOST` is set (the docker-compose stack ships a Redis sidecar),
+     * use the **Predis** handler so cache/rate-limit/idempotency/counter state is
+     * shared across app containers — the distributed guarantee locked decision #1
+     * requires and file cache cannot provide once you run more than one replica.
+     * Predis is pure PHP, so it works on PHP 8.5 without the phpredis C extension.
+     * Absent (local dev / tests / a single-node deploy) it stays on `file`. Either
+     * way `backupHandler = file` means a Redis outage degrades, never 500s.
+     *
+     * Underscore-named env (mapped here) because dotted CI keys do not propagate
+     * through Apache/FPM — see docker-compose.yml.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+
+        $redisHost = getenv('REDIS_HOST');
+        if ($redisHost !== false && $redisHost !== '') {
+            $this->handler        = 'predis';
+            $this->redis['host']  = $redisHost;
+            $this->redis['port']  = (int) (getenv('REDIS_PORT') ?: 6379);
+            // Fail fast to the file backup if Redis is unreachable, rather than
+            // adding connection-hang latency to every request during an outage.
+            $this->redis['timeout'] = 1;
+        }
+    }
 }
