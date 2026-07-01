@@ -15,6 +15,7 @@ use App\Libraries\RequestContext;
 use App\Libraries\ResourceDefinition;
 use App\Libraries\ResourceRegistry;
 use App\Libraries\ResponseEnvelope;
+use App\Libraries\WebhookDispatcher;
 use App\Models\ArchivedRecordModel;
 use App\Models\GenericResourceModel;
 use CodeIgniter\Events\Events;
@@ -200,12 +201,13 @@ class ResourceController extends BaseController
         $db    = db_connect();
 
         $db->transStart();
-        $id  = $model->insert($this->onlyFillable($data, $definition), true);
-        $row = (array) $model->find($id);
+        $id       = $model->insert($this->onlyFillable($data, $definition), true);
+        $row      = (array) $model->find($id);
+        $presented = $this->present($row, $definition);
         AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
+        $this->enqueueWebhook('afterCreate', $definition, $presented);
         $db->transComplete();
 
-        $presented = $this->present($row, $definition);
         $this->fireAfter('afterCreate', $definition, $presented);
 
         return $this->response
@@ -261,9 +263,11 @@ class ResourceController extends BaseController
 
                 return $this->problem(409, 'Bulk create failed; no records were created.');
             }
-            $row = (array) $model->find($id);
+            $row       = (array) $model->find($id);
+            $presented = $this->present($row, $definition);
             AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
-            $created[] = $this->present($row, $definition);
+            $this->enqueueWebhook('afterCreate', $definition, $presented);
+            $created[] = $presented;
         }
         $db->transComplete();
 
@@ -379,9 +383,12 @@ class ResourceController extends BaseController
         $updated = [];
         foreach ($plan as [$id, $before, $clean]) {
             $model->update($id, $clean);
-            $after = (array) $model->find($id);
-            AuditWriter::record('update', $definition->slug, $id, $this->hide($before, $definition), $this->hide($after, $definition));
-            $updated[] = [$this->present($after, $definition), $this->hide($before, $definition)];
+            $after        = (array) $model->find($id);
+            $presented    = $this->present($after, $definition);
+            $beforeHidden = $this->hide($before, $definition);
+            AuditWriter::record('update', $definition->slug, $id, $beforeHidden, $this->hide($after, $definition));
+            $this->enqueueWebhook('afterUpdate', $definition, $presented, $beforeHidden);
+            $updated[] = [$presented, $beforeHidden];
         }
         $db->transComplete();
 
@@ -437,6 +444,7 @@ class ResourceController extends BaseController
         $db->transStart();
         foreach ($rows as $id => $row) {
             $this->archiveAndDelete($definition, (string) $id, $row, $model, $archive);
+            $this->enqueueWebhook('afterDelete', $definition, $this->hide($row, $definition));
         }
         $db->transComplete();
 
@@ -474,12 +482,14 @@ class ResourceController extends BaseController
         $db = db_connect();
         $db->transStart();
         $model->update($id, $this->onlyFillable($data, $definition));
-        $after = (array) $model->find($id);
-        AuditWriter::record('update', $definition->slug, (string) $id, $this->hide($before, $definition), $this->hide($after, $definition));
+        $after        = (array) $model->find($id);
+        $beforeHidden = $this->hide($before, $definition);
+        $presented    = $this->present($after, $definition);
+        AuditWriter::record('update', $definition->slug, (string) $id, $beforeHidden, $this->hide($after, $definition));
+        $this->enqueueWebhook('afterUpdate', $definition, $presented, $beforeHidden);
         $db->transComplete();
 
-        $presented = $this->present($after, $definition);
-        $this->fireAfter('afterUpdate', $definition, $presented, $this->hide($before, $definition));
+        $this->fireAfter('afterUpdate', $definition, $presented, $beforeHidden);
 
         return $this->response->setJSON(ResponseEnvelope::wrap($presented));
     }
@@ -505,6 +515,7 @@ class ResourceController extends BaseController
         $db = db_connect();
         $db->transStart();
         $this->archiveAndDelete($definition, (string) $id, $row, $model, new ArchivedRecordModel());
+        $this->enqueueWebhook('afterDelete', $definition, $this->hide($row, $definition));
         $db->transComplete();
 
         $this->fireAfter('afterDelete', $definition, $this->hide($row, $definition));
@@ -729,10 +740,26 @@ class ResourceController extends BaseController
     }
 
     /**
+     * Transactional outbox: enqueue matching webhook rows for a mutation *inside*
+     * the same DB transaction as the change itself, so the notification and the
+     * data commit atomically (or roll back together). This closes the dual-write
+     * gap where a crash after commit but before enqueue would silently drop an
+     * n8n notification. Delivery stays out-of-band via `webhooks:dispatch`.
+     *
+     * @param array<string, mixed> $row    the presented row (client's view)
+     * @param array<string, mixed> $before prior state, for updates
+     */
+    private function enqueueWebhook(string $action, ResourceDefinition $definition, array $row, array $before = []): void
+    {
+        WebhookDispatcher::enqueue(new ResourceEvent($definition->slug, $action, data: $before, row: $row));
+    }
+
+    /**
      * Fire a post-commit mutation event (resource.afterCreate/afterUpdate/
-     * afterDelete). Plugins subscribe to react to durable changes — e.g. POST to
-     * an n8n webhook, invalidate a cache, or cascade. `$row` is the presented row
-     * (the client's view); `$before` carries the prior state for updates.
+     * afterDelete). Plugins subscribe to react to durable changes — e.g. invalidate
+     * a cache or cascade. `$row` is the presented row (the client's view); `$before`
+     * carries the prior state for updates. (Webhook enqueue is transactional — see
+     * enqueueWebhook — so it is intentionally not driven from here.)
      *
      * @param array<string, mixed> $row
      * @param array<string, mixed> $before

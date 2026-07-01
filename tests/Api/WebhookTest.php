@@ -25,13 +25,9 @@ final class WebhookTest extends FeatureTestCase
         parent::setUp();
         $this->auth = $this->authHeaders(['products:*']);
 
-        // Other event tests remove all resource.after* listeners in tearDown,
-        // which also drops the framework's webhook listener — restore exactly one.
-        foreach (['afterCreate', 'afterUpdate', 'afterDelete', 'afterRestore'] as $e) {
-            Events::removeAllListeners('resource.' . $e);
-            Events::on('resource.' . $e, [WebhookDispatcher::class, 'enqueue']);
-        }
-
+        // Webhooks are a transactional outbox enqueued directly by the controller
+        // inside the mutation's transaction (not via post-commit events), so there
+        // are no event listeners to register here. A subscription turns enqueue on.
         $this->subscribe([['url' => 'https://n8n.example/webhook/abc', 'secret' => 's3cr3t', 'events' => ['*']]]);
     }
 
@@ -74,6 +70,20 @@ final class WebhookTest extends FeatureTestCase
         $payload = json_decode((string) $row['payload_json'], true);
         $this->assertSame('products.afterCreate', $payload['event']);
         $this->assertSame($id, $payload['id']);
+    }
+
+    public function testEnqueueIsControllerDrivenNotPostCommitEvent(): void
+    {
+        // The outbox is written by the controller inside the mutation transaction,
+        // not by a post-commit resource.after* listener. Prove it: drop every such
+        // listener and a mutation must still enqueue exactly one row.
+        foreach (['afterCreate', 'afterUpdate', 'afterDelete', 'afterRestore'] as $e) {
+            Events::removeAllListeners('resource.' . $e);
+        }
+
+        $this->createProduct('WH-CTRL');
+
+        $this->assertSame(1, (new WebhookOutboxModel())->where('event', 'products.afterCreate')->countAllResults());
     }
 
     public function testDispatchDeliversAndSignsTheRequest(): void

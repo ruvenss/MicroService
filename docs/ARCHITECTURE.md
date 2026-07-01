@@ -510,9 +510,9 @@ to confirm indexing/retention; very high delete-volume resources may warrant a d
 > scoping), `resource.serialize` (transform each outgoing row). **Post-commit:** `resource.afterCreate`,
 > `resource.afterUpdate` (carries prior state in `->data`), `resource.afterDelete`, and
 > `resource.afterRestore` — fired **after** the transaction commits, so a plugin can safely react to a
-> durable change: **push a webhook to n8n**, invalidate a cache, or cascade. This is the framework's
-> outbound n8n integration point (the service triggering n8n workflows). Covered by `ResourceEventsTest`
-> and `AfterEventsTest`.
+> durable change: invalidate a cache, cascade, or notify. (The built-in **n8n webhook** enqueue is *not*
+> driven from these events — it is a transactional outbox written inside the mutation's own transaction;
+> see §18.) Covered by `ResourceEventsTest` and `AfterEventsTest`.
 >
 > **Plugins are self-contained:** `Config\Autoload` registers each enabled plugin's namespace, so a
 > plugin owns its **migrations** (`plugins/<V>/<N>/Database/Migrations/`, run by `spark migrate --all`),
@@ -809,12 +809,15 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
 - **Importable Postman collection** (`docs/postman/`) documents each endpoint for humans and serves
   as the reference when configuring the matching n8n node.
 - **Outbound webhooks (implemented):** on a resource mutation the framework enqueues a signed event to
-  a transactional-style **outbox** (`webhook_outbox`) for each matching subscription (`Config\Webhooks`
+  a **transactional outbox** (`webhook_outbox`) for each matching subscription (`Config\Webhooks`
   / `WEBHOOK_URL`), and `php spark webhooks:dispatch` (run on a schedule) POSTs them to the n8n webhook
-  node with an `X-Signature` HMAC-SHA256 header and `X-Event`. Enqueue is DB-only on the request thread;
-  delivery is out-of-band with retries (`maxAttempts`), so a slow/unavailable n8n never affects the API
-  response. Subscriptions filter by `{resource}.{afterCreate|afterUpdate|afterDelete|afterRestore}` /
-  wildcards. This is the service→n8n push channel (n8n workflows triggered by data changes).
+  node with an `X-Signature` HMAC-SHA256 header and `X-Event`. **The outbox row is written inside the
+  same DB transaction as the mutation** (by the controller, not a post-commit event), so the change and
+  its notification commit atomically — a crash after commit can never drop the event (no dual-write gap).
+  Enqueue is DB-only on the request thread; delivery is out-of-band with retries (`maxAttempts`), so a
+  slow/unavailable n8n never affects the API response. Subscriptions filter by
+  `{resource}.{afterCreate|afterUpdate|afterDelete|afterRestore}` / wildcards. This is the service→n8n
+  push channel (n8n workflows triggered by data changes).
 - **Idempotency keys (implemented):** a client sends `Idempotency-Key: <key>` on a write; the first
   response is recorded and any retry with the same key + request **replays** it (with
   `Idempotency-Replayed: true`) instead of re-executing — so an n8n retry after a timeout never

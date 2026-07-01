@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers\Api;
 
 use App\Core\Plugin\ResourceEvent;
+use App\Libraries\WebhookDispatcher;
 use App\Libraries\AuditWriter;
 use App\Libraries\ResourceRegistry;
 use App\Libraries\ResponseEnvelope;
@@ -108,6 +109,8 @@ class Archive extends ApiController
         $db->table($definition->table)->insert($payload);
         $model->update($archive['id'], ['restored_at' => date('Y-m-d H:i:s')]);
         AuditWriter::record('restore', $definition->slug, $pkVal !== null ? (string) $pkVal : null, null, $redacted);
+        // Transactional outbox: enqueue the n8n notification atomically with the restore.
+        WebhookDispatcher::enqueue(new ResourceEvent($definition->slug, 'afterRestore', row: $redacted));
         $db->transComplete();
 
         Events::trigger('resource.afterRestore', new ResourceEvent($definition->slug, 'afterRestore', row: $redacted));

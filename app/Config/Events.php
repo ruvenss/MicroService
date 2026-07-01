@@ -2,7 +2,6 @@
 
 namespace Config;
 
-use App\Libraries\WebhookDispatcher;
 use CodeIgniter\Events\Events;
 use CodeIgniter\Exceptions\FrameworkException;
 use CodeIgniter\HotReloader\HotReloader;
@@ -57,8 +56,9 @@ Events::on('pre_system', static function (): void {
     }
 });
 
-// Enqueue outbound webhooks (to n8n) on resource mutations. Delivery is handled
-// out-of-band by `spark webhooks:dispatch`. No-op unless a subscription is set.
-foreach (['afterCreate', 'afterUpdate', 'afterDelete', 'afterRestore'] as $webhookEvent) {
-    Events::on('resource.' . $webhookEvent, [WebhookDispatcher::class, 'enqueue']);
-}
+// Outbound webhooks (to n8n) are enqueued as a TRANSACTIONAL OUTBOX — the row is
+// written inside the same DB transaction as the mutation (see
+// ResourceController::enqueueWebhook and Archive::restore), so the notification
+// and the change commit atomically. They are therefore intentionally NOT wired to
+// the post-commit resource.after* events here. Delivery stays out-of-band via
+// `spark webhooks:dispatch`; enqueue is a no-op unless a subscription is set.
