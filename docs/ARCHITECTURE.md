@@ -474,14 +474,18 @@ to confirm indexing/retention; very high delete-volume resources may warrant a d
 **Requirement:** developers must never touch the core. All feature development happens in
 `plugins/`, consumed by the core as extensions.
 
-> **Status (implemented — resource contribution):** `App\Core\Plugin\PluginManager` discovers
+> **Status (implemented — resource contribution + events):** `App\Core\Plugin\PluginManager` discovers
 > `plugins/<Vendor>/<Name>/plugin.json` + a `Plugin` class (`PluginInterface`), and `ResourceRegistry`
 > merges plugin-contributed resources with the (now empty) core `Config\Resources`. The sample
-> **`products`** resource was moved into `plugins/Sample/Catalog` — it serves full CRUD, filtering,
-> auth scopes, audit, archival delete, and generated docs with **zero** core change (all 88 tests still
-> pass, `php spark plugin:list` shows it). **Still to come:** lifecycle event hooks
-> (`resource.beforeCreate`, …), plugin-owned migrations/routes/commands, `make:plugin`/`plugin:enable`,
-> and the CI guard that fails a PR touching `app/`.
+> **`products`** resource lives in `plugins/Sample/Catalog` — full CRUD, filtering, auth, audit,
+> archival delete, and generated docs with **zero** core change.
+>
+> The generic engine also fires **lifecycle events** plugins subscribe to (CodeIgniter Events, via a
+> mutable `App\Core\Plugin\ResourceEvent`): **`resource.beforeSave`** (mutate the create/update payload
+> before validation), **`resource.beforeQuery`** (constrain the list query — e.g. tenant scoping), and
+> **`resource.serialize`** (transform each outgoing row — e.g. computed fields / numeric casts for n8n).
+> Covered by `ResourceEventsTest`. **Still to come:** plugin-owned migrations/routes/commands,
+> `make:plugin`/`plugin:enable`, and the CI guard that fails a PR touching `app/`.
 
 **Delivery model — monorepo.** The core (`app/`) and all plugins (`plugins/`) live in a single
 repository. "Sealed core" is therefore enforced by **convention + CI guard** (a PR touching `app/`

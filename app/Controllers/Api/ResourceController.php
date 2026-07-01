@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
+use App\Core\Plugin\ResourceEvent;
 use App\Libraries\AuditWriter;
 use App\Libraries\AuthContext;
 use App\Libraries\ProblemDetails;
@@ -15,6 +16,7 @@ use App\Libraries\ResourceRegistry;
 use App\Libraries\ResponseEnvelope;
 use App\Models\ArchivedRecordModel;
 use App\Models\GenericResourceModel;
+use CodeIgniter\Events\Events;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -39,6 +41,7 @@ class ResourceController extends BaseController
 
         $model = $this->model($definition);
         $this->applyFilters($model, $spec->filters);
+        $this->fireBeforeQuery($definition, $model);
 
         $perPage = $this->perPage($definition);
         $page    = max((int) ($this->request->getGet('page') ?? 1), 1);
@@ -51,7 +54,7 @@ class ResourceController extends BaseController
         }
         $rows = $model->findAll($perPage, ($page - 1) * $perPage);
 
-        $rows = array_map(fn (array $row): array => $this->hide($row, $definition), $rows);
+        $rows = array_map(fn (array $row): array => $this->present($row, $definition), $rows);
 
         return $this->response->setJSON(ResponseEnvelope::collection($rows, $page, $perPage, $total));
     }
@@ -77,7 +80,7 @@ class ResourceController extends BaseController
             return $this->notFound();
         }
 
-        return $this->response->setJSON(ResponseEnvelope::wrap($this->hide($row, $definition)));
+        return $this->response->setJSON(ResponseEnvelope::wrap($this->present($row, $definition)));
     }
 
     public function create(string $slug): ResponseInterface
@@ -92,6 +95,7 @@ class ResourceController extends BaseController
             return $this->problem(400, 'Request body must be a JSON object.');
         }
 
+        $data   = $this->fireBeforeSave($definition, 'create', $data);
         $errors = $this->validateAgainst($data, $definition->createRules);
         if ($errors !== []) {
             return $this->validationProblem($errors);
@@ -109,7 +113,7 @@ class ResourceController extends BaseController
         return $this->response
             ->setStatusCode(201)
             ->setHeader('Location', site_url("api/v1/{$slug}/{$id}"))
-            ->setJSON(ResponseEnvelope::wrap($this->hide($row, $definition)));
+            ->setJSON(ResponseEnvelope::wrap($this->present($row, $definition)));
     }
 
     public function update(string $slug, string $id): ResponseInterface
@@ -130,6 +134,7 @@ class ResourceController extends BaseController
             return $this->problem(400, 'Request body must be a JSON object.');
         }
 
+        $data   = $this->fireBeforeSave($definition, 'update', $data);
         $errors = $this->validateAgainst($data, $definition->updateRules);
         if ($errors !== []) {
             return $this->validationProblem($errors);
@@ -142,7 +147,7 @@ class ResourceController extends BaseController
         AuditWriter::record('update', $definition->slug, (string) $id, $this->hide($before, $definition), $this->hide($after, $definition));
         $db->transComplete();
 
-        return $this->response->setJSON(ResponseEnvelope::wrap($this->hide($after, $definition)));
+        return $this->response->setJSON(ResponseEnvelope::wrap($this->present($after, $definition)));
     }
 
     /**
@@ -262,6 +267,47 @@ class ResourceController extends BaseController
     private function hide(array $row, ResourceDefinition $definition): array
     {
         return $definition->hidden === [] ? $row : array_diff_key($row, array_flip($definition->hidden));
+    }
+
+    /**
+     * Hide secret fields, then let plugins transform the outgoing row
+     * (resource.serialize) — e.g. add computed fields or cast types for n8n.
+     *
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>
+     */
+    private function present(array $row, ResourceDefinition $definition): array
+    {
+        $event = new ResourceEvent($definition->slug, 'serialize', row: $this->hide($row, $definition));
+        Events::trigger('resource.serialize', $event);
+
+        return $event->row;
+    }
+
+    /**
+     * Let plugins mutate a write payload before validation (resource.beforeSave)
+     * — e.g. derive fields or enforce defaults.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, mixed>
+     */
+    private function fireBeforeSave(ResourceDefinition $definition, string $action, array $data): array
+    {
+        $event = new ResourceEvent($definition->slug, $action, data: $data);
+        Events::trigger('resource.beforeSave', $event);
+
+        return $event->data;
+    }
+
+    /**
+     * Let plugins constrain the list query (resource.beforeQuery) — e.g. tenant
+     * scoping. Listeners add conditions to the shared model instance.
+     */
+    private function fireBeforeQuery(ResourceDefinition $definition, GenericResourceModel $model): void
+    {
+        Events::trigger('resource.beforeQuery', new ResourceEvent($definition->slug, 'list', model: $model));
     }
 
     /**

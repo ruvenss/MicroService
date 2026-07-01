@@ -111,7 +111,9 @@ today; FPM+event is a Phase 6 perf upgrade).
       `requires` is a follow-up.)
 - [x] PSR-4 autoload `Plugins\\` → `plugins/` (composer). (Plugin-owned migrations: follow-up.)
 - [x] `ResourceRegistry` **aggregates** core config + plugin-contributed resources; core `Resources` is empty.
-- [ ] Lifecycle **events** fired by the generic engine — follow-up.
+- [x] Lifecycle **events** fired by the generic engine: `resource.beforeSave` (mutate payload),
+      `resource.beforeQuery` (constrain list query), `resource.serialize` (transform output). Plugins
+      subscribe via CI Events + a mutable `ResourceEvent`. (`…Delete`/`…Restore` hooks: follow-up.)
 - [x] Spark command `plugin:list`. (`plugin:enable/disable`, `make:plugin` — follow-up.)
 - [x] **Moved the sample `products` resource into `plugins/Sample/Catalog`** — served end-to-end via the
       plugin with zero core change.
