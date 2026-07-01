@@ -1906,6 +1906,16 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
                     "413": {
                         "description": "Error",
                         "content": {
@@ -2623,6 +2633,16 @@
                         }
                     },
                     "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
                         "description": "Error",
                         "content": {
                             "application/problem+json": {
