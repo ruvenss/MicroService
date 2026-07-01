@@ -41,6 +41,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Scope:** archive:read
 - **Query params:**
   - `resource` — Optional resource filter.
+  - `restored` — Filter by restoration state: false = still-deleted (restorable), true = already restored. Omit for all.
   - `page` — Page number (1-based).
   - `perPage` — Items per page (capped per resource).
 - **Success:** `200` (`collection` envelope)

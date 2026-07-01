@@ -512,7 +512,12 @@ archived_records
   INDEX(resource, record_id), INDEX(deleted_at)
 ```
 
-### 14.2 Restore
+### 14.2 Browse & restore
+
+`GET /api/v1/_archive` lists archived rows (scope `archive:read`), filterable by `?resource=` and by
+restoration state: **`?restored=false`** = still-deleted (restorable), **`?restored=true`** = already
+restored, omitted = all — so an n8n recycle-bin workflow can list exactly what it can restore.
+(Covered by `ArchivalDeleteTest`.)
 
 `POST /api/v1/_archive/{archiveId}/restore` re-inserts `payload_json` into `source_table`,
 within a transaction:

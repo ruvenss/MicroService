@@ -33,6 +33,18 @@ class Archive extends ApiController
             $model->where('resource', $resource);
         }
 
+        // Filter by restoration state: `?restored=false` = still-deleted (restorable),
+        // `?restored=true` = already restored. Absent = all. Lets an n8n recycle-bin
+        // workflow list only what it can actually restore.
+        $restored = $this->request->getGet('restored');
+        if ($restored !== null && $restored !== '') {
+            $isRestored = filter_var($restored, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($isRestored === null) {
+                return $this->problem(400, 'restored must be true or false.');
+            }
+            $isRestored ? $model->where('restored_at !=', null) : $model->where('restored_at', null);
+        }
+
         $total = $model->countAllResults(false);
         $rows  = $model->orderBy('deleted_at', 'DESC')->findAll($perPage, ($page - 1) * $perPage);
 

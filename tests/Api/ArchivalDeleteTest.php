@@ -68,4 +68,51 @@ final class ArchivalDeleteTest extends FeatureTestCase
     {
         $this->withHeaders($this->authHeaders(['products:read']))->get('api/v1/_archive')->assertStatus(403);
     }
+
+    private function archiveRecordIds(array $headers, string $query): array
+    {
+        $data = json_decode((string) $this->withHeaders($headers)->get('api/v1/_archive?' . $query)->response()->getBody(), true)['data'];
+
+        return array_column($data, 'record_id');
+    }
+
+    /** The archive-row id for a given original record id (order-independent). */
+    private function archiveIdFor(array $headers, string $recordId): int
+    {
+        $data = json_decode((string) $this->withHeaders($headers)->get('api/v1/_archive?perPage=100')->response()->getBody(), true)['data'];
+        foreach ($data as $row) {
+            if ((string) $row['record_id'] === $recordId) {
+                return (int) $row['id'];
+            }
+        }
+
+        return 0;
+    }
+
+    public function testFilterByRestorationState(): void
+    {
+        $headers = $this->authHeaders(['products:*', 'archive:read', 'archive:write']);
+
+        $keep    = $this->createProduct($headers);
+        $restore = $this->createProduct($headers);
+        $this->withHeaders($headers)->delete("api/v1/products/{$keep}");
+        $this->withHeaders($headers)->delete("api/v1/products/{$restore}");
+        // Restore the specific record (same-second deletes make list order ambiguous).
+        $this->withHeaders($headers)->post('api/v1/_archive/' . $this->archiveIdFor($headers, (string) $restore) . '/restore')->assertStatus(200);
+
+        // restored=false → only the still-deleted (restorable) one.
+        $stillDeleted = $this->archiveRecordIds($headers, 'restored=false&perPage=100');
+        $this->assertContains((string) $keep, $stillDeleted);
+        $this->assertNotContains((string) $restore, $stillDeleted);
+
+        // restored=true → only the already-restored one.
+        $done = $this->archiveRecordIds($headers, 'restored=true&perPage=100');
+        $this->assertContains((string) $restore, $done);
+        $this->assertNotContains((string) $keep, $done);
+    }
+
+    public function testInvalidRestoredValueReturns400(): void
+    {
+        $this->withHeaders($this->authHeaders(['archive:read']))->get('api/v1/_archive?restored=maybe')->assertStatus(400);
+    }
 }

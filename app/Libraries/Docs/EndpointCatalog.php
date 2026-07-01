@@ -69,7 +69,7 @@ final class EndpointCatalog
                 'tag' => 'Audit & recycle bin', 'resource' => null, 'method' => 'GET', 'path' => '/api/v1/_archive',
                 'operationId' => 'archiveList', 'summary' => 'List archived (deleted) rows.',
                 'auth' => true, 'scope' => 'archive:read', 'pathParams' => [],
-                'query' => [['name' => 'resource', 'description' => 'Optional resource filter.'], self::pageParam(), self::perPageParam()],
+                'query' => [['name' => 'resource', 'description' => 'Optional resource filter.'], ['name' => 'restored', 'description' => 'Filter by restoration state: false = still-deleted (restorable), true = already restored. Omit for all.'], self::pageParam(), self::perPageParam()],
                 'body' => null, 'success' => 200, 'successKind' => 'collection', 'captureId' => false,
             ],
             [

@@ -167,7 +167,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{baseUrl}}/api/v1/_archive?resource=&page=&perPage=",
+                            "raw": "{{baseUrl}}/api/v1/_archive?resource=&restored=&page=&perPage=",
                             "host": [
                                 "{{baseUrl}}"
                             ],
@@ -181,6 +181,12 @@
                                     "key": "resource",
                                     "value": "",
                                     "description": "Optional resource filter.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "restored",
+                                    "value": "",
+                                    "description": "Filter by restoration state: false = still-deleted (restorable), true = already restored. Omit for all.",
                                     "disabled": true
                                 },
                                 {
