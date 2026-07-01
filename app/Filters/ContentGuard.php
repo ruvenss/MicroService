@@ -10,14 +10,20 @@ use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
- * Guards write requests: a body-carrying POST/PUT/PATCH must declare a JSON
- * content type and contain well-formed JSON. Failures short-circuit with a
- * neutral problem+json (415 or 400) before any controller runs.
+ * Guards write requests: a body-carrying POST/PUT/PATCH must stay within the size
+ * limit, declare a JSON content type, and contain well-formed JSON. Failures
+ * short-circuit with a neutral problem+json (413/415/400) before any controller
+ * runs. The size cap is defence-in-depth behind Apache's LimitRequestBody (which
+ * rejects abusive bodies at the edge) — this layer returns a clean, engine-neutral
+ * 413 for requests that clear the edge but exceed the API contract.
  */
 class ContentGuard implements FilterInterface
 {
     /** @var list<string> */
     private const WRITE_METHODS = ['POST', 'PUT', 'PATCH'];
+
+    /** Maximum accepted request body, in bytes (1 MiB — comfortably fits a 100-item bulk batch). */
+    private const MAX_BODY_BYTES = 1048576;
 
     public function before(RequestInterface $request, $arguments = null)
     {
@@ -25,7 +31,18 @@ class ContentGuard implements FilterInterface
             return null;
         }
 
+        // Reject oversized payloads up front — prefer the declared Content-Length
+        // (no need to touch the body), with the actual byte length as a backstop
+        // for chunked/unlabelled requests.
+        if ((int) $request->getHeaderLine('Content-Length') > self::MAX_BODY_BYTES) {
+            return $this->problem(413, 'Request body exceeds the maximum allowed size.');
+        }
+
         $body = (string) $request->getBody();
+        if (strlen($body) > self::MAX_BODY_BYTES) {
+            return $this->problem(413, 'Request body exceeds the maximum allowed size.');
+        }
+
         if ($body === '') {
             return null; // nothing to validate
         }

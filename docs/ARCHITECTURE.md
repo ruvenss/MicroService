@@ -768,6 +768,18 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   header) **and** `ServerTokens Full` (mod_security overwrites the signature in place, so the full
   string must exist — with `Prod` it is pre-truncated to `Apache` and cannot be replaced). No rule
   sets are loaded, so nothing is inspected/blocked. Verified: real container emits `Server: MicroService`.
+- **Neutral server-level errors:** the vhost sets `ErrorDocument 400/413/500/502/503` to a static
+  `public/error.json` (`application/problem+json`), so a failure Apache handles *itself* — an oversized
+  body, a malformed request line, or the backend being down — never returns Apache's branded default
+  HTML. The engine stays hidden even when the app isn't reached. App-level 4xx/5xx already return
+  problem+json from the front controller.
+
+> **Payload-size limits (DoS guard, "in case exposed"):** the vhost sets `LimitRequestBody 8388608`
+> (8 MiB) to refuse abusive bodies at the edge before PHP buffers them (answered by the neutral
+> `ErrorDocument 413`). Behind it, the `ContentGuard` filter enforces a tighter **1 MiB** contract limit
+> on write bodies (checking `Content-Length` first, then actual length) and returns a clean
+> `413 Content Too Large` problem+json — comfortably fitting a 100-item bulk batch. Covered by
+> `tests/Api/ContentGuardTest.php`.
 
 ### 18.3 Runtime layer — PHP / container
 

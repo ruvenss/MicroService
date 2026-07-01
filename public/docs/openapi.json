@@ -1063,6 +1063,16 @@
                             }
                         }
                     },
+                    "413": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Error",
                         "content": {
@@ -1191,6 +1201,16 @@
                             }
                         }
                     },
+                    "413": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Error",
                         "content": {
@@ -1298,6 +1318,16 @@
                         }
                     },
                     "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
                         "description": "Error",
                         "content": {
                             "application/problem+json": {
@@ -1544,6 +1574,16 @@
                         }
                     },
                     "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
                         "description": "Error",
                         "content": {
                             "application/problem+json": {

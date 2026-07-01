@@ -174,6 +174,9 @@ final class OpenApiGenerator
         $errors  = $ep['auth'] ? [400, 401, 403, 404, 422, 429] : [400, 404, 429];
         if (! $hasBody) {
             $errors = array_values(array_diff($errors, [422]));
+        } else {
+            $errors[] = 413; // body-carrying requests can exceed the size limit
+            sort($errors);
         }
         foreach ($errors as $code) {
             $responses[(string) $code] = [
