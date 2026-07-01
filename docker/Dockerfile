@@ -20,10 +20,10 @@ RUN set -eux; \
     a2enmod rewrite headers security2 env; \
     rm -rf /var/lib/apt/lists/*
 
-# Optional extensions that don't yet build cleanly on PHP 8.5 (docker-php-ext
-# quirk). Enable once their 8.5 builds are stable — the app runs without them
-# (file cache instead of Redis; no OPcache/JIT acceleration):
-#   RUN docker-php-ext-install opcache
+# OPcache is compiled into the php:8.5 base image; it is configured (with JIT and
+# preload) in docker/php/php.ini — no install step needed. The redis extension
+# does not yet build cleanly on PHP 8.5 (docker-php-ext quirk); the app runs
+# without it (file cache instead of Redis). Enable once its 8.5 build is stable:
 #   RUN pecl install redis && docker-php-ext-enable redis
 
 # --- Stealth + performance config ------------------------------------------

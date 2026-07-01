@@ -654,7 +654,9 @@ running **PHP 8.5 + Apache2 + Redis** with all extensions; **no database in the 
 > a Redis sidecar against the **external** MySQL (`make build && make up`). Verified in the real
 > container: `health` **200** against the external DB (persistent `pConnect` connections), full CRUD,
 > **OPcache + JIT enabled** (tracing, 64 M; OPcache is compiled into php:8.5, configured in
-> `docker/php/php.ini`), and the engine fully hidden (§18.2).
+> `docker/php/php.ini`), **OPcache preload** warming the framework + core classes at startup
+> (**373 scripts** compiled & linked into shared memory, so no per-request compile/link — verified via
+> `opcache_get_status()`), and the engine fully hidden (§18.2).
 >
 > **Config is 12-factor via UNDERSCORE env vars** (`DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD/
 > DB_PERSISTENT`, `APP_BASE_URL`, `CI_ENVIRONMENT`, `WEBHOOK_URL/WEBHOOK_SECRET/WEBHOOK_EVENTS`): dotted
@@ -699,8 +701,12 @@ running **PHP 8.5 + Apache2 + Redis** with all extensions; **no database in the 
 
 ### 17.3 Performance tuning (ultra-performant target)
 
-- **OPcache** enabled and sized; `opcache.validate_timestamps=0` in prod with cache reset on
-  deploy; **preloading** of the framework + core classes via `opcache.preload`.
+- **OPcache** enabled and sized; `opcache.validate_timestamps=0` in prod (code is baked into the
+  image). **Preloading is implemented and verified:** `opcache.preload=/var/www/html/preload.php`
+  (as `www-data`) warms the framework `system/` **and** the core's own hot dirs (`app/Controllers`,
+  `Libraries`, `Models`, `Filters`, `Core`) — 373 scripts compiled and linked into shared memory at
+  startup, so workers skip per-request compile/link. Non-class files (`Config`/`Views`/`Language`/
+  `Common.php`) are excluded to keep preload clean.
 - **JIT** enabled and measured — keep it only where it demonstrably helps (CPU-bound work);
   most request time here is I/O, so the wins come first from persistent connections, Redis
   caching, and query/index tuning. **Measure, don't guess** (`php-optimization-engineer`).

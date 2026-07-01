@@ -64,6 +64,15 @@ class preload
                 '/system/ThirdParty/',
             ],
         ],
+        // The MicroService core's own hot classes — served on every request, so
+        // warm them into shared memory too. These directories hold only
+        // classes/interfaces/traits (Config/Views/Language/Common.php, which are
+        // NOT pure class files, are intentionally left out to keep preload clean).
+        ['include' => __DIR__ . '/app/Controllers', 'exclude' => []],
+        ['include' => __DIR__ . '/app/Libraries', 'exclude' => []],
+        ['include' => __DIR__ . '/app/Models', 'exclude' => []],
+        ['include' => __DIR__ . '/app/Filters', 'exclude' => []],
+        ['include' => __DIR__ . '/app/Core', 'exclude' => []],
     ];
 
     public function __construct()
