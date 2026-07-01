@@ -1075,8 +1075,12 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
 - **Outbound webhooks (implemented):** on a resource mutation the framework enqueues a signed event to
   a **transactional outbox** (`webhook_outbox`) for each matching subscription (`Config\Webhooks`
   / `WEBHOOK_URL`), and `php spark webhooks:dispatch` (run on a schedule) POSTs them to the n8n webhook
-  node. **Delivery headers (n8n contract):** `X-Signature` (HMAC-SHA256 of the raw body with the
-  subscription secret — n8n recomputes it to verify authenticity), `X-Event` (`{resource}.{action}`),
+  node. **Delivery headers (n8n contract):** `X-Signature` = **`sha256=<hex>`**, the HMAC-SHA256 of the
+  raw body keyed with the subscription secret — algorithm-tagged in the GitHub/Stripe/Svix style so a
+  receiver knows the scheme without out-of-band knowledge and the header stays forward-compatible if the
+  digest ever changes. To verify in n8n: strip the `sha256=` prefix and compare (constant-time) against
+  `HMAC-SHA256(rawBody, secret)` in hex. Sent **only when the subscription is signed** — a secret-less
+  subscription omits the header entirely rather than sending an empty one. `X-Event` (`{resource}.{action}`),
   **`X-Webhook-Id`** (the outbox row id — *stable across retries*, so n8n can dedupe a redelivered
   event), `X-Webhook-Attempt` (delivery attempt number), and a neutral `User-Agent`
   (`MicroService-Webhook/1.0`) that never reveals the engine to the receiver. **The outbox row is written inside the

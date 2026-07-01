@@ -65,6 +65,8 @@ final class WebhookTest extends FeatureTestCase
         $row = $rows[0];
         $this->assertSame('https://n8n.example/webhook/abc', $row['target_url']);
         $this->assertSame('pending', $row['status']);
+        // Stored as the bare hex digest over the exact payload bytes (the `sha256=`
+        // tag is added on the wire, asserted in the delivery test).
         $this->assertSame(hash_hmac('sha256', (string) $row['payload_json'], 's3cr3t'), $row['signature']);
 
         $payload = json_decode((string) $row['payload_json'], true);
@@ -150,7 +152,7 @@ final class WebhookTest extends FeatureTestCase
 
         $this->assertSame(1, $result['sent']);
         $this->assertSame('https://n8n.example/webhook/abc', $captured['url']);
-        $this->assertSame(hash_hmac('sha256', $captured['body'], 's3cr3t'), $captured['headers']['X-Signature']);
+        $this->assertSame('sha256=' . hash_hmac('sha256', $captured['body'], 's3cr3t'), $captured['headers']['X-Signature']);
         $this->assertSame('delivered', (new WebhookOutboxModel())->first()['status']);
 
         // Delivery carries a stable dedupe id, an attempt counter, and a neutral UA.
@@ -158,6 +160,28 @@ final class WebhookTest extends FeatureTestCase
         $this->assertSame((string) $row['id'], $captured['headers']['X-Webhook-Id']);
         $this->assertSame('1', $captured['headers']['X-Webhook-Attempt']);
         $this->assertSame('MicroService-Webhook/1.0', $captured['headers']['User-Agent']);
+    }
+
+    public function testUnsignedSubscriptionOmitsTheSignatureHeader(): void
+    {
+        // A subscription with no secret is unsigned: the stored signature is empty and
+        // delivery must OMIT X-Signature entirely (an empty header would invite a
+        // receiver to "verify" against nothing).
+        $this->subscribe([['url' => 'https://n8n.example/webhook/abc', 'secret' => '', 'events' => ['*']]]);
+        $this->createProduct('WH-UNSIGNED');
+
+        $this->assertSame('', (new WebhookOutboxModel())->first()['signature']);
+
+        $captured                 = [];
+        WebhookDispatcher::$sender = static function (string $url, array $headers) use (&$captured): int {
+            $captured = $headers;
+
+            return 200;
+        };
+        WebhookDispatcher::dispatch();
+
+        $this->assertArrayNotHasKey('X-Signature', $captured);
+        $this->assertSame('products.afterCreate', $captured['X-Event']); // other headers still present
     }
 
     public function testWebhookIdIsStableAcrossRetriesButAttemptGrows(): void

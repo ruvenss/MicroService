@@ -80,6 +80,8 @@ final class WebhookDispatcher
                     'record_id'    => $recordId !== null ? (string) $recordId : null,
                     'target_url'   => $sub['url'],
                     'payload_json' => $payload,
+                    // Stored as the bare hex digest; the `sha256=` algorithm tag is added
+                    // at delivery (transport concern). Empty when unsigned (no secret).
                     'signature'    => $sub['secret'] !== '' ? hash_hmac('sha256', $payload, $sub['secret']) : '',
                     'status'       => 'pending',
                     'attempts'     => 0,
@@ -120,16 +122,26 @@ final class WebhookDispatcher
         foreach ($rows as $row) {
             $attempts = (int) $row['attempts'] + 1;
 
-            $status = self::post((string) $row['target_url'], [
+            $headers = [
                 'Content-Type'      => 'application/json',
                 'User-Agent'        => self::USER_AGENT, // neutral — never reveals the engine to n8n
                 'X-Event'           => (string) $row['event'],
-                'X-Signature'       => (string) $row['signature'],
                 // Stable id (same across retries of this row) so n8n can dedupe;
                 // the attempt number lets a receiver see redelivery.
                 'X-Webhook-Id'      => (string) $row['id'],
                 'X-Webhook-Attempt' => (string) $attempts,
-            ], (string) $row['payload_json']);
+            ];
+            // Algorithm-tag the digest on the wire (`sha256=<hex>`, the GitHub/Stripe/
+            // Svix convention) so a receiver knows the scheme without out-of-band
+            // knowledge and the header stays forward-compatible if the algorithm ever
+            // changes. Sent only when the subscription is signed — an empty header
+            // would otherwise invite a receiver to "verify" against nothing.
+            $signature = (string) $row['signature'];
+            if ($signature !== '') {
+                $headers['X-Signature'] = 'sha256=' . $signature;
+            }
+
+            $status = self::post((string) $row['target_url'], $headers, (string) $row['payload_json']);
 
             if ($status >= 200 && $status < 300) {
                 $model->update($row['id'], [
