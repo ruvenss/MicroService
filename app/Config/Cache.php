@@ -7,7 +7,7 @@ use CodeIgniter\Cache\Handlers\ApcuHandler;
 use CodeIgniter\Cache\Handlers\DummyHandler;
 use CodeIgniter\Cache\Handlers\FileHandler;
 use CodeIgniter\Cache\Handlers\MemcachedHandler;
-use CodeIgniter\Cache\Handlers\PredisHandler;
+use App\Libraries\Cache\AtomicPredisHandler;
 use CodeIgniter\Cache\Handlers\RedisHandler;
 use CodeIgniter\Cache\Handlers\WincacheHandler;
 use CodeIgniter\Config\BaseConfig;
@@ -149,7 +149,9 @@ class Cache extends BaseConfig
         'dummy'     => DummyHandler::class,
         'file'      => FileHandler::class,
         'memcached' => MemcachedHandler::class,
-        'predis'    => PredisHandler::class,
+        // Our subclass adds an atomic fixed-window counter (incrementWindow) the
+        // rate limiter needs; it is a drop-in PredisHandler otherwise.
+        'predis'    => AtomicPredisHandler::class,
         'redis'     => RedisHandler::class,
         'wincache'  => WincacheHandler::class,
     ];

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Libraries\Cache\AtomicPredisHandler;
+use CodeIgniter\Cache\Handlers\PredisHandler;
 use Config\Cache;
 use CodeIgniter\Test\CIUnitTestCase;
 
@@ -46,5 +48,19 @@ final class CacheConfigTest extends CIUnitTestCase
         $this->assertSame('redis', $config->redis['host']);
         $this->assertSame(6380, $config->redis['port']);
         $this->assertSame(1, $config->redis['timeout']);   // fail fast to the file backup
+    }
+
+    public function testPredisHandlerIsTheAtomicSubclass(): void
+    {
+        // The rate limiter's per-key window counter must be atomic on Redis, so the
+        // 'predis' alias resolves to our AtomicPredisHandler (a drop-in PredisHandler
+        // that adds incrementWindow()). Guards against the alias regressing to the
+        // stock handler, which would silently drop the limiter back to a racy
+        // read-modify-write under load.
+        $config = new Cache();
+
+        $this->assertSame(AtomicPredisHandler::class, $config->validHandlers['predis']);
+        $this->assertTrue(is_subclass_of(AtomicPredisHandler::class, PredisHandler::class));
+        $this->assertTrue(method_exists(AtomicPredisHandler::class, 'incrementWindow'));
     }
 }

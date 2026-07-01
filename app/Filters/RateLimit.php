@@ -6,10 +6,13 @@ namespace App\Filters;
 
 use App\Libraries\ApiProblem;
 use App\Libraries\AuthContext;
+use App\Libraries\Cache\AtomicPredisHandler;
 use App\Libraries\RateLimitState;
+use CodeIgniter\Cache\CacheInterface;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
+use Throwable;
 
 /**
  * Per-key fixed-window rate limiter.
@@ -38,15 +41,17 @@ class RateLimit implements FilterInterface
             return null; // 0 disables limiting for this key
         }
 
-        $window   = (int) floor(time() / self::WINDOW);
-        $bucket   = "ratelimit_{$keyId}_{$window}"; // ':' is reserved in CI cache keys
-        $resetAt  = ($window + 1) * self::WINDOW;
-        $cache    = service('cache');
-        $count    = (int) $cache->get($bucket);
+        $window  = (int) floor(time() / self::WINDOW);
+        $bucket  = "ratelimit_{$keyId}_{$window}"; // ':' is reserved in CI cache keys
+        $resetAt = ($window + 1) * self::WINDOW;
 
-        if ($count >= $limit) {
-            RateLimitState::set($limit, 0, $resetAt);
+        // Count this request atomically (see hit()). A count > limit means the window
+        // is already spent, so this one is rejected.
+        $count     = $this->hit(service('cache'), $bucket);
+        $remaining = max(0, $limit - $count);
+        RateLimitState::set($limit, $remaining, $resetAt);
 
+        if ($count > $limit) {
             return ApiProblem::respond(429, 'Rate limit exceeded.')
                 ->setHeader('Retry-After', (string) max(1, $resetAt - time()))
                 ->setHeader('X-RateLimit-Limit', (string) $limit)
@@ -54,11 +59,32 @@ class RateLimit implements FilterInterface
                 ->setHeader('X-RateLimit-Reset', (string) $resetAt);
         }
 
-        $count++;
-        $cache->save($bucket, $count, self::WINDOW);
-        RateLimitState::set($limit, max(0, $limit - $count), $resetAt);
-
         return null;
+    }
+
+    /**
+     * Increment the window counter and return the new count.
+     *
+     * On Redis the whole thing is one atomic Lua step, so a concurrent burst cannot
+     * race past the limit. On the file backend (dev/tests) it degrades to a
+     * read-modify-write — adequate at single-process concurrency, and identical in
+     * observable behaviour. A legacy hash-typed bucket left over across a deploy (or
+     * any Redis hiccup) makes the atomic call throw; we fall back rather than 500.
+     */
+    private function hit(CacheInterface $cache, string $bucket): int
+    {
+        if ($cache instanceof AtomicPredisHandler) {
+            try {
+                return $cache->incrementWindow($bucket, self::WINDOW);
+            } catch (Throwable) {
+                // fall through to the read-modify-write path
+            }
+        }
+
+        $count = (int) $cache->get($bucket) + 1;
+        $cache->save($bucket, $count, self::WINDOW);
+
+        return $count;
     }
 
     public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)

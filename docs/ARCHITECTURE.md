@@ -368,7 +368,19 @@ and busts the Redis cache. No key secret is ever logged or retrievable after cre
 > (`api_keys.rate_limit`, e.g. `key:create --rate-limit N`). On exceed → `429` + `Retry-After`. The
 > full trio `X-RateLimit-Limit` / `X-RateLimit-Remaining` / `X-RateLimit-Reset` (epoch second the window
 > frees up) rides on **every** response, so an n8n workflow can self-throttle proactively instead of only
-> reacting to a `429`. Each request is also logged to `api_request_log` by the `UsageTracker`
+> reacting to a `429`.
+>
+> **The window counter is atomic** so the limit actually holds under a concurrent burst (an exposed
+> service, or an n8n fan-out) — the case a DoS guard exists for. The framework's Predis `increment()`
+> is unusable here (it `HINCRBY`s a `data` field that `get()`/`save()` never read, and sets no TTL), so
+> the limiter used to do a `get()`→`+1`→`save()` read-modify-write that races: N simultaneous requests
+> all read the same count and overwrite it, slipping past the cap. `App\Libraries\Cache\AtomicPredisHandler`
+> (the `predis` alias resolves to it) adds `incrementWindow()`, doing `INCRBY` + first-hit `EXPIRE` in one
+> server-side **Lua** step on the cache service's already-persistent connection — exact no matter how many
+> requests land at once. The file backend (dev/tests) keeps the read-modify-write, which is fine at its
+> single-process concurrency and observably identical. **Verified** in the container: a 25-way parallel
+> burst against a `--rate-limit 15` key lets **exactly 15** through and `429`s the rest (a racy counter
+> leaks extra `200`s). `CacheConfigTest` guards the alias. Each request is also logged to `api_request_log` by the `UsageTracker`
 > after-filter (one append-only row per request — no contention). It also stamps the key's
 > `last_used_at`, but **throttled to at most once per 60 s per key** via a short cache marker: an
 > unthrottled UPDATE of the same `api_keys` row on every request is write amplification and row-lock
