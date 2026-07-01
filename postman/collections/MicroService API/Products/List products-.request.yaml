@@ -1,0 +1,38 @@
+$kind: http-request
+name: List products.
+description: "List products. Scope: products:read."
+url: "{{baseUrl}}/api/v1/products"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+  - key: If-None-Match
+    value: ""
+    disabled: true
+    description: Optional. Paste a prior ETag to get 304 Not Modified when unchanged.
+queryParams:
+  - key: page
+    value: ""
+    disabled: true
+    description: Page number (1-based).
+  - key: perPage
+    value: ""
+    disabled: true
+    description: Items per page (capped per resource).
+  - key: cursor
+    value: ""
+    disabled: true
+    description: Opt into keyset pagination (stable, index-fast, ideal for n8n). Send the param empty to start, then follow meta.pagination.nextCursor until it is null. Iterates by id; combine only with sort=id / -id.
+  - key: sort
+    value: ""
+    disabled: true
+    description: 'Sort by one or more columns, comma-separated (e.g. -price,name); prefix "-" for descending. Allowed: sku, name, price, created_at (and id). Any other column is rejected with 400 (not silently ignored).'
+  - key: fields
+    value: ""
+    disabled: true
+    description: "Comma-separated sparse fieldset. Allowed: id, sku, name, price, status, created_at, updated_at."
+  - key: filter[sku]
+    value: ""
+    disabled: true
+    description: "Filter. Columns: sku, status, price. Operators: eq, ne, gt, gte, lt, lte, like, in, nin (e.g. filter[col][gte]=10). Numeric columns require numeric values (a non-numeric value is rejected with 400, never coerced); for like, % and _ match literally."
+order: 1000

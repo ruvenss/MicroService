@@ -1,0 +1,30 @@
+$kind: http-request
+name: List archived (deleted) rows.
+description: "List archived (deleted) rows. Scope: archive:read."
+url: "{{baseUrl}}/api/v1/_archive"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+  - key: If-None-Match
+    value: ""
+    disabled: true
+    description: Optional. Paste a prior ETag to get 304 Not Modified when unchanged.
+queryParams:
+  - key: resource
+    value: ""
+    disabled: true
+    description: Optional resource filter.
+  - key: restored
+    value: ""
+    disabled: true
+    description: "Filter by restoration state: false = still-deleted (restorable), true = already restored. Omit for all."
+  - key: page
+    value: ""
+    disabled: true
+    description: Page number (1-based).
+  - key: perPage
+    value: ""
+    disabled: true
+    description: Items per page (capped per resource).
+order: 1000

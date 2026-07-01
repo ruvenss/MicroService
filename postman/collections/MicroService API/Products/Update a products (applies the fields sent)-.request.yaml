@@ -1,0 +1,28 @@
+$kind: http-request
+name: Update a products (applies the fields sent).
+description: "Update a products (applies the fields sent). Scope: products:write."
+url: "{{baseUrl}}/api/v1/products/{{productsId}}"
+method: PATCH
+headers:
+  - key: Accept
+    value: application/json
+  - key: Idempotency-Key
+    value: ""
+    disabled: true
+    description: Optional. Retries with the same key replay the first response (n8n-safe).
+  - key: If-Match
+    value: ""
+    disabled: true
+    description: Optional. Paste the ETag you fetched; the write returns 412 if the record changed since (optimistic concurrency).
+  - key: Content-Type
+    value: application/json
+body:
+  type: text
+  content: |-
+    {
+        "sku": "sku",
+        "name": "name",
+        "price": 9.99,
+        "status": "active"
+    }
+order: 6000

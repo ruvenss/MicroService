@@ -1,0 +1,24 @@
+$kind: http-request
+name: "Upsert products by `sku` (create-or-update): send one object or a JSON array; each item matched on sku is updated, others created (all-or-nothing, max 100). meta: {upserted, created, updated}."
+description: "Upsert products by `sku` (create-or-update): send one object or a JSON array; each item matched on sku is updated, others created (all-or-nothing, max 100). meta: {upserted, created, updated}. Scope: products:write."
+url: "{{baseUrl}}/api/v1/products"
+method: PUT
+headers:
+  - key: Accept
+    value: application/json
+  - key: Idempotency-Key
+    value: ""
+    disabled: true
+    description: Optional. Retries with the same key replay the first response (n8n-safe).
+  - key: Content-Type
+    value: application/json
+body:
+  type: text
+  content: |-
+    {
+        "sku": "sku",
+        "name": "name",
+        "price": 9.99,
+        "status": "active"
+    }
+order: 9000

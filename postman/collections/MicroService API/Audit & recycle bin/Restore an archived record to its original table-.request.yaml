@@ -1,0 +1,13 @@
+$kind: http-request
+name: Restore an archived record to its original table.
+description: "Restore an archived record to its original table. Scope: archive:write."
+url: "{{baseUrl}}/api/v1/_archive/{{archiveId}}/restore"
+method: POST
+headers:
+  - key: Accept
+    value: application/json
+  - key: Idempotency-Key
+    value: ""
+    disabled: true
+    description: Optional. Retries with the same key replay the first response (n8n-safe).
+order: 3000

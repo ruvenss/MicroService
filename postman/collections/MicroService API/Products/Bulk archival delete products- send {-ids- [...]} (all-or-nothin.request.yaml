@@ -1,0 +1,21 @@
+$kind: http-request
+name: 'Bulk archival delete products: send {"ids": [...]} (all-or-nothing, max 100, restorable via the recycle bin).'
+description: 'Bulk archival delete products: send {"ids": [...]} (all-or-nothing, max 100, restorable via the recycle bin). Scope: products:delete.'
+url: "{{baseUrl}}/api/v1/products"
+method: DELETE
+headers:
+  - key: Accept
+    value: application/json
+  - key: Idempotency-Key
+    value: ""
+    disabled: true
+    description: Optional. Retries with the same key replay the first response (n8n-safe).
+  - key: Content-Type
+    value: application/json
+body:
+  type: text
+  content: |-
+    {
+        "ids": ["1", "2"]
+    }
+order: 4000

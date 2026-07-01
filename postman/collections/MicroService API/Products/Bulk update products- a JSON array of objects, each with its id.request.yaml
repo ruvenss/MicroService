@@ -1,0 +1,27 @@
+$kind: http-request
+name: "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100)."
+description: "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100). Scope: products:write."
+url: "{{baseUrl}}/api/v1/products"
+method: PATCH
+headers:
+  - key: Accept
+    value: application/json
+  - key: Idempotency-Key
+    value: ""
+    disabled: true
+    description: Optional. Retries with the same key replay the first response (n8n-safe).
+  - key: Content-Type
+    value: application/json
+body:
+  type: text
+  content: |-
+    [
+        {
+            "id": "1",
+            "sku": "sku",
+            "name": "name",
+            "price": 9.99,
+            "status": "active"
+        }
+    ]
+order: 3000

@@ -1,0 +1,13 @@
+$kind: collection
+description: "Generated from the resource registry (php spark docs:generate). Set the `baseUrl` and `apiKey` collection variables. Mint a key with `php spark key:create`. Bearer auth is inherited by every request except health. Success: {data, meta}; errors: RFC 9457 problem+json; rate limits via X-RateLimit-* / 429; reads carry an ETag (resend as If-None-Match for 304); responses carry no PHP/CodeIgniter/Apache fingerprint."
+variables:
+  baseUrl: http://localhost:8080
+  apiKey: ""
+  archiveId: ""
+  productsId: ""
+auth:
+  - id: f0f8723e-e49c-474d-8014-be047f3cbcbf
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{apiKey}}"
