@@ -53,7 +53,10 @@ final class WebhookDispatcher
             $recordId   = $event->row[$pk] ?? null;
 
             $eventKey = $event->resource . '.' . $event->action;
-            $payload  = (string) json_encode([
+            // Raw UTF-8 / unescaped slashes, matching the API responses (Config\Format),
+            // so the webhook `data` n8n receives is byte-for-byte the shape of a live GET
+            // — not \u-escaped. The HMAC signature is computed over these same bytes.
+            $payload = (string) json_encode([
                 'event'     => $eventKey,
                 'resource'  => $event->resource,
                 'action'    => $event->action,
@@ -62,7 +65,7 @@ final class WebhookDispatcher
                 'previous'  => $event->action === 'afterUpdate' ? $event->data : null,
                 'requestId' => RequestContext::id(),
                 'timestamp' => Timestamp::now(),
-            ]);
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             $model = new WebhookOutboxModel();
 

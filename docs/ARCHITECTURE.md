@@ -993,7 +993,10 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   off the resource's primary key). The payload's **`data`** (and, on update, **`previous`**) is typed
   through the resource's casts at the single enqueue choke point, so **every** event — create, update
   *and delete* — reaches n8n in the same int/float/bool + ISO-8601-`Z` shape as a live `GET` (delete
-  `data` and update `previous` were previously raw MySQLi strings). Covered by `WebhookTest`.
+  `data` and update `previous` were previously raw MySQLi strings). The payload is encoded with the same
+  `JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES` flags as the API responses, so international text and
+  emoji arrive as raw UTF-8 (not `\u`-escaped); the HMAC signature is computed over those same bytes.
+  Covered by `WebhookTest`.
   **No double-delivery under concurrency:** `dispatch()` first *claims* a batch with a single row-locked
   `UPDATE … SET status='dispatching', claim_token=? … ORDER BY id LIMIT n`, so overlapping
   `webhooks:dispatch` runs partition the work and never POST the same row twice. The claim is released

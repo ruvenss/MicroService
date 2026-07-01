@@ -75,6 +75,24 @@ final class WebhookTest extends FeatureTestCase
         $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $payload['timestamp']);
     }
 
+    public function testWebhookPayloadEmitsRawUtf8LikeTheApiResponses(): void
+    {
+        // The webhook `data` n8n receives must be raw UTF-8 / unescaped slashes, the
+        // same wire format as a live GET — not \u-escaped. Assert on the stored
+        // payload_json bytes (what gets POSTed and signed).
+        json_decode((string) $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'WH-UTF/1', 'name' => 'Café ☕', 'price' => '1.00'])
+            ->response()->getBody(), true);
+
+        $payload   = (string) (new WebhookOutboxModel())->where('event', 'products.afterCreate')->first()['payload_json'];
+        $backslash = chr(92);
+
+        $this->assertStringContainsString('Café ☕', $payload);          // raw UTF-8
+        $this->assertStringContainsString('WH-UTF/1', $payload);          // unescaped slash
+        $this->assertStringNotContainsString($backslash . 'u', $payload); // no \uXXXX
+        $this->assertStringNotContainsString($backslash . '/', $payload); // no \/
+    }
+
     public function testDeleteDataAndUpdatePreviousAreTypedLikeTheLiveApi(): void
     {
         // Every webhook payload an n8n workflow receives must be typed like a live GET:
