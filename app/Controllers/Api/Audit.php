@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers\Api;
 
 use App\Libraries\ResponseEnvelope;
+use App\Libraries\Timestamp;
 use App\Models\AuditLogModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -56,7 +57,7 @@ class Audit extends ApiController
             'before'     => $r['before_json'] !== null ? json_decode((string) $r['before_json'], true) : null,
             'after'      => $r['after_json'] !== null ? json_decode((string) $r['after_json'], true) : null,
             'changed'    => $r['changed_json'] !== null ? json_decode((string) $r['changed_json'], true) : null,
-            'created_at' => $r['created_at'],
+            'created_at' => Timestamp::iso($r['created_at']),
         ], $rows);
 
         return $this->response->setJSON(ResponseEnvelope::collection($data, $page, $perPage, $total));

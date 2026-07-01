@@ -15,6 +15,7 @@ use App\Libraries\RequestContext;
 use App\Libraries\ResourceDefinition;
 use App\Libraries\ResourceRegistry;
 use App\Libraries\ResponseEnvelope;
+use App\Libraries\Timestamp;
 use App\Libraries\WebhookDispatcher;
 use App\Models\ArchivedRecordModel;
 use App\Models\GenericResourceModel;
@@ -908,26 +909,12 @@ class ResourceController extends BaseController
                 'float'    => (float) $row[$field],
                 'bool'     => (bool) $row[$field],
                 'string'   => (string) $row[$field],
-                'datetime' => self::toIso8601((string) $row[$field]),
+                'datetime' => Timestamp::iso((string) $row[$field]),
                 default    => $row[$field],
             };
         }
 
         return $row;
-    }
-
-    /**
-     * Format a stored (UTC) DATETIME string as unambiguous ISO-8601 with a `Z`,
-     * e.g. `2026-07-01 10:19:30` → `2026-07-01T10:19:30Z`, so n8n's date handling
-     * never has to guess the zone. Unparseable values pass through unchanged.
-     */
-    private static function toIso8601(string $value): string
-    {
-        try {
-            return (new \DateTimeImmutable($value, new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s\Z');
-        } catch (\Exception) {
-            return $value;
-        }
     }
 
     /**

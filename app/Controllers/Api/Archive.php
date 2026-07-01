@@ -9,6 +9,7 @@ use App\Libraries\WebhookDispatcher;
 use App\Libraries\AuditWriter;
 use App\Libraries\ResourceRegistry;
 use App\Libraries\ResponseEnvelope;
+use App\Libraries\Timestamp;
 use App\Models\ArchivedRecordModel;
 use CodeIgniter\Events\Events;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -53,8 +54,8 @@ class Archive extends ApiController
             'resource'    => $r['resource'],
             'record_id'   => $r['record_id'],
             'deleted_by'  => $r['deleted_by'] !== null ? (int) $r['deleted_by'] : null,
-            'deleted_at'  => $r['deleted_at'],
-            'restored_at' => $r['restored_at'],
+            'deleted_at'  => Timestamp::iso($r['deleted_at']),
+            'restored_at' => Timestamp::iso($r['restored_at']),
         ], $rows);
 
         return $this->response->setJSON(ResponseEnvelope::collection($data, $page, $perPage, $total));
@@ -77,8 +78,8 @@ class Archive extends ApiController
             'record_id'   => $row['record_id'],
             'payload'     => json_decode((string) $row['payload_json'], true),
             'deleted_by'  => $row['deleted_by'] !== null ? (int) $row['deleted_by'] : null,
-            'deleted_at'  => $row['deleted_at'],
-            'restored_at' => $row['restored_at'],
+            'deleted_at'  => Timestamp::iso($row['deleted_at']),
+            'restored_at' => Timestamp::iso($row['restored_at']),
         ]));
     }
 

@@ -903,7 +903,10 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   responses carry real JSON types instead of MySQLi's all-strings — n8n maps typed fields without
   conversion nodes. The **`datetime`** cast emits **ISO-8601 UTC** (`2026-07-01T10:19:30Z`) rather than a
   bare `Y-m-d H:i:s`, so n8n's date handling never has to guess the zone (the sample `products` casts
-  `created_at`/`updated_at`). Covered by `OutputCastsTest`.
+  `created_at`/`updated_at`). The **meta endpoints** (`_audit`, `_archive`, `_me`) format their
+  timestamps through the same `App\Libraries\Timestamp` helper, so **every** timestamp on the wire — CRUD
+  data, the `_audit?sinceId` change feed, the recycle bin, key metadata — is consistent ISO-8601 UTC.
+  Covered by `OutputCastsTest`, `TimestampTest`, `AuditTrailTest`.
 - **`GET /api/v1/_me`** lets a workflow introspect its own key (name, scopes, rate limit, expiry — never
   the secret) to verify connectivity and permissions before running.
 - **Unauthenticated `/api/v1/health`** for n8n schedule/health checks and uptime polling.

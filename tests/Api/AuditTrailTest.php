@@ -94,4 +94,13 @@ final class AuditTrailTest extends FeatureTestCase
     {
         $this->withHeaders($this->authHeaders(['audit:read']))->get('api/v1/_audit?sinceId=abc')->assertStatus(400);
     }
+
+    public function testAuditTimestampsAreIso8601(): void
+    {
+        $headers = $this->authHeaders(['products:*', 'audit:read']);
+        $this->createProduct($headers);
+
+        $entry = json_decode((string) $this->withHeaders($headers)->get('api/v1/_audit')->response()->getBody(), true)['data'][0];
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $entry['created_at']);
+    }
 }

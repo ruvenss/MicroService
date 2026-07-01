@@ -7,6 +7,7 @@ namespace App\Controllers\Api;
 use App\Controllers\BaseController;
 use App\Libraries\AuthContext;
 use App\Libraries\ResponseEnvelope;
+use App\Libraries\Timestamp;
 use App\Models\ApiKeyModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -25,8 +26,8 @@ class Me extends BaseController
             'name'       => $key['name'] ?? null,
             'scopes'     => AuthContext::scopes(),
             'rateLimit'  => isset($key['rate_limit']) ? (int) $key['rate_limit'] : null,
-            'expiresAt'  => $key['expires_at'] ?? null,
-            'lastUsedAt' => $key['last_used_at'] ?? null,
+            'expiresAt'  => Timestamp::iso($key['expires_at'] ?? null),
+            'lastUsedAt' => Timestamp::iso($key['last_used_at'] ?? null),
         ]));
     }
 }
