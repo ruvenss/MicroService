@@ -25,6 +25,7 @@ final class ProblemDetails
         405 => 'Method Not Allowed',
         406 => 'Not Acceptable',
         409 => 'Conflict',
+        412 => 'Precondition Failed',
         413 => 'Content Too Large',
         415 => 'Unsupported Media Type',
         422 => 'Unprocessable Entity',

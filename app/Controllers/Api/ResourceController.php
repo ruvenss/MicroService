@@ -612,6 +612,11 @@ class ResourceController extends BaseController
             return $this->notFound();
         }
 
+        $precondition = $this->ifMatchFails($before, $definition);
+        if ($precondition !== null) {
+            return $precondition;
+        }
+
         $data = $this->request->getJSON(true);
         if (! is_array($data)) {
             return $this->problem(400, 'Request body must be a JSON object.');
@@ -654,6 +659,11 @@ class ResourceController extends BaseController
         $row   = $model->find($id);
         if ($row === null) {
             return $this->notFound();
+        }
+
+        $precondition = $this->ifMatchFails($row, $definition);
+        if ($precondition !== null) {
+            return $precondition;
         }
 
         $veto = $this->fireBeforeDelete($definition, $this->hide($row, $definition));
@@ -717,6 +727,34 @@ class ResourceController extends BaseController
         }
 
         return false;
+    }
+
+    /** The ETag a GET of this single row would carry (same recipe as respondCacheable). */
+    private function etagForResource(array $row, ResourceDefinition $definition): string
+    {
+        return '"' . sha1((string) json_encode(ResponseEnvelope::wrap($this->present($row, $definition)))) . '"';
+    }
+
+    /**
+     * Optimistic concurrency (RFC 9110): if the request carries `If-Match`, the
+     * current row's ETag must match, else 412 — so two n8n workflows editing the
+     * same record can't silently clobber each other (lost update). No header =
+     * unconditional; `If-Match: *` matches any existing row.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function ifMatchFails(array $row, ResourceDefinition $definition): ?ResponseInterface
+    {
+        $ifMatch = $this->request->getHeaderLine('If-Match');
+        if ($ifMatch === '' || trim($ifMatch) === '*') {
+            return null;
+        }
+
+        if ($this->etagMatches($ifMatch, $this->etagForResource($row, $definition))) {
+            return null;
+        }
+
+        return $this->problem(412, 'The resource has changed since it was fetched (If-Match precondition failed).');
     }
 
     /**

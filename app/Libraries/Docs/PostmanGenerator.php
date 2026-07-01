@@ -111,6 +111,14 @@ final class PostmanGenerator
                 'disabled'    => true,
             ];
         }
+        if (in_array($ep['method'], ['PUT', 'PATCH', 'DELETE'], true) && in_array('id', $ep['pathParams'], true)) {
+            $request['header'][] = [
+                'key'         => 'If-Match',
+                'value'       => '',
+                'description' => 'Optional. Paste the ETag you fetched; the write returns 412 if the record changed since (optimistic concurrency).',
+                'disabled'    => true,
+            ];
+        }
 
         $bodyExample = $ep['bodyExample'] ?? null;
         if (is_array($ep['body'])) {

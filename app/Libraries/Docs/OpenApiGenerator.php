@@ -93,6 +93,15 @@ final class OpenApiGenerator
                 'schema'      => ['type' => 'string'],
             ];
         }
+        if (in_array($ep['method'], ['PUT', 'PATCH', 'DELETE'], true) && in_array('id', $ep['pathParams'], true)) {
+            $params[] = [
+                'name'        => 'If-Match',
+                'in'          => 'header',
+                'required'    => false,
+                'description' => 'Optional. Pass the ETag you fetched; the write is refused with 412 if the record changed since (optimistic concurrency — prevents lost updates).',
+                'schema'      => ['type' => 'string'],
+            ];
+        }
         if ($ep['method'] === 'GET') {
             $params[] = [
                 'name'        => 'If-None-Match',
@@ -184,6 +193,9 @@ final class OpenApiGenerator
         }
         if ($ep['method'] === 'DELETE' && $ep['auth']) {
             $errors[] = 409; // a plugin (resource.beforeDelete) may veto the delete
+        }
+        if (in_array($ep['method'], ['PUT', 'PATCH', 'DELETE'], true) && in_array('id', $ep['pathParams'], true)) {
+            $errors[] = 412; // If-Match optimistic-concurrency precondition can fail
         }
         sort($errors);
         foreach ($errors as $code) {

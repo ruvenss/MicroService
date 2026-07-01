@@ -2360,6 +2360,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass the ETag you fetched; the write is refused with 412 if the record changed since (optimistic concurrency \u2014 prevents lost updates).",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -2467,6 +2476,16 @@
                         }
                     },
                     "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
                         "description": "Error",
                         "content": {
                             "application/problem+json": {
@@ -2562,6 +2581,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass the ETag you fetched; the write is refused with 412 if the record changed since (optimistic concurrency \u2014 prevents lost updates).",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -2678,6 +2706,16 @@
                             }
                         }
                     },
+                    "412": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
                     "413": {
                         "description": "Error",
                         "content": {
@@ -2764,6 +2802,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass the ETag you fetched; the write is refused with 412 if the record changed since (optimistic concurrency \u2014 prevents lost updates).",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -2837,6 +2884,16 @@
                         }
                     },
                     "409": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
                         "description": "Error",
                         "content": {
                             "application/problem+json": {

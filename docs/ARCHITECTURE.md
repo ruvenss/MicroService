@@ -195,6 +195,11 @@ authorized). Covered by `HeadRequestTest`.
   hash of the response body (no stored state, no engine fingerprint). Resend it as `If-None-Match`
   and, when nothing changed, the server replies `304 Not Modified` with an empty body. `If-None-Match: *`
   always matches. This lets an n8n schedule poll cheaply — only changed data crosses the wire.
+- **Conditional writes (optimistic concurrency):** an item `PATCH`/`PUT`/`DELETE` may carry `If-Match`
+  with an ETag fetched earlier; if the record changed since, the write is refused with `412 Precondition
+  Failed` (RFC 9110) and nothing is applied — so two n8n workflows editing the same record can't
+  silently clobber each other (lost update). No `If-Match` = unconditional (last-write-wins);
+  `If-Match: *` requires only that the record still exist. Covered by `OptimisticConcurrencyTest`.
 
 ## 6. Response & error contract
 
