@@ -22,7 +22,15 @@ class MakePlugin extends BaseCommand
 
     public function run(array $params)
     {
-        $arg = $params[0] ?? CLI::prompt('Plugin (Vendor/Name)');
+        // The Vendor/Name is a required argument. Previously a missing arg fell back to
+        // CLI::prompt(), which faults with a TypeError on EOF (a scripted / non-TTY run
+        // such as CI or a piped invocation) instead of a helpful message.
+        $arg = $params[0] ?? '';
+        if ($arg === '') {
+            CLI::error('Provide the plugin name: php spark make:plugin Vendor/Name (e.g. Acme/Billing).');
+
+            return EXIT_ERROR;
+        }
 
         try {
             $files = PluginScaffolder::files((string) $arg);
