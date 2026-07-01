@@ -881,7 +881,13 @@ class ResourceController extends BaseController
         // have undefined order and offset pagination can skip/duplicate rows across
         // pages. Harmless when the caller already sorts by the primary key.
         if (! isset($orders[$definition->primaryKey])) {
-            $orders[$definition->primaryKey] = [$definition->primaryKey, 'ASC'];
+            // Match the tiebreaker to the least-significant sort column's direction so
+            // a `(col, id)` index satisfies the whole ORDER BY in one (possibly reverse)
+            // scan rather than a filesort — e.g. the default `-created_at` becomes
+            // `created_at DESC, id DESC`, index-backed. Any consistent direction gives a
+            // stable total order; aligning it just makes the common single-column sort fast.
+            $lastDirection                   = end($orders)[1];
+            $orders[$definition->primaryKey] = [$definition->primaryKey, $lastDirection];
         }
 
         return array_values($orders);

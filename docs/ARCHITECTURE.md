@@ -193,8 +193,16 @@ authorized). Covered by `HeadRequestTest`.
   workflow that relies on the order) never receives default-ordered rows while believing its sort applied.
   The **primary key is always a valid sort target and is always appended as a final tiebreaker**, so rows
   equal on a non-unique sort column (e.g. `price`, `created_at`) get a deterministic total order — offset
-  pagination never skips or duplicates a row at a page boundary. If no `sort` is given the resource's
-  `defaultSort` applies. Covered by `QueryFilterTest`, `QueryParserTest`.
+  pagination never skips or duplicates a row at a page boundary. The tiebreaker **inherits the direction of
+  the least-significant sort column** (so the default `-created_at` becomes `created_at DESC, id DESC`, not
+  `… id ASC`): a mixed-direction order can't use an ascending `(col, id)` index and would **filesort**, so
+  aligning the direction lets a single (possibly backward) index scan satisfy the whole `ORDER BY`. If no
+  `sort` is given the resource's `defaultSort` applies. Covered by `QueryFilterTest`, `QueryParserTest`.
+- **Indexing convention:** every column a resource exposes as `filterable`/`sortable` should have a
+  supporting index, or the generic engine full-scans/filesorts it. The sample `products` table indexes
+  `sku` (unique), `status`, `price`, `name`, and `(created_at, id)` (for the default sort + its tiebreaker)
+  — see the `AddProductsQueryIndexes` migration; `ProductsIndexTest` guards that every exposed column is
+  index-backed. Plugin authors should follow the same rule for their tables.
 - **Filtering:** `?filter[status]=active&filter[price][gte]=100`. Operators:
   `eq` (also the bare `filter[col]=v` shorthand), `ne`, `gt`, `gte`, `lt`, `lte`, `like` (contains),
   `in` / `nin` (comma-separated set membership / exclusion). Combine two on one column for a range
