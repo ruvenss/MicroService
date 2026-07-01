@@ -132,13 +132,16 @@ final class PostmanGenerator
         $item = ['name' => $ep['summary'], 'request' => $request, 'response' => []];
 
         if ($ep['captureId'] === true && $idVar !== null) {
+            // Capture the resource's actual primary key (not a hardcoded `id`), so
+            // the create → show/update/delete chain works for any keyed resource.
+            $pk = $ep['primaryKey'] ?? 'id';
             $item['event'] = [[
                 'listen' => 'test',
                 'script' => [
                     'type' => 'text/javascript',
                     'exec' => [
                         "if (pm.response.code === 201) {",
-                        "    pm.collectionVariables.set('{$idVar}', pm.response.json().data.id);",
+                        "    pm.collectionVariables.set('{$idVar}', pm.response.json().data.{$pk});",
                         '}',
                     ],
                 ],

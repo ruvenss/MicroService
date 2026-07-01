@@ -121,6 +121,7 @@ final class EndpointCatalog
                 'operationId' => $def->slug . 'Create', 'summary' => 'Create a ' . $def->slug . ' record (send a JSON array of objects to bulk-create, all-or-nothing).',
                 'auth' => true, 'scope' => $def->slug . ':write', 'pathParams' => [], 'query' => [],
                 'body' => self::body($def), 'success' => 201, 'successKind' => 'item', 'captureId' => true,
+                'primaryKey' => $def->primaryKey,
             ],
             [
                 'tag' => $tag, 'resource' => $def->slug, 'method' => 'PATCH', 'path' => $base,

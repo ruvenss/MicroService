@@ -243,6 +243,29 @@ final class WebhookTest extends FeatureTestCase
         $this->assertSame(0, (new WebhookOutboxModel())->countAllResults());
     }
 
+    public function testWebhookUsesResourcePrimaryKeyNotHardcodedId(): void
+    {
+        // A resource keyed on 'code', not 'id' — the engine is generic over primaryKey,
+        // so the notification must carry the code, not a null 'id'.
+        config('Resources')->resources['widgets'] = [
+            'table' => 'widgets', 'primaryKey' => 'code', 'fillable' => ['code', 'name'],
+            'rules' => ['create' => [], 'update' => []],
+            'sortable' => [], 'filterable' => [], 'perPage' => ['default' => 25, 'max' => 100],
+            'timestamps' => false,
+        ];
+
+        try {
+            WebhookDispatcher::enqueue(new \App\Core\Plugin\ResourceEvent('widgets', 'afterCreate', row: ['code' => 'W-1', 'name' => 'Gadget']));
+
+            $row = (new WebhookOutboxModel())->where('resource', 'widgets')->first();
+            $this->assertNotNull($row);
+            $this->assertSame('W-1', $row['record_id']);                                   // not null
+            $this->assertSame('W-1', json_decode((string) $row['payload_json'], true)['id']); // payload id = the code
+        } finally {
+            unset(config('Resources')->resources['widgets']);
+        }
+    }
+
     public function testDeadLetteredRowIsSkippedUntilReplayed(): void
     {
         $this->createProduct('WH-DL');

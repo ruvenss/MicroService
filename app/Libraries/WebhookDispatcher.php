@@ -45,12 +45,19 @@ final class WebhookDispatcher
                 return;
             }
 
+            // Use the resource's declared primary key, not a hardcoded 'id', so
+            // the notification carries the record id even for resources keyed on
+            // something else (the engine is generic over primaryKey).
+            $definition = ResourceRegistry::instance()->get($event->resource);
+            $pk         = $definition !== null ? $definition->primaryKey : 'id';
+            $recordId   = $event->row[$pk] ?? null;
+
             $eventKey = $event->resource . '.' . $event->action;
             $payload  = (string) json_encode([
                 'event'     => $eventKey,
                 'resource'  => $event->resource,
                 'action'    => $event->action,
-                'id'        => $event->row['id'] ?? null,
+                'id'        => $recordId,
                 'data'      => $event->row,
                 'previous'  => $event->action === 'afterUpdate' ? $event->data : null,
                 'requestId' => RequestContext::id(),
@@ -67,7 +74,7 @@ final class WebhookDispatcher
                 $model->insert([
                     'event'        => $eventKey,
                     'resource'     => $event->resource,
-                    'record_id'    => isset($event->row['id']) ? (string) $event->row['id'] : null,
+                    'record_id'    => $recordId !== null ? (string) $recordId : null,
                     'target_url'   => $sub['url'],
                     'payload_json' => $payload,
                     'signature'    => $sub['secret'] !== '' ? hash_hmac('sha256', $payload, $sub['secret']) : '',

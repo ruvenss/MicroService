@@ -940,7 +940,11 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   Enqueue is DB-only on the request thread; delivery is out-of-band with retries (`maxAttempts`), so a
   slow/unavailable n8n never affects the API response. Subscriptions filter by
   `{resource}.{afterCreate|afterUpdate|afterDelete|afterRestore}` / wildcards. This is the service→n8n
-  push channel (n8n workflows triggered by data changes).
+  push channel (n8n workflows triggered by data changes). The payload's `id` (and the outbox
+  `record_id`) is the resource's **declared `primaryKey` value**, resolved from the registry — not a
+  hardcoded `id` — so notifications carry the real key even for resources keyed on something else (the
+  engine is generic over `primaryKey`; the Postman collection's create→reuse-id script is likewise keyed
+  off the resource's primary key). Covered by `WebhookTest`.
   **No double-delivery under concurrency:** `dispatch()` first *claims* a batch with a single row-locked
   `UPDATE … SET status='dispatching', claim_token=? … ORDER BY id LIMIT n`, so overlapping
   `webhooks:dispatch` runs partition the work and never POST the same row twice. The claim is released
