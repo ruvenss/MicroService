@@ -30,6 +30,9 @@ jobs:
       - name: Docs drift gate
         run: php spark docs:check
 
+      - name: Sealed-core guard
+        run: php spark guard:seal
+
   tests:
     name: PHPUnit (external MySQL)
     runs-on: ubuntu-latest

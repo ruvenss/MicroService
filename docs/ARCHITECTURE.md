@@ -526,7 +526,14 @@ to confirm indexing/retention; very high delete-volume resources may warrant a d
 > flips the manifest's `enabled` flag (case-insensitive match, idempotent pretty-printed rewrite) so an
 > operator never hand-edits JSON. Disabling drops the plugin's resources from the registry and from
 > regenerated docs on the next boot; data and migrations are left intact. Covered by `PluginToggleTest`.
-> **Still to come:** delete/restore event hooks, and the CI guard that fails a PR touching `app/`.
+>
+> **Sealed-core guard (implemented):** `php spark guard:seal` (run in CI next to stan/cs/docs, and
+> covered by `SealGuardTest`) enforces the invariant that keeps the core generic — **no file in `app/`
+> may reference a concrete plugin** (a `Plugins\<Vendor>` import or hard-coded namespace). The plugin
+> mechanism (the `Plugins\{$vendor}` template, `plugins/` glob discovery) is allowed; only a hard
+> dependency on a specific plugin fails. This is the runnable half of the seal — the complementary
+> "a feature PR must not touch `app/`" is a repo policy (protected path / core-change label).
+> **Still to come:** delete/restore *before* event hooks.
 
 **Delivery model — monorepo.** The core (`app/`) and all plugins (`plugins/`) live in a single
 repository. "Sealed core" is therefore enforced by **convention + CI guard** (a PR touching `app/`
