@@ -160,7 +160,7 @@ Base path: **`/api/v1`**. `{resource}` is the registry slug.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/v1/health` | liveness/readiness (DB + Redis ping) |
-| GET | `/api/v1/_resources` | discovery: list registered resources & their schema (auth required) |
+| GET | `/api/v1/_resources` | discovery: per resource — endpoint, output `fields`, writable `schema` (type + required per field), `sortable`/`filterable` + `operators`, `upsertKey`, and `perPage`, so an n8n workflow can auto-build create/update/upsert requests (auth required) |
 | GET | `/api/v1/openapi.json` | generated OpenAPI 3.1 spec derived from the registry |
 | GET | `/api/v1/_archive` | list archived (deleted) records — recycle bin (§14) |
 | GET | `/api/v1/_archive/{archiveId}` | view one archived record |
