@@ -942,6 +942,16 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
 
 - `expose_php = Off` in the container `php.ini` (so the SAPI never emits `X-Powered-By` in the first
   place); production `CI_ENVIRONMENT=production` disables verbose CI error pages.
+- `display_errors = Off` **and** `display_startup_errors = Off` — no PHP error (runtime or worker
+  startup) can ever reach a response; errors are logged, never shown.
+- **Shell/process functions disabled for the web workers:** the FPM pool sets
+  `php_admin_value[disable_functions] = exec,passthru,shell_exec,system,proc_open,popen,pcntl_exec`
+  (enforced — `ini_set` cannot undo `php_admin_value`). The generic engine is pure DB/cache/HTTP (Predis
+  uses stream sockets), so this costs nothing, but if a vulnerability ever reached code execution it
+  still could not spawn a shell — the "in case it is exposed" blast-radius limiter. It applies **only to
+  FPM**; spark/CLI (a separate `php` invocation) keeps full function access for migrations/tooling.
+  Verified in-container: `system()` is a fatal in a web request, `proc_open` still works under CLI.
+  `FpmHardeningTest` guards the config against regression.
 - Error responses are JSON/problem+json — no stack traces or framework branding leak in production.
 
 > **Tested:** `tests/Api/StealthHeadersTest.php` and `NotFoundTest.php` assert no PHP/CodeIgniter/
