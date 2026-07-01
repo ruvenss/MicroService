@@ -178,7 +178,11 @@ authorized). Covered by `HeadRequestTest`.
 
 - **Pagination:** two modes, same endpoint.
   - *Offset (default):* `?page=2&perPage=50` (perPage capped per resource). Meta returns
-    `page, perPage, total, totalPages`.
+    `page, perPage, total, totalPages`. **Deep offsets are capped** (`ResourceController::MAX_OFFSET`,
+    100 000 rows): a `?page=<huge>` past that is refused with `400` *before* any `COUNT`/scan, pointing
+    the client at cursor pagination. `OFFSET n` makes the DB walk and discard `n` rows per request, so an
+    uncapped deep offset on a large table is an amplification DoS if the service is exposed — keyset pays
+    no such cost, so normal browsing is unaffected while the pathology is bounded.
   - *Keyset/cursor (opt-in):* add a `cursor` param (empty to start), then follow
     `meta.pagination.nextCursor` until it is null. Iterates by the primary key with
     `WHERE pk > cursor` — no `OFFSET`/`COUNT`, so paging stays index-fast and never skips or

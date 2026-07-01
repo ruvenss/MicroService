@@ -109,6 +109,26 @@ final class CursorPaginationTest extends FeatureTestCase
         $this->assertArrayNotHasKey('nextCursor', $json['meta']['pagination']);
     }
 
+    public function testDeepOffsetIsRefusedAndSteeredToCursor(): void
+    {
+        // An unbounded OFFSET makes the DB walk+discard that many rows per request, so
+        // `?page=<huge>` on a large table is an amplification DoS on an exposed service.
+        // Past MAX_OFFSET the request is refused (before any COUNT/scan) with a 400 that
+        // names the scalable alternative — cursor pagination.
+        $this->seedProducts(1);
+
+        // MAX_OFFSET is 100000; perPage clamps to 100 → page 1002 = offset 100100.
+        $result = $this->withHeaders($this->auth)->get('api/v1/products?perPage=100&page=1002');
+        $result->assertStatus(400);
+
+        $json = json_decode((string) $result->response()->getBody(), true);
+        $this->assertStringContainsString('application/problem+json', $result->response()->getHeaderLine('Content-Type'));
+        $this->assertStringContainsString('cursor', strtolower($json['detail']));
+
+        // A normal (shallow) page is unaffected.
+        $this->withHeaders($this->auth)->get('api/v1/products?perPage=100&page=2')->assertStatus(200);
+    }
+
     public function testOffsetResponseCarriesRfc8288LinkHeader(): void
     {
         $this->seedProducts(5); // perPage 2 → 3 pages

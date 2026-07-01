@@ -300,7 +300,7 @@ final class EndpointCatalog
      */
     private static function pageParam(): array
     {
-        return ['name' => 'page', 'description' => 'Page number (1-based).'];
+        return ['name' => 'page', 'description' => 'Page number (1-based). Very deep offsets are rejected with 400 — switch to cursor pagination for deep result sets.'];
     }
 
     /**

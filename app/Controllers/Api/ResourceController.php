@@ -33,6 +33,16 @@ class ResourceController extends BaseController
     public const BULK_MAX = 100;
 
     /**
+     * Deepest OFFSET allowed for classic page/perPage pagination. Past this the
+     * request is refused with a 400 that points at cursor pagination — an unbounded
+     * `OFFSET n` makes the database walk and discard `n` rows per request, so a
+     * `?page=<huge>` against a large table is an amplification DoS if the service is
+     * exposed. Keyset (`?cursor=`) has no such cost and is the intended path for deep
+     * result sets, so normal browsing is unaffected while the pathology is capped.
+     */
+    public const MAX_OFFSET = 100000;
+
+    /**
      * JSON flags for the manually-encoded GET bodies (respondCacheable) and the
      * ETag hash, matching what CI4's setJSON uses for writes via Config\Format:
      * raw UTF-8 and unescaped slashes. Without this, reads escaped `café` → `café`
@@ -65,7 +75,18 @@ class ResourceController extends BaseController
             return $this->indexByCursor($definition, $model, $spec, $perPage);
         }
 
-        $page  = max((int) ($this->request->getGet('page') ?? 1), 1);
+        $page   = max((int) ($this->request->getGet('page') ?? 1), 1);
+        $offset = ($page - 1) * $perPage;
+        // Refuse a pathologically deep offset before touching the DB (no COUNT, no
+        // scan): OFFSET n discards n rows per request, so an exposed service could be
+        // amplified by `?page=<huge>` on a large table. Deep result sets belong on
+        // cursor pagination, which pays no such cost.
+        if ($offset > self::MAX_OFFSET) {
+            return $this->problem(
+                400,
+                'Result window is too deep for offset pagination. Use cursor pagination (add ?cursor= and follow meta.pagination.nextCursor) for deep result sets.',
+            );
+        }
         $total = $model->countAllResults(false);
 
         foreach ($this->sortColumns($definition) as [$column, $direction]) {
@@ -74,7 +95,7 @@ class ResourceController extends BaseController
         if ($spec->fields !== null) {
             $model->select($spec->fields);
         }
-        $rows = $model->findAll($perPage, ($page - 1) * $perPage);
+        $rows = $model->findAll($perPage, $offset);
 
         $rows = array_map(fn (array $row): array => $this->present($row, $definition), $rows);
 

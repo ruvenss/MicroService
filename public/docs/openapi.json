@@ -87,7 +87,7 @@
                         "name": "page",
                         "in": "query",
                         "required": false,
-                        "description": "Page number (1-based).",
+                        "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 switch to cursor pagination for deep result sets.",
                         "schema": {
                             "type": "string"
                         }
@@ -628,7 +628,7 @@
                         "name": "page",
                         "in": "query",
                         "required": false,
-                        "description": "Page number (1-based).",
+                        "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 switch to cursor pagination for deep result sets.",
                         "schema": {
                             "type": "string"
                         }
@@ -1261,7 +1261,7 @@
                         "name": "page",
                         "in": "query",
                         "required": false,
-                        "description": "Page number (1-based).",
+                        "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 switch to cursor pagination for deep result sets.",
                         "schema": {
                             "type": "string"
                         }
