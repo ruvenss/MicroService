@@ -97,4 +97,66 @@ final class PluginManager
     {
         return $this->manifests;
     }
+
+    /**
+     * Scan every plugin manifest (enabled or not) for tooling — `plugin:list`,
+     * `plugin:enable`, `plugin:disable`. Unlike discover(), this loads no classes,
+     * so it also sees disabled or broken plugins.
+     *
+     * @return list<array{path: string, name: string, version: string, namespace: string, enabled: bool, resources: list<string>}>
+     */
+    public static function catalog(): array
+    {
+        $base = ROOTPATH . 'plugins';
+        $out  = [];
+
+        foreach (glob($base . '/*/*/plugin.json') ?: [] as $path) {
+            $manifest = json_decode((string) @file_get_contents($path), true);
+            if (! is_array($manifest)) {
+                continue;
+            }
+            $resources = $manifest['provides']['resources'] ?? [];
+            $out[]     = [
+                'path'      => $path,
+                'name'      => (string) ($manifest['name'] ?? ''),
+                'version'   => (string) ($manifest['version'] ?? '?'),
+                'namespace' => (string) ($manifest['namespace'] ?? '?'),
+                'enabled'   => ($manifest['enabled'] ?? true) === true,
+                'resources' => is_array($resources) ? array_values($resources) : [],
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Flip a plugin's `enabled` flag in its manifest, matched by its `name`
+     * (e.g. `Sample/Catalog`, case-insensitively). Returns the updated catalog
+     * entry, or null when no such plugin exists. plugin.json is rewritten
+     * pretty-printed so it stays human- and diff-friendly. The change takes effect
+     * on the next boot (discovery reads the manifest at startup).
+     *
+     * @return array{path: string, name: string, version: string, namespace: string, enabled: bool, resources: list<string>}|null
+     */
+    public static function setEnabled(string $name, bool $enabled): ?array
+    {
+        foreach (self::catalog() as $entry) {
+            if (strcasecmp($entry['name'], $name) !== 0) {
+                continue;
+            }
+
+            $manifest            = json_decode((string) file_get_contents($entry['path']), true);
+            $manifest['enabled'] = $enabled;
+            file_put_contents(
+                $entry['path'],
+                json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n",
+            );
+
+            $entry['enabled'] = $enabled;
+
+            return $entry;
+        }
+
+        return null;
+    }
 }

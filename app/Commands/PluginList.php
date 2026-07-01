@@ -9,35 +9,35 @@ use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 
 /**
- * Lists discovered (enabled) plugins and what they contribute.
+ * Lists every plugin found under plugins/ — enabled and disabled — with what it
+ * contributes, so an operator can see what `plugin:enable`/`plugin:disable` act on.
  */
 class PluginList extends BaseCommand
 {
     protected $group       = 'Plugins';
     protected $name        = 'plugin:list';
-    protected $description = 'List enabled plugins and the resources they contribute.';
+    protected $description = 'List all plugins (enabled and disabled) and the resources they contribute.';
 
     public function run(array $params)
     {
-        $manifests = PluginManager::instance()->manifests();
+        $catalog = PluginManager::catalog();
 
-        if ($manifests === []) {
+        if ($catalog === []) {
             CLI::write('No plugins found under plugins/.', 'yellow');
 
             return;
         }
 
         $rows = [];
-        foreach ($manifests as $m) {
-            $resources = $m['provides']['resources'] ?? [];
-            $rows[]    = [
-                $m['name'] ?? '?',
-                $m['version'] ?? '?',
-                $m['namespace'] ?? '?',
-                is_array($resources) ? implode(', ', $resources) : '',
+        foreach ($catalog as $entry) {
+            $rows[] = [
+                $entry['name'] !== '' ? $entry['name'] : '?',
+                $entry['version'],
+                $entry['enabled'] ? CLI::color('enabled', 'green') : CLI::color('disabled', 'yellow'),
+                implode(', ', $entry['resources']),
             ];
         }
 
-        CLI::table($rows, ['Plugin', 'Version', 'Namespace', 'Resources']);
+        CLI::table($rows, ['Plugin', 'Version', 'Status', 'Resources']);
     }
 }

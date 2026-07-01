@@ -521,8 +521,12 @@ to confirm indexing/retention; very high delete-volume resources may warrant a d
 > models, and views — not just the resource definition. **`php spark make:plugin Vendor/Name`**
 > scaffolds a working plugin (manifest, `Plugin` class registering a starter resource, an owned
 > migration, README); verified end-to-end (scaffold → migrate → `POST /api/v1/<slug>` 201, zero core
-> edits). **Still to come:** `plugin:enable/disable`, delete/restore event hooks, and the CI guard that
-> fails a PR touching `app/`.
+> edits). **Lifecycle management (implemented):** `php spark plugin:list` shows every plugin
+> (enabled **and** disabled) with a status column; `php spark plugin:enable|disable <Vendor/Name>`
+> flips the manifest's `enabled` flag (case-insensitive match, idempotent pretty-printed rewrite) so an
+> operator never hand-edits JSON. Disabling drops the plugin's resources from the registry and from
+> regenerated docs on the next boot; data and migrations are left intact. Covered by `PluginToggleTest`.
+> **Still to come:** delete/restore event hooks, and the CI guard that fails a PR touching `app/`.
 
 **Delivery model — monorepo.** The core (`app/`) and all plugins (`plugins/`) live in a single
 repository. "Sealed core" is therefore enforced by **convention + CI guard** (a PR touching `app/`
