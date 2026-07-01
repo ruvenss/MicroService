@@ -57,6 +57,26 @@ final class BulkCreateTest extends FeatureTestCase
         $this->assertSame(0, $this->total());
     }
 
+    public function testIntraBatchDuplicateUniqueValueIsACleanPerItem422(): void
+    {
+        // Two items in one batch share a unique value (sku). `is_unique` only checks the
+        // DB, so both pass validation and then collide on the unique index at insert —
+        // which surfaced as a bare 500 (dev) / opaque 409 (prod). It must instead be a
+        // clean per-item 422 naming the offending item, and write nothing.
+        $result = $this->withHeaders($this->auth)->withBodyFormat('json')->post('api/v1/products', [
+            ['sku' => 'DUP', 'name' => 'First', 'price' => '1.00'],
+            ['sku' => 'DUP', 'name' => 'Second', 'price' => '2.00'],
+        ]);
+
+        $result->assertStatus(422);
+        $json = json_decode((string) $result->response()->getBody(), true);
+        $this->assertArrayHasKey('1', $json['errors']);          // the second item is flagged
+        $this->assertArrayHasKey('sku', $json['errors']['1']);
+        $this->assertStringContainsStringIgnoringCase('duplicate', $json['errors']['1']['sku']);
+
+        $this->assertSame(0, $this->total());                    // all-or-nothing: nothing written
+    }
+
     public function testBatchSizeIsCapped(): void
     {
         $items = [];

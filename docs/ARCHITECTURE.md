@@ -488,7 +488,10 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
 4. **Bulk create/update/delete implemented** — collection-level batch mutations, each all-or-nothing
    in one transaction, capped at 100 items, so an n8n workflow can mutate many rows in one call:
    - `POST /api/v1/{resource}` with a JSON array of objects → bulk create (per-index 422, one audit
-     row each, typed `{data, meta:{created}}`).
+     row each, typed `{data, meta:{created}}`). **Intra-batch uniqueness is validated up front:** two
+     items in one batch sharing an `is_unique` value (e.g. the same `sku`) are rejected as a clean
+     per-item 422 naming the duplicate — rather than passing per-item `is_unique` (which only checks the
+     DB) and then colliding on the unique index at insert (a 500/opaque 409).
    - `PATCH /api/v1/{resource}` with a JSON array of objects, each carrying its primary key plus the
      fields to change → bulk update (`{data, meta:{updated}}`; before/after audit per row).
    - `DELETE /api/v1/{resource}` with `{"ids": [...]}` (or a bare id array) → bulk archival delete

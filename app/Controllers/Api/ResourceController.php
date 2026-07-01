@@ -279,6 +279,13 @@ class ResourceController extends BaseController
             return $this->problem(422, 'Bulk create is limited to ' . self::BULK_MAX . ' items per request.');
         }
 
+        // Columns the create rules require to be unique. `is_unique` only checks the DB,
+        // so two items in the SAME batch sharing a value both pass validation and then
+        // collide on the unique index at insert — a 500 (or an opaque 409). Catch that
+        // here as a clean per-item 422 instead.
+        $uniqueColumns = self::uniqueColumns($definition->createRules);
+        $seen          = [];
+
         $errors   = [];
         $prepared = [];
         foreach ($items as $index => $item) {
@@ -289,6 +296,20 @@ class ResourceController extends BaseController
             }
             $item      = $this->fireBeforeSave($definition, 'create', $item);
             $itemError = $this->validateAgainst($item, $definition->createRules);
+
+            foreach ($uniqueColumns as $column) {
+                $value = $item[$column] ?? null;
+                if ($value === null || $value === '') {
+                    continue;
+                }
+                $value = (string) $value;
+                if (isset($seen[$column][$value])) {
+                    $itemError[$column] = "Duplicate {$column} '{$value}' within this batch (also item {$seen[$column][$value]}).";
+                } else {
+                    $seen[$column][$value] = $index;
+                }
+            }
+
             if ($itemError !== []) {
                 $errors[$index] = $itemError;
             } else {
@@ -1068,6 +1089,26 @@ class ResourceController extends BaseController
      * envelope rather than telling the client it created/updated something it didn't.
      * Post-commit `fireAfter` events must run only when this returns null.
      */
+    /**
+     * Columns a rule set marks `is_unique` — used to reject intra-batch duplicates on a
+     * bulk create before they collide on the DB unique index.
+     *
+     * @param array<string, string> $rules column => pipe-delimited rule string
+     *
+     * @return list<string>
+     */
+    private static function uniqueColumns(array $rules): array
+    {
+        $columns = [];
+        foreach ($rules as $column => $rule) {
+            if (str_contains($rule, 'is_unique')) {
+                $columns[] = $column;
+            }
+        }
+
+        return $columns;
+    }
+
     private function finishTransaction(\CodeIgniter\Database\BaseConnection $db): ?ResponseInterface
     {
         return $db->transComplete()
