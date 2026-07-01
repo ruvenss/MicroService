@@ -62,8 +62,9 @@ final class MarkdownGenerator
         if (is_array($ep['body'])) {
             $md .= "- **Body (JSON):**\n";
             foreach ($ep['body'] as $field => $meta) {
-                $req = $meta['required'] ? 'required' : 'optional';
-                $md .= "  - `{$field}` ({$meta['type']}, {$req})\n";
+                $req  = $meta['required'] ? 'required' : 'optional';
+                $enum = empty($meta['enum']) ? '' : '; one of: ' . implode(', ', $meta['enum']);
+                $md .= "  - `{$field}` ({$meta['type']}, {$req}{$enum})\n";
             }
         } elseif (is_string($ep['bodyExample'] ?? null)) {
             $md .= "- **Body (JSON example):**\n\n```json\n{$ep['bodyExample']}\n```\n";

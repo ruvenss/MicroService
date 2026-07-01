@@ -1450,16 +1450,24 @@
                                 "type": "object",
                                 "properties": {
                                     "sku": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "sku"
                                     },
                                     "name": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "name"
                                     },
                                     "price": {
-                                        "type": "number"
+                                        "type": "number",
+                                        "example": 9.99
                                     },
                                     "status": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ],
+                                        "example": "active"
                                     }
                                 },
                                 "required": [
@@ -1649,10 +1657,10 @@
                             "example": [
                                 {
                                     "id": "1",
-                                    "sku": "string",
-                                    "name": "string",
-                                    "price": "0.00",
-                                    "status": "string"
+                                    "sku": "sku",
+                                    "name": "name",
+                                    "price": 9.99,
+                                    "status": "active"
                                 }
                             ]
                         }
@@ -2022,16 +2030,24 @@
                                 "type": "object",
                                 "properties": {
                                     "sku": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "sku"
                                     },
                                     "name": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "name"
                                     },
                                     "price": {
-                                        "type": "number"
+                                        "type": "number",
+                                        "example": 9.99
                                     },
                                     "status": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ],
+                                        "example": "active"
                                     }
                                 },
                                 "required": [
@@ -2397,16 +2413,24 @@
                                 "type": "object",
                                 "properties": {
                                     "sku": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "sku"
                                     },
                                     "name": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "name"
                                     },
                                     "price": {
-                                        "type": "number"
+                                        "type": "number",
+                                        "example": 9.99
                                     },
                                     "status": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ],
+                                        "example": "active"
                                     }
                                 },
                                 "required": [
@@ -2618,16 +2642,24 @@
                                 "type": "object",
                                 "properties": {
                                     "sku": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "sku"
                                     },
                                     "name": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "example": "name"
                                     },
                                     "price": {
-                                        "type": "number"
+                                        "type": "number",
+                                        "example": 9.99
                                     },
                                     "status": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ],
+                                        "example": "active"
                                     }
                                 },
                                 "required": [

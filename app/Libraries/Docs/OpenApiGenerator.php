@@ -120,6 +120,12 @@ final class OpenApiGenerator
             $required   = [];
             foreach ($ep['body'] as $field => $meta) {
                 $properties[$field] = ['type' => $meta['type']];
+                if (! empty($meta['enum'])) {
+                    $properties[$field]['enum'] = $meta['enum'];
+                }
+                if (isset($meta['example'])) {
+                    $properties[$field]['example'] = $meta['example'];
+                }
                 if ($meta['required']) {
                     $required[] = $field;
                 }

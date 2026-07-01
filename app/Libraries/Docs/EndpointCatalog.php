@@ -17,7 +17,7 @@ use App\Libraries\ResourceRegistry;
  * Each endpoint descriptor:
  *   tag, resource, method, path, operationId, summary, auth(bool), scope(?string),
  *   pathParams(list<string>), query(list<array{name,description}>),
- *   body(?array<string,array{type,required}>), bodyExample(?string raw JSON),
+ *   body(?array<string,array{type,required,enum,example}>), bodyExample(?string raw JSON),
  *   success(int), successKind(item|collection|meta|none), captureId(bool)
  */
 final class EndpointCatalog
@@ -185,20 +185,58 @@ final class EndpointCatalog
     }
 
     /**
-     * @return array<string, array{type: string, required: bool}>
+     * @return array<string, array{type: string, required: bool, enum: list<string>, example: string|int|float}>
      */
     private static function body(ResourceDefinition $def): array
     {
         $fields = [];
         foreach ($def->fillable as $field) {
-            $rule          = $def->createRules[$field] ?? '';
+            $rule           = $def->createRules[$field] ?? '';
+            $type           = self::inferType($rule);
+            $enum           = self::enumValues($rule);
             $fields[$field] = [
-                'type'     => self::inferType($rule),
+                'type'     => $type,
                 'required' => str_contains($rule, 'required'),
+                'enum'     => $enum,
+                // A VALID example: an allowed enum value where the field is
+                // constrained, else a type-appropriate placeholder. So a human can
+                // import the collection and the create/upsert request succeeds
+                // instead of tripping validation (e.g. status must be active|archived).
+                'example'  => self::exampleValue($field, $type, $enum),
             ];
         }
 
         return $fields;
+    }
+
+    /**
+     * Allowed values from an `in_list[a,b,c]` rule, else empty.
+     *
+     * @return list<string>
+     */
+    private static function enumValues(string $rule): array
+    {
+        if (preg_match('/in_list\[([^\]]+)\]/', $rule, $m) === 1) {
+            return array_values(array_filter(array_map('trim', explode(',', $m[1])), static fn (string $v): bool => $v !== ''));
+        }
+
+        return [];
+    }
+
+    /**
+     * @param list<string> $enum
+     */
+    private static function exampleValue(string $field, string $type, array $enum): string|int|float
+    {
+        if ($enum !== []) {
+            return $enum[0];
+        }
+
+        return match ($type) {
+            'number'  => 9.99,
+            'integer' => 1,
+            default   => $field, // e.g. "sku" — a clearer placeholder than "string"
+        };
     }
 
     /**
@@ -209,11 +247,7 @@ final class EndpointCatalog
     {
         $object = [$def->primaryKey => '1'];
         foreach (self::body($def) as $field => $meta) {
-            $object[$field] = match ($meta['type']) {
-                'number'  => '0.00',
-                'integer' => 0,
-                default   => 'string',
-            };
+            $object[$field] = $meta['example'];
         }
 
         return (string) json_encode([$object], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

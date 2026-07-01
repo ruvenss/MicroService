@@ -930,7 +930,11 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   the secret) to verify connectivity and permissions before running.
 - **Unauthenticated `/api/v1/health`** for n8n schedule/health checks and uptime polling.
 - **Importable Postman collection** (`docs/postman/`) documents each endpoint for humans and serves
-  as the reference when configuring the matching n8n node.
+  as the reference when configuring the matching n8n node. Example request bodies use **valid,
+  validation-passing values** — enum fields (e.g. `status` = `in_list[active,archived]`) are filled with
+  a real allowed value, not a `"string"` placeholder — so a human can import the collection and hit
+  **Send** on *Create* and get a `201`, not a `422`. OpenAPI carries the matching `enum`/`example`.
+  Covered by `DocsGeneratorTest`.
 - **Outbound webhooks (implemented):** on a resource mutation the framework enqueues a signed event to
   a **transactional outbox** (`webhook_outbox`) for each matching subscription (`Config\Webhooks`
   / `WEBHOOK_URL`), and `php spark webhooks:dispatch` (run on a schedule) POSTs them to the n8n webhook

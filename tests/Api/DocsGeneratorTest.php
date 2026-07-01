@@ -57,6 +57,31 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertContains('baseUrl', $varKeys);
     }
 
+    public function testCreateExampleBodyIsValidNotJustTyped(): void
+    {
+        // The example body a human sends on "Create a products" must satisfy the
+        // resource's own validation — in particular status is in_list[active,archived],
+        // so the placeholder must be a real enum value (active), not "string" (422).
+        $collection = PostmanGenerator::generate();
+
+        $body = null;
+        foreach ($collection['item'] as $folder) {
+            foreach ($folder['item'] as $req) {
+                if (str_starts_with($req['name'], 'Create a products')) {
+                    $body = json_decode($req['request']['body']['raw'], true);
+                }
+            }
+        }
+
+        $this->assertNotNull($body);
+        $this->assertSame('active', $body['status']);            // valid enum, not "string"
+        $this->assertIsFloat($body['price']);                    // typed number, not "0.00"
+
+        // OpenAPI documents the enum constraint too.
+        $props = OpenApiGenerator::generate()['paths']['/api/v1/products']['post']['requestBody']['content']['application/json']['schema']['properties'];
+        $this->assertSame(['active', 'archived'], $props['status']['enum']);
+    }
+
     public function testMarkdownReferenceContainsResources(): void
     {
         $md = MarkdownGenerator::generate();

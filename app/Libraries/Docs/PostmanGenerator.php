@@ -152,13 +152,14 @@ final class PostmanGenerator
     }
 
     /**
-     * @param array<string, array{type: string, required: bool}> $body
+     * @param array<string, array{type: string, required: bool, enum?: list<string>, example?: string|int|float}> $body
      */
     private static function exampleBody(array $body): string
     {
         $example = [];
         foreach ($body as $field => $meta) {
-            $example[$field] = match ($meta['type']) {
+            // A valid, type-appropriate value (enum-aware) so the request works as-is.
+            $example[$field] = $meta['example'] ?? match ($meta['type']) {
                 'number'  => '0.00',
                 'integer' => 0,
                 default   => 'string',

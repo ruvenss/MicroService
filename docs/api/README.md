@@ -104,7 +104,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `sku` (string, required)
   - `name` (string, required)
   - `price` (number, required)
-  - `status` (string, optional)
+  - `status` (string, optional; one of: active, archived)
 - **Success:** `201` (`item` envelope)
 
 ### `PATCH /api/v1/products`
@@ -118,10 +118,10 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 [
     {
         "id": "1",
-        "sku": "string",
-        "name": "string",
-        "price": "0.00",
-        "status": "string"
+        "sku": "sku",
+        "name": "name",
+        "price": 9.99,
+        "status": "active"
     }
 ]
 ```
@@ -160,7 +160,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `sku` (string, required)
   - `name` (string, required)
   - `price` (number, required)
-  - `status` (string, optional)
+  - `status` (string, optional; one of: active, archived)
 - **Success:** `200` (`item` envelope)
 
 ### `PUT /api/v1/products/{id}`
@@ -173,7 +173,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `sku` (string, required)
   - `name` (string, required)
   - `price` (number, required)
-  - `status` (string, optional)
+  - `status` (string, optional; one of: active, archived)
 - **Success:** `200` (`item` envelope)
 
 ### `DELETE /api/v1/products/{id}`
@@ -193,6 +193,6 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `sku` (string, required)
   - `name` (string, required)
   - `price` (number, required)
-  - `status` (string, optional)
+  - `status` (string, optional; one of: active, archived)
 - **Success:** `200` (`item` envelope)
 

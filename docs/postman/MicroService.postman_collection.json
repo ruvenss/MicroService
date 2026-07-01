@@ -443,7 +443,7 @@
                         "description": "Create a products record (send a JSON array of objects to bulk-create, all-or-nothing). Scope: products:write.",
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"sku\": \"string\",\n    \"name\": \"string\",\n    \"price\": \"0.00\",\n    \"status\": \"string\"\n}"
+                            "raw": "{\n    \"sku\": \"sku\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
                         }
                     },
                     "response": []
@@ -482,7 +482,7 @@
                         "description": "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100). Scope: products:write.",
                         "body": {
                             "mode": "raw",
-                            "raw": "[\n    {\n        \"id\": \"1\",\n        \"sku\": \"string\",\n        \"name\": \"string\",\n        \"price\": \"0.00\",\n        \"status\": \"string\"\n    }\n]"
+                            "raw": "[\n    {\n        \"id\": \"1\",\n        \"sku\": \"sku\",\n        \"name\": \"name\",\n        \"price\": 9.99,\n        \"status\": \"active\"\n    }\n]"
                         }
                     },
                     "response": []
@@ -599,7 +599,7 @@
                         "description": "Update a products (applies the fields sent). Scope: products:write.",
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"sku\": \"string\",\n    \"name\": \"string\",\n    \"price\": \"0.00\",\n    \"status\": \"string\"\n}"
+                            "raw": "{\n    \"sku\": \"sku\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
                         }
                     },
                     "response": []
@@ -645,7 +645,7 @@
                         "description": "Update a products (PUT alias of the update operation \u2014 applies the fields sent; clients that default to PUT can use it). Scope: products:write.",
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"sku\": \"string\",\n    \"name\": \"string\",\n    \"price\": \"0.00\",\n    \"status\": \"string\"\n}"
+                            "raw": "{\n    \"sku\": \"sku\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
                         }
                     },
                     "response": []
@@ -722,7 +722,7 @@
                         "description": "Upsert products by `sku` (create-or-update): send one object or a JSON array; each item matched on sku is updated, others created (all-or-nothing, max 100). meta: {upserted, created, updated}. Scope: products:write.",
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"sku\": \"string\",\n    \"name\": \"string\",\n    \"price\": \"0.00\",\n    \"status\": \"string\"\n}"
+                            "raw": "{\n    \"sku\": \"sku\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
                         }
                     },
                     "response": []
