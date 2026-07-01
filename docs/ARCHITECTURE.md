@@ -773,8 +773,14 @@ running **PHP 8.5 + Apache2 + Redis** with all extensions; **no database in the 
 - **JIT** enabled and measured — keep it only where it demonstrably helps (CPU-bound work);
   most request time here is I/O, so the wins come first from persistent connections, Redis
   caching, and query/index tuning. **Measure, don't guess** (`php-optimization-engineer`).
-- Tuned `realpath_cache`, FPM `pm` mode sized to memory + the connection rule above, HTTP/2 and
-  `mod_brotli`/`mod_deflate` at Apache, sensible keepalive.
+- Tuned `realpath_cache`, FPM `pm` mode sized to memory + the connection rule above, sensible keepalive.
+- **Response compression (implemented, `docker/apache/compression.conf`):** `mod_deflate` gzips
+  `application/json` / `application/problem+json` / `text/plain`, so n8n pulling list responses transfers
+  ~85% less (verified: a `products` list went **6463 → 911 bytes**). Crucially it sets **`DeflateAlterETag
+  NoChange`** — Apache would otherwise append `-gzip` to the ETag, and since the app computes its own
+  strong ETag and handles `If-None-Match`/`304` itself, that would silently break conditional GET.
+  Verified: with gzip on, an `If-None-Match` replay still returns **304**, and the ETag carries no
+  `-gzip` suffix. (HTTP/2 / brotli would be added at the TLS-terminating proxy, not this container.)
 - **FPM pool resilience (`docker/php/www.conf`):** `request_terminate_timeout = 30s` kills a hung
   request (e.g. a stalled external DB) and recycles the worker, so a slow dependency can't pin the pool
   and exhaust it under load (a self-inflicted DoS if the service is exposed); `pm.max_requests = 1000`

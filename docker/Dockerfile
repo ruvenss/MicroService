@@ -36,6 +36,7 @@ COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-microservice.ini
 COPY docker/php/www.conf /usr/local/etc/php-fpm.d/zz-www.conf
 COPY docker/apache/microservice.conf /etc/apache2/sites-available/000-default.conf
 COPY docker/apache/stealth.conf /etc/apache2/conf-enabled/zz-stealth.conf
+COPY docker/apache/compression.conf /etc/apache2/conf-enabled/zz-compression.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
