@@ -89,4 +89,35 @@ class Autoload extends AutoloadConfig
      * @var list<string>
      */
     public $helpers = [];
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->discoverPluginNamespaces();
+    }
+
+    /**
+     * Register enabled plugin namespaces with the framework autoloader so their
+     * migrations, views, and classes are discoverable (composer PSR-4 already
+     * autoloads the classes; this makes CodeIgniter's migration/namespace
+     * discovery see them too). Keeps the core sealed — plugins are self-contained.
+     */
+    private function discoverPluginNamespaces(): void
+    {
+        if (! defined('ROOTPATH')) {
+            return;
+        }
+
+        foreach (glob(ROOTPATH . 'plugins/*/*/plugin.json') ?: [] as $manifestPath) {
+            $manifest = json_decode((string) @file_get_contents($manifestPath), true);
+            if (! is_array($manifest) || ($manifest['enabled'] ?? true) !== true) {
+                continue;
+            }
+
+            $namespace = trim((string) ($manifest['namespace'] ?? ''), '\\');
+            if ($namespace !== '') {
+                $this->psr4[$namespace] = dirname($manifestPath);
+            }
+        }
+    }
 }

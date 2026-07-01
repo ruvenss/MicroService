@@ -484,8 +484,15 @@ to confirm indexing/retention; very high delete-volume resources may warrant a d
 > mutable `App\Core\Plugin\ResourceEvent`): **`resource.beforeSave`** (mutate the create/update payload
 > before validation), **`resource.beforeQuery`** (constrain the list query — e.g. tenant scoping), and
 > **`resource.serialize`** (transform each outgoing row — e.g. computed fields / numeric casts for n8n).
-> Covered by `ResourceEventsTest`. **Still to come:** plugin-owned migrations/routes/commands,
-> `make:plugin`/`plugin:enable`, and the CI guard that fails a PR touching `app/`.
+> Covered by `ResourceEventsTest`.
+>
+> **Plugins are self-contained:** `Config\Autoload` registers each enabled plugin's namespace, so a
+> plugin owns its **migrations** (`plugins/<V>/<N>/Database/Migrations/`, run by `spark migrate --all`),
+> models, and views — not just the resource definition. **`php spark make:plugin Vendor/Name`**
+> scaffolds a working plugin (manifest, `Plugin` class registering a starter resource, an owned
+> migration, README); verified end-to-end (scaffold → migrate → `POST /api/v1/<slug>` 201, zero core
+> edits). **Still to come:** `plugin:enable/disable`, delete/restore event hooks, and the CI guard that
+> fails a PR touching `app/`.
 
 **Delivery model — monorepo.** The core (`app/`) and all plugins (`plugins/`) live in a single
 repository. "Sealed core" is therefore enforced by **convention + CI guard** (a PR touching `app/`

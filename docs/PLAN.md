@@ -109,12 +109,14 @@ today; FPM+event is a Phase 6 perf upgrade).
       (`App\Core\Plugin`). Disabled plugins skipped; `boot()` runs after all `register()`.
 - [x] `PluginManager` — discover `plugins/<Vendor>/<Name>/`, register, boot. (Dependency ordering via
       `requires` is a follow-up.)
-- [x] PSR-4 autoload `Plugins\\` → `plugins/` (composer). (Plugin-owned migrations: follow-up.)
+- [x] PSR-4 autoload `Plugins\\` → `plugins/` (composer) **and** `Config\Autoload` registers each enabled
+      plugin namespace so plugins own their **migrations** (`spark migrate --all`), models, and views.
 - [x] `ResourceRegistry` **aggregates** core config + plugin-contributed resources; core `Resources` is empty.
 - [x] Lifecycle **events** fired by the generic engine: `resource.beforeSave` (mutate payload),
       `resource.beforeQuery` (constrain list query), `resource.serialize` (transform output). Plugins
       subscribe via CI Events + a mutable `ResourceEvent`. (`…Delete`/`…Restore` hooks: follow-up.)
-- [x] Spark command `plugin:list`. (`plugin:enable/disable`, `make:plugin` — follow-up.)
+- [x] Spark commands `plugin:list` and **`make:plugin <Vendor/Name>`** (scaffolds manifest + Plugin class
+      + owned migration + README; verified scaffold → migrate → 201). (`plugin:enable/disable` — follow-up.)
 - [x] **Moved the sample `products` resource into `plugins/Sample/Catalog`** — served end-to-end via the
       plugin with zero core change.
 - [ ] CI guard: PR fails if it modifies `app/` without an explicit core-change label — follow-up.
