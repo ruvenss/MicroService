@@ -6,6 +6,7 @@ namespace App\Filters;
 
 use App\Libraries\ApiProblem;
 use App\Libraries\AuthContext;
+use App\Libraries\WindowCounter;
 use App\Models\ApiKeyModel;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\IncomingRequest;
@@ -70,10 +71,11 @@ class ApiKeyAuth implements FilterInterface
         $ip     = $request instanceof IncomingRequest ? $request->getIPAddress() : 'unknown';
         $window = (int) floor(time() / 60);
         $bucket = 'authfail_' . md5($ip) . '_' . $window; // md5 keeps IPv6 colons out of the cache key
-        $cache  = service('cache');
 
-        $count = (int) $cache->get($bucket) + 1;
-        $cache->save($bucket, $count, 60);
+        // Atomic per-IP-per-minute counter (shared with the rate limiter), so a
+        // concurrent brute-force burst can't race past the threshold — the abuse this
+        // guard exists to stop.
+        $count = WindowCounter::hit(service('cache'), $bucket, 60);
 
         if ($count > self::MAX_AUTH_FAILURES) {
             return ApiProblem::respond(429, 'Too many authentication failures. Try again later.')

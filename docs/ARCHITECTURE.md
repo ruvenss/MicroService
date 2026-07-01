@@ -291,7 +291,11 @@ All errors flow through one handler so the shape is guaranteed.
 > (constant-time), so an n8n credential can be updated before the old secret stops working. **Brute-force / DoS guard:** repeated auth
 > failures from one IP are counted (cache) and, past 30/minute, answered with **429** instead of 401 —
 > so an exposed service can't be key-probed or flooded on the auth path. A valid key never fails, so
-> legitimate n8n traffic is never throttled by this (it hits only the generous per-key rate limit).
+> legitimate n8n traffic is never throttled by this (it hits only the generous per-key rate limit). The
+> counter is the same **atomic** fixed-window primitive as the rate limiter (`App\Libraries\WindowCounter`
+> → `AtomicPredisHandler::incrementWindow`, one Lua `INCRBY`+`EXPIRE`), so a **concurrent** brute-force
+> burst can't race past the threshold — verified in-container: 30 parallel bad-auth requests yield exactly
+> 30×401 then 429s.
 
 ### 7.1 Key format & verification
 
