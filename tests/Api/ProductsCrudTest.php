@@ -96,6 +96,34 @@ final class ProductsCrudTest extends FeatureTestCase
         $this->withHeaders($this->auth)->get("api/v1/products/{$id}")->assertStatus(404);
     }
 
+    public function testNullOptionalFieldUsesTheDefaultNot500(): void
+    {
+        // n8n emits null for an unmapped optional field. An explicit null must not be
+        // written into the NOT-NULL `status` column (which 500'd); it is treated as
+        // "not provided", so the column default (`active`) applies.
+        $result = $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'NULL-1', 'name' => 'N', 'price' => '1.00', 'status' => null]);
+
+        $result->assertStatus(201);
+        $this->assertSame('active', json_decode((string) $result->response()->getBody(), true)['data']['status']);
+    }
+
+    public function testEmptyUpdateIsAClean422Not500(): void
+    {
+        // PATCH with no writable fields (empty body, or only unknown/null keys) must be a
+        // clean 422, not the 500 CI4's empty-update throws.
+        $id = $this->create(['sku' => 'EMPTY-1', 'name' => 'Before', 'price' => '1.00'])['data']['id'];
+
+        $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->patch("api/v1/products/{$id}", [])->assertStatus(422);
+
+        $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->patch("api/v1/products/{$id}", ['status' => null])->assertStatus(422);
+
+        // unchanged
+        $this->assertSame('Before', json_decode((string) $this->withHeaders($this->auth)->get("api/v1/products/{$id}")->response()->getBody(), true)['data']['name']);
+    }
+
     public function testUnknownResourceReturnsNeutral404(): void
     {
         $result = $this->withHeaders($this->authHeaders(['*:read']))->get('api/v1/widgets');

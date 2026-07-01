@@ -244,11 +244,19 @@ class ResourceController extends BaseController
             return $this->validationProblem($errors);
         }
 
+        // No writable fields (e.g. a body of only unknown/null keys on a resource with
+        // no required fields): CI4's insert() rejects an empty set, so return a clean
+        // 422 rather than a 500.
+        $clean = $this->onlyFillable($data, $definition);
+        if ($clean === []) {
+            return $this->problem(422, 'No writable fields provided.');
+        }
+
         $model = $this->model($definition);
         $db    = db_connect();
 
         $db->transStart();
-        $id       = $model->insert($this->onlyFillable($data, $definition), true);
+        $id       = $model->insert($clean, true);
         $row      = (array) $model->find($id);
         $presented = $this->present($row, $definition);
         AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
@@ -718,9 +726,17 @@ class ResourceController extends BaseController
             return $this->validationProblem($errors);
         }
 
+        // Nothing writable (empty body, or only unknown/null fields): CI4's update()
+        // rejects an empty set, so answer with a clean 422 instead of a 500 — matching
+        // the bulk-update path.
+        $clean = $this->onlyFillable($data, $definition);
+        if ($clean === []) {
+            return $this->problem(422, 'No updatable fields provided.');
+        }
+
         $db = db_connect();
         $db->transStart();
-        $model->update($id, $this->onlyFillable($data, $definition));
+        $model->update($id, $clean);
         $after        = (array) $model->find($id);
         $beforeHidden = $this->hide($before, $definition);
         $presented    = $this->present($after, $definition);
@@ -1009,7 +1025,14 @@ class ResourceController extends BaseController
      */
     private function onlyFillable(array $data, ResourceDefinition $definition): array
     {
-        return array_intersect_key($data, array_flip($definition->fillable));
+        $fillable = array_intersect_key($data, array_flip($definition->fillable));
+
+        // Drop explicit nulls: the generic writer can't tell a nullable column from a
+        // NOT NULL one with a default, and inserting NULL into the latter is a 500.
+        // Treat null as "field not provided" — which is how n8n emits an unmapped
+        // optional field — so the column default applies on create and the value is
+        // left unchanged on update. (0, '' and false are kept; only null is dropped.)
+        return array_filter($fillable, static fn ($value): bool => $value !== null);
     }
 
     /**

@@ -133,6 +133,13 @@ not listed under `filterable`/`sortable` cannot be targeted by a client; `hidden
 never serialized. This closes off mass-assignment, injection via column names, and data leaks
 by construction.
 
+**Write-body robustness (no 500s on ordinary n8n input):** the writer keeps only `fillable` keys
+and **drops explicit `null`s** — a generic engine can't tell a nullable column from a NOT NULL one
+with a default, and writing `NULL` into the latter would 500; treating `null` as "not provided" (how
+n8n emits an unmapped optional field) lets the column default apply on create and leaves the value
+unchanged on update. A write that ends up with **no writable fields** (empty body, or only
+unknown/null keys) returns a clean **422**, not the 500 CI4 throws on an empty insert/update.
+
 ### 5.2 Generic model & controller
 
 - **`GenericResourceModel`** extends CodeIgniter's `Model`, configured at runtime from a
