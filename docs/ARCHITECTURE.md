@@ -822,7 +822,13 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
 - Error responses are JSON/problem+json — no stack traces or framework branding leak in production.
 
 > **Tested:** `tests/Api/StealthHeadersTest.php` and `NotFoundTest.php` assert no PHP/CodeIgniter/
-> Debugbar fingerprint and the neutral 404 body (application layer).
+> Debugbar fingerprint and the neutral 404 body (application layer). `StealthAuditTest.php` extends this
+> to a full-surface regression guard: it asserts the neutral `Server` token, absent `X-Powered-By`/
+> Debugbar/CI-version headers, the baseline security headers, **and** a body free of engine/internals
+> markers (CodeIgniter, Xdebug, stack traces, `/system/`, `/var/www`, `vendor/`, …) across **every**
+> response path — `200`, `401`, `404` (unknown path *and* unknown resource), `400`, `415`, `413`, `429`
+> — plus the uncaught-exception handler (`ApiExceptionHandler::prepare`), which must never add
+> class/file/line/trace to the problem+json.
 >
 > **Verified in the container (PHP 8.5 + Apache):** with the real image (`docker/`, see §17.6) running
 > against the external MySQL, a probe gets: every direct `.php` request (`/index.php`, `/phpinfo.php`,
