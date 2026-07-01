@@ -148,7 +148,13 @@ final class EndpointCatalog
             ],
             [
                 'tag' => $tag, 'resource' => $def->slug, 'method' => 'PATCH', 'path' => $base . '/{id}',
-                'operationId' => $def->slug . 'Update', 'summary' => 'Update a ' . $def->slug . ' (PATCH/PUT).',
+                'operationId' => $def->slug . 'Update', 'summary' => 'Update a ' . $def->slug . ' (applies the fields sent).',
+                'auth' => true, 'scope' => $def->slug . ':write', 'pathParams' => ['id'], 'query' => [],
+                'body' => self::body($def), 'success' => 200, 'successKind' => 'item', 'captureId' => false,
+            ],
+            [
+                'tag' => $tag, 'resource' => $def->slug, 'method' => 'PUT', 'path' => $base . '/{id}',
+                'operationId' => $def->slug . 'UpdatePut', 'summary' => 'Update a ' . $def->slug . ' (PUT alias of the update operation — applies the fields sent; clients that default to PUT can use it).',
                 'auth' => true, 'scope' => $def->slug . ':write', 'pathParams' => ['id'], 'query' => [],
                 'body' => self::body($def), 'success' => 200, 'successKind' => 'item', 'captureId' => false,
             ],

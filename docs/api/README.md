@@ -150,7 +150,20 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 
 ### `PATCH /api/v1/products/{id}`
 
-- **Summary:** Update a products (PATCH/PUT).
+- **Summary:** Update a products (applies the fields sent).
+- **Auth:** bearer
+- **Scope:** products:write
+- **Path params:** `id`
+- **Body (JSON):**
+  - `sku` (string, required)
+  - `name` (string, required)
+  - `price` (number, required)
+  - `status` (string, optional)
+- **Success:** `200` (`item` envelope)
+
+### `PUT /api/v1/products/{id}`
+
+- **Summary:** Update a products (PUT alias of the update operation — applies the fields sent; clients that default to PUT can use it).
 - **Auth:** bearer
 - **Scope:** products:write
 - **Path params:** `id`

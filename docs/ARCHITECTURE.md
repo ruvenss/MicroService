@@ -639,11 +639,17 @@ Each generated `.md` entry follows a fixed shape so it's diff-friendly and LLM-p
 ### 16.4 Trigger & workflow
 
 - **Command:** `php spark docs:generate` regenerates both outputs from the live registry + code.
-- **Policy (enforced in two places):**
+- **Policy (enforced in three places):**
   1. **Authoring time** — when Claude adds or changes a function/endpoint, it regenerates docs in
      the same change (this is a standing instruction in `CLAUDE.md` and the `api-doc-generator` skill).
   2. **CI gate** — the pipeline runs `docs:generate` and fails if committed docs are stale
-     (generated output differs from what's checked in), so docs can never drift from code.
+     (generated output differs from what's checked in), so docs can never drift from code
+     (`DocsInSyncTest`).
+  3. **Route↔doc coverage** — `RouteDocCoverageTest` reconciles the declared route surface
+     (`Config/Routes.php`) with the `EndpointCatalog` in both directions: every real route must be
+     documented (so nothing is missing from the imported Postman collection) and every documented
+     endpoint must have a matching route (no phantom that would 404). This caught, e.g., the item
+     `PUT` route being routable but undocumented.
 - Generated directories (`public/docs/`, `docs/api/`, `openapi.json`) are **build artifacts** —
   never hand-edited; edit the code/docblocks/manifest and regenerate.
 
