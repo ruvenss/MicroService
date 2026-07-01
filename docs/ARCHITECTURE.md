@@ -881,6 +881,11 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   audit). Routing `.php` through the front controller keeps the response neutral. Clean, extensionless
   URLs only.
 - `mod_headers` re-asserts the security headers and unsets `X-Powered-By` for static files too.
+- **No stock framework favicon:** the CodeIgniter starter ships `public/favicon.ico`, whose bytes are
+  a byte-exact fingerprint — favicon-hash scanners (e.g. Shodan) would out the engine straight from
+  `/favicon.ico` regardless of the masked `Server` header. It is removed, so `/favicon.ico` returns the
+  same neutral problem+json `404` as any unknown path. `StealthAuditTest` fails if the stock favicon is
+  ever re-added (hash compared against the framework default).
 - Dotfiles are denied; directory listing is off; `ServerSignature Off`.
 - **Server-token masking (implemented in the container):** the `Server` header is replaced entirely
   with `MicroService` via mod_security `SecServerSignature`. Two non-obvious requirements, both set in

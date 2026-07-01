@@ -98,6 +98,29 @@ final class StealthAuditTest extends FeatureTestCase
         $this->assertStealthy($result->response(), '429 rate-limited');
     }
 
+    public function testNoStockCodeIgniterFaviconIsShipped(): void
+    {
+        // Favicon-hash fingerprinting (e.g. Shodan) identifies a framework from the
+        // bytes of /favicon.ico. Shipping CodeIgniter's stock favicon would out the
+        // engine to any scanner regardless of the masked Server header, so a headless
+        // API must not serve it — absent (neutral 404) is ideal; a custom one is fine,
+        // but never the byte-exact framework default.
+        $root    = dirname(__DIR__, 2);
+        $shipped = $root . '/public/favicon.ico';
+
+        if (! is_file($shipped)) {
+            $this->assertFileDoesNotExist($shipped); // absent — nothing to fingerprint
+            return;
+        }
+
+        $frameworkDefault = $root . '/vendor/codeigniter4/framework/public/favicon.ico';
+        $this->assertNotSame(
+            md5_file($frameworkDefault),
+            md5_file($shipped),
+            'public/favicon.ico is the stock CodeIgniter favicon — a byte-exact engine fingerprint. Remove it or replace with a custom icon.',
+        );
+    }
+
     public function testUncaughtExceptionHandlerIsNeutral(): void
     {
         // Directly exercise the last-line-of-defence handler: even a message full
