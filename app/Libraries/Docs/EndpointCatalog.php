@@ -48,9 +48,10 @@ final class EndpointCatalog
         return [
             [
                 'tag' => 'System', 'resource' => null, 'method' => 'GET', 'path' => '/api/v1/health',
-                'operationId' => 'health', 'summary' => 'Liveness/readiness probe (pings the database).',
-                'auth' => false, 'scope' => null, 'pathParams' => [], 'query' => [], 'body' => null,
-                'success' => 200, 'successKind' => 'item', 'captureId' => false,
+                'operationId' => 'health', 'summary' => 'Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness.',
+                'auth' => false, 'scope' => null, 'pathParams' => [],
+                'query' => [['name' => 'probe', 'description' => 'live = process-only liveness (always 200, no dependencies); ready (default) = readiness, pings database + cache.']],
+                'body' => null, 'success' => 200, 'successKind' => 'item', 'captureId' => false,
             ],
             [
                 'tag' => 'System', 'resource' => null, 'method' => 'GET', 'path' => '/api/v1/_me',

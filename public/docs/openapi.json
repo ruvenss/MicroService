@@ -1073,9 +1073,18 @@
                     "System"
                 ],
                 "operationId": "health",
-                "summary": "Liveness/readiness probe (pings the database).",
+                "summary": "Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness.",
                 "security": [],
                 "parameters": [
+                    {
+                        "name": "probe",
+                        "in": "query",
+                        "required": false,
+                        "description": "live = process-only liveness (always 200, no dependencies); ready (default) = readiness, pings database + cache.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     {
                         "name": "If-None-Match",
                         "in": "header",

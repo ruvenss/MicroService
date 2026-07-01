@@ -741,7 +741,13 @@ Makefile / spark command     # `make build` / `make up` — the "auto-docker" en
 - Production compose/pod has **no MySQL service**; the DB host comes from env/secrets.
 - A clearly-marked **dev-only** override may spin a disposable MySQL purely for local integration
   tests — never used in production.
-- Healthchecks hit `GET /api/v1/health` (which pings external MySQL + Redis).
+- Healthchecks hit `GET /api/v1/health`, which distinguishes **readiness** (default — pings the
+  external MySQL **and** the cache/Redis backend; `200` when all up, `503 degraded` with per-check
+  status otherwise) from **liveness** (`?probe=live` — dependency-free, always `200`, so an
+  orchestrator never restarts the container over a transient DB/cache blip). The image ships a Docker
+  `HEALTHCHECK` (a dependency-free PHP probe — no curl/wget added) that marks the container
+  healthy/unhealthy on readiness; verified reaching `healthy`. The endpoint is open (no key) and
+  engine-neutral.
 - `.env`/secrets injected at runtime (DB host/user/pass, Redis, signing material) — never baked
   into the image.
 

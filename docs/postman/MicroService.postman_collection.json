@@ -42,7 +42,7 @@
             "name": "System",
             "item": [
                 {
-                    "name": "Liveness/readiness probe (pings the database).",
+                    "name": "Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness.",
                     "request": {
                         "method": "GET",
                         "header": [
@@ -58,7 +58,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{baseUrl}}/api/v1/health",
+                            "raw": "{{baseUrl}}/api/v1/health?probe=",
                             "host": [
                                 "{{baseUrl}}"
                             ],
@@ -66,9 +66,17 @@
                                 "api",
                                 "v1",
                                 "health"
+                            ],
+                            "query": [
+                                {
+                                    "key": "probe",
+                                    "value": "",
+                                    "description": "live = process-only liveness (always 200, no dependencies); ready (default) = readiness, pings database + cache.",
+                                    "disabled": true
+                                }
                             ]
                         },
-                        "description": "Liveness/readiness probe (pings the database).",
+                        "description": "Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness.",
                         "auth": {
                             "type": "noauth"
                         }

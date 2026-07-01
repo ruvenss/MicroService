@@ -8,9 +8,11 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 
 ### `GET /api/v1/health`
 
-- **Summary:** Liveness/readiness probe (pings the database).
+- **Summary:** Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness.
 - **Auth:** none (open)
 - **Scope:** —
+- **Query params:**
+  - `probe` — live = process-only liveness (always 200, no dependencies); ready (default) = readiness, pings database + cache.
 - **Success:** `200` (`item` envelope)
 - **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
 

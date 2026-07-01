@@ -40,4 +40,10 @@ RUN set -eux; \
     chown -R www-data:www-data writable; \
     rm -f /usr/bin/composer
 
+# Container health = readiness (DB + cache reachable). Dependency-free PHP probe,
+# so no extra packages (curl/wget) are added to the image. A 503 (degraded) or a
+# connection failure marks the container unhealthy.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD php -r 'exit(@file_get_contents("http://127.0.0.1/api/v1/health") === false ? 1 : 0);'
+
 EXPOSE 80
