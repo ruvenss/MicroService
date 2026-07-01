@@ -103,6 +103,35 @@ final class WebhookTest extends FeatureTestCase
         $this->assertSame('https://n8n.example/webhook/abc', $captured['url']);
         $this->assertSame(hash_hmac('sha256', $captured['body'], 's3cr3t'), $captured['headers']['X-Signature']);
         $this->assertSame('delivered', (new WebhookOutboxModel())->first()['status']);
+
+        // Delivery carries a stable dedupe id, an attempt counter, and a neutral UA.
+        $row = (new WebhookOutboxModel())->first();
+        $this->assertSame((string) $row['id'], $captured['headers']['X-Webhook-Id']);
+        $this->assertSame('1', $captured['headers']['X-Webhook-Attempt']);
+        $this->assertSame('MicroService-Webhook/1.0', $captured['headers']['User-Agent']);
+    }
+
+    public function testWebhookIdIsStableAcrossRetriesButAttemptGrows(): void
+    {
+        $this->createProduct('WH-ID');
+        $model = new WebhookOutboxModel();
+        $id    = $model->first()['id'];
+
+        $seen = [];
+        WebhookDispatcher::$sender = static function (string $url, array $headers) use (&$seen): int {
+            $seen[] = ['id' => $headers['X-Webhook-Id'], 'attempt' => $headers['X-Webhook-Attempt']];
+
+            return 500; // fail so the row is retried
+        };
+
+        WebhookDispatcher::dispatch();
+        $model->update($id, ['next_attempt_at' => date('Y-m-d H:i:s', time() - 1)]); // clear backoff
+        WebhookDispatcher::dispatch();
+
+        $this->assertSame((string) $id, $seen[0]['id']);
+        $this->assertSame((string) $id, $seen[1]['id']);   // same dedupe id across retries
+        $this->assertSame('1', $seen[0]['attempt']);
+        $this->assertSame('2', $seen[1]['attempt']);       // attempt counter grows
     }
 
     public function testFailedDeliveryBacksOffThenRetries(): void

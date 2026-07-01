@@ -878,7 +878,11 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
 - **Outbound webhooks (implemented):** on a resource mutation the framework enqueues a signed event to
   a **transactional outbox** (`webhook_outbox`) for each matching subscription (`Config\Webhooks`
   / `WEBHOOK_URL`), and `php spark webhooks:dispatch` (run on a schedule) POSTs them to the n8n webhook
-  node with an `X-Signature` HMAC-SHA256 header and `X-Event`. **The outbox row is written inside the
+  node. **Delivery headers (n8n contract):** `X-Signature` (HMAC-SHA256 of the raw body with the
+  subscription secret — n8n recomputes it to verify authenticity), `X-Event` (`{resource}.{action}`),
+  **`X-Webhook-Id`** (the outbox row id — *stable across retries*, so n8n can dedupe a redelivered
+  event), `X-Webhook-Attempt` (delivery attempt number), and a neutral `User-Agent`
+  (`MicroService-Webhook/1.0`) that never reveals the engine to the receiver. **The outbox row is written inside the
   same DB transaction as the mutation** (by the controller, not a post-commit event), so the change and
   its notification commit atomically — a crash after commit can never drop the event (no dual-write gap).
   Enqueue is DB-only on the request thread; delivery is out-of-band with retries (`maxAttempts`), so a

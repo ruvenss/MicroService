@@ -88,6 +88,9 @@ final class WebhookDispatcher
     private const BACKOFF_BASE_SECONDS = 60;
     private const BACKOFF_MAX_SECONDS  = 3600;
 
+    /** Neutral User-Agent on outbound deliveries — never advertises PHP/CodeIgniter. */
+    private const USER_AGENT = 'MicroService-Webhook/1.0';
+
     /**
      * Deliver pending/retriable outbox rows. Rows are first claimed atomically so
      * that overlapping `webhooks:dispatch` runs never deliver the same row twice.
@@ -105,13 +108,18 @@ final class WebhookDispatcher
         $failed = 0;
 
         foreach ($rows as $row) {
-            $status = self::post((string) $row['target_url'], [
-                'Content-Type' => 'application/json',
-                'X-Event'      => (string) $row['event'],
-                'X-Signature'  => (string) $row['signature'],
-            ], (string) $row['payload_json']);
-
             $attempts = (int) $row['attempts'] + 1;
+
+            $status = self::post((string) $row['target_url'], [
+                'Content-Type'      => 'application/json',
+                'User-Agent'        => self::USER_AGENT, // neutral — never reveals the engine to n8n
+                'X-Event'           => (string) $row['event'],
+                'X-Signature'       => (string) $row['signature'],
+                // Stable id (same across retries of this row) so n8n can dedupe;
+                // the attempt number lets a receiver see redelivery.
+                'X-Webhook-Id'      => (string) $row['id'],
+                'X-Webhook-Attempt' => (string) $attempts,
+            ], (string) $row['payload_json']);
 
             if ($status >= 200 && $status < 300) {
                 $model->update($row['id'], [
