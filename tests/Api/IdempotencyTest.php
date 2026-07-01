@@ -93,6 +93,66 @@ final class IdempotencyTest extends FeatureTestCase
         $this->assertContains('ISO-B', $skus);
     }
 
+    public function testConcurrentRetryWhileOriginalInFlightReturns409(): void
+    {
+        // n8n's timeout-retry overlap: a retry arrives while the original request is
+        // still executing. The claim is atomic, so the retry must NOT run the write a
+        // second time — it gets 409 in-progress. Simulated by flipping the recorded
+        // row back to a recent "pending" claim (its hash already matches the request).
+        $headers = $this->auth + ['Idempotency-Key' => 'inflight'];
+        $payload = ['sku' => 'INFLIGHT-1', 'name' => 'A', 'price' => '1.00'];
+
+        $this->withHeaders($headers)->withBodyFormat('json')->post('api/v1/products', $payload)->assertStatus(201);
+
+        db_connect()->table('idempotency_keys')->where('idem_key', 'inflight')
+            ->update(['response_status' => 0, 'created_at' => date('Y-m-d H:i:s')]); // recent pending
+
+        $retry = $this->withHeaders($headers)->withBodyFormat('json')->post('api/v1/products', $payload);
+        $retry->assertStatus(409);
+        $this->assertNotSame('', $retry->response()->getHeaderLine('Retry-After'));
+    }
+
+    public function testStalePendingClaimIsTakenOver(): void
+    {
+        // If the original request died without finalising its claim, the pending row
+        // must not block the key forever. A claim older than the stale window is taken
+        // over and the write re-runs (here the re-run hits the unique sku from the first
+        // create → 422, proving it executed rather than 409'ing or replaying).
+        $headers = $this->auth + ['Idempotency-Key' => 'stale'];
+        $payload = ['sku' => 'STALE-1', 'name' => 'A', 'price' => '1.00'];
+
+        $this->withHeaders($headers)->withBodyFormat('json')->post('api/v1/products', $payload)->assertStatus(201);
+
+        db_connect()->table('idempotency_keys')->where('idem_key', 'stale')
+            ->update(['response_status' => 0, 'created_at' => date('Y-m-d H:i:s', time() - 120)]); // stale pending
+
+        $this->withHeaders($headers)->withBodyFormat('json')
+            ->post('api/v1/products', $payload)
+            ->assertStatus(422);
+    }
+
+    public function testFailedRequestReleasesTheClaimSoItStaysRetryable(): void
+    {
+        // A non-2xx response must drop the claim, so a legitimate retry is not blocked.
+        $headers = $this->auth + ['Idempotency-Key' => 'retry-me'];
+
+        // Invalid body → 422 validation; the claim is inserted then released.
+        $this->withHeaders($headers)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'REL-1', 'name' => 'A']) // missing required price
+            ->assertStatus(422);
+
+        $this->assertSame(
+            0,
+            db_connect()->table('idempotency_keys')->where('idem_key', 'retry-me')->countAllResults(),
+            'the failed request must leave no lingering claim',
+        );
+
+        // A corrected retry with the same key executes normally.
+        $this->withHeaders($headers)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'REL-1', 'name' => 'A', 'price' => '1.00'])
+            ->assertStatus(201);
+    }
+
     public function testExpiredKeyIsNotReplayed(): void
     {
         $headers = $this->auth + ['Idempotency-Key' => 'expiring'];

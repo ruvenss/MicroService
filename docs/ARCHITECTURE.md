@@ -1024,6 +1024,12 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   key** — the lookup filters on `api_key_id` and a `UNIQUE(api_key_id, idem_key)` index enforces it, so
   two different keys reusing the same `Idempotency-Key` never see each other's response (no cross-tenant
   replay; covered by `IdempotencyTest`). 24 h TTL — an expired key re-executes rather than replaying.
-  Sequential-retry safe (n8n's behaviour); concurrent-retry de-dup (unique reserve + Redis lock) is a
-  follow-up.
+  **Concurrency-safe:** the before-filter *claims* the key by inserting a **pending** row (a `0`
+  response-status sentinel — no schema change) **before** the write runs, using the `UNIQUE(api_key_id,
+  idem_key)` index as the atomic primitive. So if n8n's timeout-then-retry overlaps the still-running
+  original, the second request gets **`409` in progress** (+ `Retry-After`) instead of executing the write
+  twice. The after-filter finalises that same row (writing the response on 2xx, **releasing** it on a
+  non-2xx so the op stays retryable); a pending claim older than 60 s — longer than the FPM
+  `request_terminate_timeout` — is treated as abandoned and taken over, so a crashed request never wedges
+  a key.
 
