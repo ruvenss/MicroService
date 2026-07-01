@@ -3,7 +3,7 @@
     "info": {
         "title": "MicroService API",
         "version": "1.0.0",
-        "description": "Generated from the resource registry. Bearer API-key auth on all /api/v1/* except health. Success: `{data, meta}`. Errors: RFC 9457 problem+json. Every response carries X-Request-Id; rate limits via X-RateLimit-* / 429."
+        "description": "Generated from the resource registry. Bearer API-key auth on all /api/v1/* except health. Success: `{data, meta}`. Errors: RFC 9457 problem+json. Every response carries X-Request-Id; rate limits via X-RateLimit-* / 429. Reads carry an ETag \u2014 pass it back as If-None-Match for a 304 Not Modified."
     },
     "servers": [
         {
@@ -91,6 +91,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -114,6 +123,9 @@
                                 }
                             }
                         }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
                     },
                     "400": {
                         "description": "Error",
@@ -188,6 +200,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -208,6 +229,9 @@
                                 }
                             }
                         }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
                     },
                     "400": {
                         "description": "Error",
@@ -413,6 +437,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -436,6 +469,9 @@
                                 }
                             }
                         }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
                     },
                     "400": {
                         "description": "Error",
@@ -502,6 +538,17 @@
                         "bearerAuth": []
                     }
                 ],
+                "parameters": [
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -520,6 +567,9 @@
                                 }
                             }
                         }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
                     },
                     "400": {
                         "description": "Error",
@@ -586,6 +636,17 @@
                         "bearerAuth": []
                     }
                 ],
+                "parameters": [
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -607,6 +668,9 @@
                                 }
                             }
                         }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
                     },
                     "400": {
                         "description": "Error",
@@ -669,6 +733,17 @@
                 "operationId": "health",
                 "summary": "Liveness/readiness probe (pings the database).",
                 "security": [],
+                "parameters": [
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -687,6 +762,9 @@
                                 }
                             }
                         }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
                     },
                     "400": {
                         "description": "Error",
@@ -787,6 +865,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -810,6 +897,9 @@
                                 }
                             }
                         }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
                     },
                     "400": {
                         "description": "Error",
@@ -1260,6 +1350,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -1280,6 +1379,9 @@
                                 }
                             }
                         }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
                     },
                     "400": {
                         "description": "Error",

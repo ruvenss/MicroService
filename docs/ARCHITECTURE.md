@@ -184,6 +184,10 @@ Base path: **`/api/v1`**. `{resource}` is the registry slug.
   `eq, ne, gt, gte, lt, lte, like, in`. Only `filterable` columns allowed; values bound as
   parameters (never interpolated).
 - **Sparse fields:** `?fields=id,name,price` — restrict returned columns (hidden fields always excluded).
+- **Conditional reads (caching):** every `GET` (show and list) returns a strong `ETag` — a content
+  hash of the response body (no stored state, no engine fingerprint). Resend it as `If-None-Match`
+  and, when nothing changed, the server replies `304 Not Modified` with an empty body. `If-None-Match: *`
+  always matches. This lets an n8n schedule poll cheaply — only changed data crosses the wire.
 
 ## 6. Response & error contract
 

@@ -2,7 +2,7 @@
 
 > Generated from the resource registry by `php spark docs:generate` — do not edit by hand.
 
-All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` except **health**. Success responses are `{ "data": ..., "meta": ... }`; errors are RFC 9457 `application/problem+json`. Every response carries `X-Request-Id`; rate limits surface via `X-RateLimit-*` and `429`. Responses expose no PHP/CodeIgniter/Apache fingerprint.
+All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` except **health**. Success responses are `{ "data": ..., "meta": ... }`; errors are RFC 9457 `application/problem+json`. Every response carries `X-Request-Id`; rate limits surface via `X-RateLimit-*` and `429`. Reads carry an `ETag` — resend it as `If-None-Match` to get `304 Not Modified` when nothing changed. Responses expose no PHP/CodeIgniter/Apache fingerprint.
 
 ## System
 
@@ -12,6 +12,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Auth:** none (open)
 - **Scope:** —
 - **Success:** `200` (`item` envelope)
+- **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
 
 ### `GET /api/v1/_me`
 
@@ -19,6 +20,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Auth:** bearer
 - **Scope:** —
 - **Success:** `200` (`item` envelope)
+- **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
 
 ### `GET /api/v1/_resources`
 
@@ -26,6 +28,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Auth:** bearer
 - **Scope:** —
 - **Success:** `200` (`collection` envelope)
+- **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
 
 ## Audit & recycle bin
 
@@ -39,6 +42,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `page` — Page number (1-based).
   - `perPage` — Items per page (capped per resource).
 - **Success:** `200` (`collection` envelope)
+- **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
 
 ### `GET /api/v1/_archive/{id}`
 
@@ -47,6 +51,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Scope:** archive:read
 - **Path params:** `id`
 - **Success:** `200` (`item` envelope)
+- **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
 
 ### `POST /api/v1/_archive/{id}/restore`
 
@@ -67,6 +72,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `page` — Page number (1-based).
   - `perPage` — Items per page (capped per resource).
 - **Success:** `200` (`collection` envelope)
+- **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
 
 ## Products
 
@@ -83,6 +89,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `fields` — Comma-separated sparse fieldset. Allowed: id, sku, name, price, status, created_at, updated_at.
   - `filter[sku]` — Filter. Columns: sku, status, price. Operators: eq, ne, gt, gte, lt, lte, like, in (e.g. filter[col][gte]=10).
 - **Success:** `200` (`collection` envelope)
+- **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
 
 ### `POST /api/v1/products`
 
@@ -137,6 +144,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Scope:** products:read
 - **Path params:** `id`
 - **Success:** `200` (`item` envelope)
+- **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
 
 ### `PATCH /api/v1/products/{id}`
 

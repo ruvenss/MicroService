@@ -67,7 +67,7 @@ class ResourceController extends BaseController
 
         $rows = array_map(fn (array $row): array => $this->present($row, $definition), $rows);
 
-        return $this->response->setJSON(ResponseEnvelope::collection($rows, $page, $perPage, $total));
+        return $this->respondCacheable(ResponseEnvelope::collection($rows, $page, $perPage, $total));
     }
 
     /**
@@ -130,7 +130,7 @@ class ResourceController extends BaseController
             return $out;
         }, $rows);
 
-        return $this->response->setJSON(ResponseEnvelope::cursorCollection($rows, $perPage, $nextCursor));
+        return $this->respondCacheable(ResponseEnvelope::cursorCollection($rows, $perPage, $nextCursor));
     }
 
     /** Opaque, versioned cursor token for a primary-key value (not a security boundary). */
@@ -170,7 +170,7 @@ class ResourceController extends BaseController
             return $this->notFound();
         }
 
-        return $this->response->setJSON(ResponseEnvelope::wrap($this->present($row, $definition)));
+        return $this->respondCacheable(ResponseEnvelope::wrap($this->present($row, $definition)));
     }
 
     public function create(string $slug): ResponseInterface
@@ -513,6 +513,51 @@ class ResourceController extends BaseController
     }
 
     // ── helpers ──────────────────────────────────────────────────────────
+
+    /**
+     * Emit a GET payload with an ETag for conditional requests. A matching
+     * `If-None-Match` short-circuits to 304 Not Modified (empty body), so an n8n
+     * poll that sees no change transfers nothing. The tag is a content hash — it
+     * carries no engine fingerprint and needs no stored state.
+     *
+     * @param array<string, mixed> $payload
+     */
+    private function respondCacheable(array $payload): ResponseInterface
+    {
+        $body = (string) json_encode($payload);
+        $etag = '"' . sha1($body) . '"';
+
+        $ifNoneMatch = $this->request->getHeaderLine('If-None-Match');
+        if ($ifNoneMatch !== '' && $this->etagMatches($ifNoneMatch, $etag)) {
+            return $this->response->setStatusCode(304)->setHeader('ETag', $etag)->setBody('');
+        }
+
+        return $this->response
+            ->setHeader('ETag', $etag)
+            ->setContentType('application/json')
+            ->setBody($body);
+    }
+
+    /**
+     * RFC 9110 If-None-Match: `*` matches anything; otherwise a comma-separated
+     * list of entity-tags. Weak validators (`W/"…"`) compare equal to their strong
+     * form here since our tags are stable content hashes.
+     */
+    private function etagMatches(string $ifNoneMatch, string $etag): bool
+    {
+        if (trim($ifNoneMatch) === '*') {
+            return true;
+        }
+
+        foreach (explode(',', $ifNoneMatch) as $candidate) {
+            $candidate = preg_replace('/^\s*W\//', '', trim($candidate));
+            if ($candidate === $etag) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /**
      * Move one row to the recycle bin and remove it from its table, recording the

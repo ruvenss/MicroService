@@ -48,8 +48,8 @@ final class PostmanGenerator
                 'description' => "Generated from the resource registry (php spark docs:generate). Set the "
                     . "`baseUrl` and `apiKey` collection variables. Mint a key with `php spark key:create`. "
                     . "Bearer auth is inherited by every request except health. Success: {data, meta}; "
-                    . "errors: RFC 9457 problem+json; rate limits via X-RateLimit-* / 429; responses carry "
-                    . "no PHP/CodeIgniter/Apache fingerprint.",
+                    . "errors: RFC 9457 problem+json; rate limits via X-RateLimit-* / 429; reads carry an "
+                    . "ETag (resend as If-None-Match for 304); responses carry no PHP/CodeIgniter/Apache fingerprint.",
                 'schema' => 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
             ],
             'auth'     => ['type' => 'bearer', 'bearer' => [['key' => 'token', 'value' => '{{apiKey}}', 'type' => 'string']]],
@@ -100,6 +100,14 @@ final class PostmanGenerator
                 'key'         => 'Idempotency-Key',
                 'value'       => '',
                 'description' => 'Optional. Retries with the same key replay the first response (n8n-safe).',
+                'disabled'    => true,
+            ];
+        }
+        if ($ep['method'] === 'GET') {
+            $request['header'][] = [
+                'key'         => 'If-None-Match',
+                'value'       => '',
+                'description' => 'Optional. Paste a prior ETag to get 304 Not Modified when unchanged.',
                 'disabled'    => true,
             ];
         }

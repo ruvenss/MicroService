@@ -34,7 +34,8 @@ final class OpenApiGenerator
                 'version'     => '1.0.0',
                 'description' => "Generated from the resource registry. Bearer API-key auth on all "
                     . "/api/v1/* except health. Success: `{data, meta}`. Errors: RFC 9457 problem+json. "
-                    . "Every response carries X-Request-Id; rate limits via X-RateLimit-* / 429.",
+                    . "Every response carries X-Request-Id; rate limits via X-RateLimit-* / 429. "
+                    . "Reads carry an ETag — pass it back as If-None-Match for a 304 Not Modified.",
             ],
             'servers'    => [['url' => $serverUrl]],
             'security'   => [['bearerAuth' => []]],
@@ -88,6 +89,15 @@ final class OpenApiGenerator
                 'in'          => 'header',
                 'required'    => false,
                 'description' => 'Optional. A retry with the same key + request replays the first response (safe for n8n retries).',
+                'schema'      => ['type' => 'string'],
+            ];
+        }
+        if ($ep['method'] === 'GET') {
+            $params[] = [
+                'name'        => 'If-None-Match',
+                'in'          => 'header',
+                'required'    => false,
+                'description' => 'Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.',
                 'schema'      => ['type' => 'string'],
             ];
         }
@@ -154,6 +164,10 @@ final class OpenApiGenerator
                 'description' => 'Success',
                 'content'     => ['application/json' => ['schema' => $envelope]],
             ];
+        }
+
+        if ($ep['method'] === 'GET') {
+            $responses['304'] = ['description' => 'Not Modified — the ETag matched If-None-Match.'];
         }
 
         $hasBody = is_array($ep['body']) || is_string($ep['bodyExample'] ?? null);

@@ -2,7 +2,7 @@
     "info": {
         "_postman_id": "b1f6e2a0-0000-4a00-9000-microservice01",
         "name": "MicroService API",
-        "description": "Generated from the resource registry (php spark docs:generate). Set the `baseUrl` and `apiKey` collection variables. Mint a key with `php spark key:create`. Bearer auth is inherited by every request except health. Success: {data, meta}; errors: RFC 9457 problem+json; rate limits via X-RateLimit-* / 429; responses carry no PHP/CodeIgniter/Apache fingerprint.",
+        "description": "Generated from the resource registry (php spark docs:generate). Set the `baseUrl` and `apiKey` collection variables. Mint a key with `php spark key:create`. Bearer auth is inherited by every request except health. Success: {data, meta}; errors: RFC 9457 problem+json; rate limits via X-RateLimit-* / 429; reads carry an ETag (resend as If-None-Match for 304); responses carry no PHP/CodeIgniter/Apache fingerprint.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "auth": {
@@ -49,6 +49,12 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
                             }
                         ],
                         "url": {
@@ -77,6 +83,12 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
                             }
                         ],
                         "url": {
@@ -102,6 +114,12 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
                             }
                         ],
                         "url": {
@@ -132,6 +150,12 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
                             }
                         ],
                         "url": {
@@ -177,6 +201,12 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
                             }
                         ],
                         "url": {
@@ -236,6 +266,12 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
                             }
                         ],
                         "url": {
@@ -292,6 +328,12 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
                             }
                         ],
                         "url": {
@@ -472,6 +514,12 @@
                             {
                                 "key": "Accept",
                                 "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
                             }
                         ],
                         "url": {
