@@ -633,10 +633,15 @@ running **PHP 8.5 + Apache2 + Redis** with all extensions; **no database in the 
 > `docker/php/php.ini`), and the engine fully hidden (§18.2).
 >
 > **Config is 12-factor via UNDERSCORE env vars** (`DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD/
-> DB_PERSISTENT`, `APP_BASE_URL`, `CI_ENVIRONMENT`): dotted CI keys (`database.default.*`) do **not**
-> propagate through Apache/mod_php, so the vhost `PassEnv`s these and `Config\App`/`Config\Database`
-> map them (`env()`; port cast to int). **Deferred:** the `redis` extension (file cache until then) and
-> mpm_event + PHP-FPM (vs the current mod_php) as a throughput optimisation.
+> DB_PERSISTENT`, `APP_BASE_URL`, `CI_ENVIRONMENT`, `WEBHOOK_URL/WEBHOOK_SECRET/WEBHOOK_EVENTS`): dotted
+> CI keys (`database.default.*`) do **not** propagate through Apache/mod_php, so the vhost `PassEnv`s
+> these and `Config\App`/`Config\Database`/`Config\Webhooks` map them (`env()`; port cast to int).
+>
+> **Full feature set verified in the real container** (PHP 8.5 + Apache + external MySQL): auth (401/403),
+> CRUD, typed casts, bulk create, filtering, idempotency replay, audit trail, archival delete + restore,
+> `_me`, and outbound **webhook enqueue** — all working, with the engine fully hidden (`Server:
+> MicroService`, `.php`→404, `/docs`→404, clean fingerprint scan). **Deferred:** the `redis` extension
+> (file cache until then) and mpm_event + PHP-FPM (vs the current mod_php) as a throughput optimisation.
 
 ### 17.1 Image composition
 
