@@ -6,6 +6,18 @@ use CodeIgniter\Config\BaseConfig;
 
 class App extends BaseConfig
 {
+    public function __construct()
+    {
+        parent::__construct();
+
+        // Container / 12-factor override (dotted `app.baseURL` env keys don't
+        // propagate through Apache/mod_php, so the deployment passes APP_BASE_URL).
+        $baseUrl = env('APP_BASE_URL');
+        if ($baseUrl !== null && $baseUrl !== '') {
+            $this->baseURL = $baseUrl;
+        }
+    }
+
     /**
      * --------------------------------------------------------------------------
      * Base Site URL

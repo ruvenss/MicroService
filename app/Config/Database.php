@@ -200,5 +200,29 @@ class Database extends Config
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
         }
+
+        // Container / 12-factor overrides from UNDERSCORE-named env vars. Dotted
+        // keys (database.default.hostname) don't propagate through Apache/mod_php,
+        // so the deployment passes DB_HOST/DB_PORT/... instead. Only set values
+        // are applied, so local dev/test (which use .env) are unaffected.
+        $envMap = [
+            'hostname' => 'DB_HOST',
+            'port'     => 'DB_PORT',
+            'database' => 'DB_NAME',
+            'username' => 'DB_USER',
+            'password' => 'DB_PASSWORD',
+        ];
+
+        foreach ($envMap as $key => $env) {
+            $value = env($env);
+            if ($value !== null && $value !== '') {
+                $this->default[$key] = $key === 'port' ? (int) $value : $value;
+            }
+        }
+
+        $persistent = env('DB_PERSISTENT');
+        if ($persistent !== null) {
+            $this->default['pConnect'] = filter_var($persistent, FILTER_VALIDATE_BOOL);
+        }
     }
 }

@@ -619,13 +619,18 @@ Each generated `.md` entry follows a fixed shape so it's diff-friendly and LLM-p
 running **PHP 8.5 + Apache2 + Redis** with all extensions; **no database in the container**
 (MySQL is external); **database connections are persistent**; code paths support parallel execution.
 
-> **Status (built & verified):** `docker/Dockerfile` (PHP **8.5** + Apache + mod_security/rewrite/headers,
-> mysqli/pdo_mysql/intl) builds; `docker-compose.yml` runs the app + a Redis sidecar against the
-> **external** MySQL (`make build && make up`). Verified end-to-end: app serves through real Apache,
-> persistent connections (`pConnect`), and the engine is fully hidden (§18.2). **Deferred (do not yet
-> build cleanly on PHP 8.5 via `docker-php-ext-install`):** `opcache`/JIT and the `redis` extension —
-> the app falls back to the file cache until they're enabled (one-line uncomment in the Dockerfile).
-> mpm_event + PHP-FPM (vs the current mod_php) remains a performance follow-up.
+> **Status (built & verified end-to-end):** `docker/Dockerfile` (PHP **8.5** + Apache +
+> mod_security/rewrite/headers/env, mysqli/pdo_mysql/intl) builds; `docker-compose.yml` runs the app +
+> a Redis sidecar against the **external** MySQL (`make build && make up`). Verified in the real
+> container: `health` **200** against the external DB (persistent `pConnect` connections), full CRUD,
+> **OPcache + JIT enabled** (tracing, 64 M; OPcache is compiled into php:8.5, configured in
+> `docker/php/php.ini`), and the engine fully hidden (§18.2).
+>
+> **Config is 12-factor via UNDERSCORE env vars** (`DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD/
+> DB_PERSISTENT`, `APP_BASE_URL`, `CI_ENVIRONMENT`): dotted CI keys (`database.default.*`) do **not**
+> propagate through Apache/mod_php, so the vhost `PassEnv`s these and `Config\App`/`Config\Database`
+> map them (`env()`; port cast to int). **Deferred:** the `redis` extension (file cache until then) and
+> mpm_event + PHP-FPM (vs the current mod_php) as a throughput optimisation.
 
 ### 17.1 Image composition
 
@@ -724,8 +729,12 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   holds only the original request line). Clean, extensionless URLs only.
 - `mod_headers` re-asserts the security headers and unsets `X-Powered-By` for static files too.
 - Dotfiles are denied; directory listing is off; `ServerSignature Off`.
-- **Server-token masking** (`ServerTokens Prod`, and stripping the Apache `Server` version) belongs
-  in the vhost/main config shipped in the container (Phase 6) — `.htaccess` cannot set it.
+- **Server-token masking (implemented in the container):** the `Server` header is replaced entirely
+  with `MicroService` via mod_security `SecServerSignature`. Two non-obvious requirements, both set in
+  `docker/apache/stealth.conf`: `SecRuleEngine On` (with `DetectionOnly` it does not rewrite the
+  header) **and** `ServerTokens Full` (mod_security overwrites the signature in place, so the full
+  string must exist — with `Prod` it is pre-truncated to `Apache` and cannot be replaced). No rule
+  sets are loaded, so nothing is inspected/blocked. Verified: real container emits `Server: MicroService`.
 
 ### 18.3 Runtime layer — PHP / container
 

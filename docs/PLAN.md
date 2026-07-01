@@ -218,8 +218,11 @@ from `audit_log`, and any deleted row can be restored.
       deny dotfiles/`vendor/` (`apache2-infrastructure-expert`).
 - [ ] **Persistent-connection capacity sizing**: enforce Σ(FPM `pm.max_children` × replicas) ≤ MySQL
       `max_connections` − headroom; document the numbers (`mysql-expert` + `apache2-infrastructure-expert`).
-- [ ] OPcache + **preloading** (`opcache.preload`) of core; enable **JIT** and keep it only where
-      profiling proves a win; tune realpath cache (`php-optimization-engineer` — measure first).
+- [x] **OPcache + JIT enabled** (tracing, 64 M, `validate_timestamps=0`; OPcache is compiled into
+      php:8.5, configured in `docker/php/php.ini`) + realpath cache. Preloading is a follow-up.
+- [x] **Server-token masking fixed** (mod_security `SecServerSignature` + `SecRuleEngine On` +
+      `ServerTokens Full`) and **container→external-DB config** wired via `PassEnv` + underscore env
+      vars (dotted CI keys don't survive mod_php) — verified `health` 200 + `Server: MicroService`.
 - [ ] Parallel-execution paths where they pay off (`parallel` ext / Fibers+amphp) for fan-out work.
 - [ ] Generated `GET /api/v1/openapi.json` + contract tests (`rest-api-specialist`, `automation-tester-specialist`).
 - [ ] Security review of the whole surface (authz/IDOR, injection, headers, secrets) (`php-security-engineer`).

@@ -20,23 +20,18 @@ services:
     restart: unless-stopped
     ports:
       - "${APP_HOST_PORT:-8080}:80"
+    # Config via UNDERSCORE-named env vars — dotted CI keys (database.default.*)
+    # do not propagate through Apache/mod_php; the app maps these in Config\App /
+    # Config\Database. The external DB never lives in this stack.
     environment:
       CI_ENVIRONMENT: production
-      app.baseURL: ${APP_BASE_URL:-http://localhost:8080/}
-      app.forceGlobalSecureRequests: "false"
-      # External database (never bundled). Persistent connections.
-      database.default.hostname: ${DB_HOST:-host.docker.internal}
-      database.default.port: "${DB_PORT:-3307}"
-      database.default.database: ${MYSQL_DATABASE:-microservice}
-      database.default.username: ${MYSQL_USER:-microservice}
-      database.default.password: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
-      database.default.DBDriver: MySQLi
-      database.default.pConnect: "true"
-      # Rate-limit / cache counters. Defaults to file (always available); set
-      # CACHE_HANDLER=redis in .env once the phpredis extension is in the image.
-      cache.handler: ${CACHE_HANDLER:-file}
-      cache.redis.host: redis
-      cache.redis.port: "6379"
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080/}
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: "${DB_PORT:-3307}"
+      DB_NAME: ${MYSQL_DATABASE:-microservice}
+      DB_USER: ${MYSQL_USER:-microservice}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      DB_PERSISTENT: "true"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

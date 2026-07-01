@@ -17,7 +17,7 @@ RUN set -eux; \
     docker-php-ext-install mysqli; \
     docker-php-ext-install pdo_mysql; \
     docker-php-ext-install intl; \
-    a2enmod rewrite headers security2; \
+    a2enmod rewrite headers security2 env; \
     rm -rf /var/lib/apt/lists/*
 
 # Optional extensions that don't yet build cleanly on PHP 8.5 (docker-php-ext
