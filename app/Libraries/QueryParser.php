@@ -71,8 +71,8 @@ final class QueryParser
 
                         continue;
                     }
-                    if (! self::valueTypeMatches((string) $column, $operator, $value, $definition)) {
-                        $errors[] = "Filter value for {$column} must be numeric.";
+                    if (($typeError = self::filterValueTypeError((string) $column, $operator, $value, $definition)) !== null) {
+                        $errors[] = $typeError;
 
                         continue;
                     }
@@ -82,8 +82,8 @@ final class QueryParser
                 continue;
             }
 
-            if (! self::valueTypeMatches((string) $column, 'eq', $spec, $definition)) {
-                $errors[] = "Filter value for {$column} must be numeric.";
+            if (($typeError = self::filterValueTypeError((string) $column, 'eq', $spec, $definition)) !== null) {
+                $errors[] = $typeError;
 
                 continue;
             }
@@ -104,28 +104,55 @@ final class QueryParser
      *
      * @param mixed $value
      */
-    private static function valueTypeMatches(string $column, string $operator, $value, ResourceDefinition $definition): bool
+    private static function filterValueTypeError(string $column, string $operator, $value, ResourceDefinition $definition): ?string
     {
         if ($operator === 'like') {
-            return true;
+            return null;
         }
 
-        $type = $definition->casts[$column] ?? null;
-        if ($type !== 'int' && $type !== 'float') {
-            return true;
+        // Constrain the value to the column's declared type. Otherwise MySQL silently
+        // coerces a bad value — `price > 'abc'` becomes `price > 0` (matches everything),
+        // `created_at >= 'abc'` becomes `>= NULL` (matches nothing) — and the caller gets
+        // wrong results with no error. `like` is exempt; unconstrained columns take any value.
+        [$expected, $isValid] = match ($definition->casts[$column] ?? null) {
+            'int', 'float' => ['numeric', static fn (string $v): bool => is_numeric($v)],
+            'datetime'     => ['a valid date', static fn (string $v): bool => self::isParseableDate($v)],
+            default        => [null, null],
+        };
+        if ($isValid === null) {
+            return null;
         }
 
         $values = is_array($value)
             ? $value
             : (($operator === 'in' || $operator === 'nin') ? explode(',', (string) $value) : [$value]);
 
+        if ($values === []) {
+            return "Filter value for {$column} must be {$expected}.";
+        }
         foreach ($values as $single) {
-            if (is_array($single) || ! is_numeric($single)) {
-                return false;
+            if (is_array($single) || ! $isValid((string) $single)) {
+                return "Filter value for {$column} must be {$expected}.";
             }
         }
 
-        return $values !== [];
+        return null;
+    }
+
+    /** True if the string parses as an absolute date/time (rejects empty and garbage). */
+    private static function isParseableDate(string $value): bool
+    {
+        if (trim($value) === '') {
+            return false;
+        }
+
+        try {
+            new \DateTimeImmutable($value);
+
+            return true;
+        } catch (\Exception) {
+            return false;
+        }
     }
 
     /**

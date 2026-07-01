@@ -44,6 +44,20 @@ final class QueryFilterTest extends FeatureTestCase
         $this->assertSame('cheap', $json['data'][0]['sku']);
     }
 
+    public function testDateRangeFilterOnTimestamps(): void
+    {
+        // n8n incremental sync: fetch records created since a cutoff. created_at is now
+        // filterable; a garbage date is rejected with 400 (not silently empty).
+        $this->seedProduct('recent', 'active', '1.00');
+        db_connect()->table('products')->where('sku', 'recent')->update(['created_at' => '2030-01-01 00:00:00']);
+
+        $skus = array_column($this->list('filter[created_at][gte]=2029-01-01&perPage=100')['data'], 'sku');
+        $this->assertContains('recent', $skus);
+        $this->assertNotContains('cheap', $skus); // seeded "now", before 2029
+
+        $this->withHeaders($this->auth)->get('api/v1/products?filter[created_at][gte]=not-a-date')->assertStatus(400);
+    }
+
     public function testFetchRecordsByPrimaryKeySet(): void
     {
         // n8n's "fetch these records by id" pattern: the primary key is always

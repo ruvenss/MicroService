@@ -17,10 +17,10 @@ final class QueryParserTest extends CIUnitTestCase
             'table'      => 'products',
             'primaryKey' => 'id',
             'fillable'   => ['sku', 'name', 'price', 'status'],
-            'filterable' => ['sku', 'status', 'price'],
+            'filterable' => ['sku', 'status', 'price', 'created_at'],
             'sortable'   => ['sku', 'name'],
             'timestamps' => true,
-            'casts'      => ['id' => 'int', 'price' => 'float'],
+            'casts'      => ['id' => 'int', 'price' => 'float', 'created_at' => 'datetime'],
         ]);
     }
 
@@ -123,6 +123,20 @@ final class QueryParserTest extends CIUnitTestCase
         // Bare-equality shorthand and set membership are validated too.
         $this->assertFalse(QueryParser::parse(['filter' => ['price' => 'abc']], $this->definition())->isValid());
         $this->assertFalse(QueryParser::parse(['filter' => ['price' => ['in' => '1,x,3']]], $this->definition())->isValid());
+    }
+
+    public function testValidatesDatetimeColumnValues(): void
+    {
+        // A datetime column rejects an unparseable date (else MySQL coerces it to NULL
+        // and silently returns nothing), and accepts real date/datetime strings.
+        $bad = QueryParser::parse(['filter' => ['created_at' => ['gte' => 'not-a-date']]], $this->definition());
+        $this->assertFalse($bad->isValid());
+        $this->assertStringContainsString('valid date', $bad->errors[0]);
+
+        foreach (['2026-01-01', '2026-07-01T10:19:30Z', '2026-07-01 10:19:30'] as $date) {
+            $spec = QueryParser::parse(['filter' => ['created_at' => ['gte' => $date]]], $this->definition());
+            $this->assertTrue($spec->isValid(), "created_at gte {$date} should be valid");
+        }
     }
 
     public function testAcceptsNumericValuesAndAnyValueOnStringColumns(): void

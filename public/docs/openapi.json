@@ -1288,7 +1288,7 @@
                         "name": "sort",
                         "in": "query",
                         "required": false,
-                        "description": "Sort by one or more columns, comma-separated (e.g. -price,name); prefix \"-\" for descending. Allowed: sku, name, price, created_at (and id). Any other column is rejected with 400 (not silently ignored).",
+                        "description": "Sort by one or more columns, comma-separated (e.g. -price,name); prefix \"-\" for descending. Allowed: sku, name, price, created_at, updated_at (and id). Any other column is rejected with 400 (not silently ignored).",
                         "schema": {
                             "type": "string"
                         }
@@ -1306,7 +1306,7 @@
                         "name": "filter[sku]",
                         "in": "query",
                         "required": false,
-                        "description": "Filter. Columns: sku, status, price. Operators: eq, ne, gt, gte, lt, lte, like, in, nin (e.g. filter[col][gte]=10). Numeric columns require numeric values (a non-numeric value is rejected with 400, never coerced); for like, % and _ match literally.",
+                        "description": "Filter. Columns: sku, status, price, created_at, updated_at. Operators: eq, ne, gt, gte, lt, lte, like, in, nin (e.g. filter[col][gte]=10). Numeric columns require numeric values (a non-numeric value is rejected with 400, never coerced); for like, % and _ match literally.",
                         "schema": {
                             "type": "string"
                         }

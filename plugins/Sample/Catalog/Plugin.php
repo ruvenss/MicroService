@@ -36,8 +36,11 @@ final class Plugin implements PluginInterface
                     'status' => 'permit_empty|in_list[active,archived]',
                 ],
             ],
-            'sortable'    => ['sku', 'name', 'price', 'created_at'],
-            'filterable'  => ['sku', 'status', 'price'],
+            'sortable'    => ['sku', 'name', 'price', 'created_at', 'updated_at'],
+            // created_at/updated_at are filterable so an n8n workflow can date-range
+            // sync a resource directly (filter[updated_at][gte]=<last-run>), a simpler
+            // alternative to the _audit change feed for many syncs.
+            'filterable'  => ['sku', 'status', 'price', 'created_at', 'updated_at'],
             'defaultSort' => '-created_at',
             'perPage'     => ['default' => 25, 'max' => 100],
             'timestamps'  => true,
