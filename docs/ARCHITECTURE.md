@@ -191,8 +191,10 @@ authorized). Covered by `HeadRequestTest`.
   unknown column is ignored, and if none remain the resource's `defaultSort` applies. Covered by
   `QueryFilterTest`.
 - **Filtering:** `?filter[status]=active&filter[price][gte]=100`. Operators:
-  `eq, ne, gt, gte, lt, lte, like, in`. Only `filterable` columns allowed; values bound as
-  parameters (never interpolated).
+  `eq` (also the bare `filter[col]=v` shorthand), `ne`, `gt`, `gte`, `lt`, `lte`, `like` (contains),
+  `in` / `nin` (comma-separated set membership / exclusion). Combine two on one column for a range
+  (`filter[price][gte]=10&filter[price][lte]=50`). Only `filterable` columns allowed; values are bound
+  as parameters (never interpolated). Every operator is covered by `QueryFilterTest`.
 - **Sparse fields:** `?fields=id,name,price` — restrict returned columns (hidden fields always excluded).
 - **Conditional reads (caching):** every `GET` (show and list) returns a strong `ETag` — a content
   hash of the response body (no stored state, no engine fingerprint). Resend it as `If-None-Match`

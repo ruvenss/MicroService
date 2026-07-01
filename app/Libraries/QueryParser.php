@@ -15,7 +15,7 @@ namespace App\Libraries;
 final class QueryParser
 {
     /** @var list<string> */
-    public const OPERATORS = ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'like', 'in'];
+    public const OPERATORS = ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'like', 'in', 'nin'];
 
     /**
      * @param array<string, mixed> $get the full query-string array
@@ -83,7 +83,7 @@ final class QueryParser
      */
     private static function buildFilter(string $column, string $operator, $value): array
     {
-        if ($operator === 'in') {
+        if ($operator === 'in' || $operator === 'nin') {
             $value = is_array($value) ? array_values($value) : explode(',', (string) $value);
         } else {
             $value = is_array($value) ? implode(',', $value) : (string) $value;

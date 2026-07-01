@@ -388,7 +388,7 @@
                                 {
                                     "key": "filter[sku]",
                                     "value": "",
-                                    "description": "Filter. Columns: sku, status, price. Operators: eq, ne, gt, gte, lt, lte, like, in (e.g. filter[col][gte]=10).",
+                                    "description": "Filter. Columns: sku, status, price. Operators: eq, ne, gt, gte, lt, lte, like, in, nin (e.g. filter[col][gte]=10).",
                                     "disabled": true
                                 }
                             ]

@@ -52,6 +52,59 @@ final class QueryFilterTest extends FeatureTestCase
         $this->assertSame('pricey', $json['data'][0]['sku']);
     }
 
+    public function testExplicitEqMatchesShorthand(): void
+    {
+        $skus = array_column($this->list('filter[status][eq]=active')['data'], 'sku');
+        $this->assertContains('cheap', $skus);
+        $this->assertNotContains('pricey', $skus);
+    }
+
+    public function testNeExcludesValue(): void
+    {
+        $skus = array_column($this->list('filter[status][ne]=archived')['data'], 'sku');
+        $this->assertContains('cheap', $skus);
+        $this->assertNotContains('pricey', $skus);
+    }
+
+    public function testGteLteRange(): void
+    {
+        $this->seedProduct('mid', 'active', '10.00');
+        $skus = array_column($this->list('filter[price][gte]=6&filter[price][lte]=20&perPage=100')['data'], 'sku');
+        $this->assertContains('mid', $skus);      // 10 ∈ [6,20]
+        $this->assertNotContains('cheap', $skus); // 5 < 6
+        $this->assertNotContains('pricey', $skus); // 50 > 20
+    }
+
+    public function testLtOperator(): void
+    {
+        $skus = array_column($this->list('filter[price][lt]=10&perPage=100')['data'], 'sku');
+        $this->assertContains('cheap', $skus);
+        $this->assertNotContains('pricey', $skus);
+    }
+
+    public function testLikeOperator(): void
+    {
+        // 'ric' appears in 'pricey' but not 'cheap'.
+        $this->assertSame(['pricey'], array_column($this->list('filter[sku][like]=ric')['data'], 'sku'));
+    }
+
+    public function testInOperator(): void
+    {
+        $this->seedProduct('mid', 'active', '10.00');
+        $skus = array_column($this->list('filter[sku][in]=cheap,mid&perPage=100')['data'], 'sku');
+        sort($skus);
+        $this->assertSame(['cheap', 'mid'], $skus);
+    }
+
+    public function testNinOperatorExcludesTheSet(): void
+    {
+        $this->seedProduct('mid', 'active', '10.00');
+        $skus = array_column($this->list('filter[sku][nin]=pricey,mid&perPage=100')['data'], 'sku');
+        $this->assertContains('cheap', $skus);
+        $this->assertNotContains('pricey', $skus);
+        $this->assertNotContains('mid', $skus);
+    }
+
     public function testSparseFieldsLimitColumns(): void
     {
         $json = $this->list('fields=id,sku&perPage=1');

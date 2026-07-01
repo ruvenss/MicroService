@@ -809,6 +809,7 @@ class ResourceController extends BaseController
                 'lte'   => $model->where("{$column} <=", $value),
                 'like'  => $model->like($column, is_array($value) ? implode(',', $value) : (string) $value),
                 'in'    => $model->whereIn($column, is_array($value) ? $value : [$value]),
+                'nin'   => $model->whereNotIn($column, is_array($value) ? $value : [$value]),
                 default => $model->where($column, $value), // 'eq'
             };
         }
