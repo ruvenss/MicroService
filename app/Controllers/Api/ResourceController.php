@@ -10,6 +10,7 @@ use App\Libraries\AuditWriter;
 use App\Libraries\AuthContext;
 use App\Libraries\ProblemDetails;
 use App\Libraries\QueryParser;
+use App\Libraries\QuerySpec;
 use App\Libraries\RequestContext;
 use App\Libraries\ResourceDefinition;
 use App\Libraries\ResourceRegistry;
@@ -47,8 +48,15 @@ class ResourceController extends BaseController
         $this->fireBeforeQuery($definition, $model);
 
         $perPage = $this->perPage($definition);
-        $page    = max((int) ($this->request->getGet('page') ?? 1), 1);
-        $total   = $model->countAllResults(false);
+
+        // Opt-in keyset pagination: any `cursor` query param (even empty) switches
+        // to primary-key iteration — no OFFSET/COUNT, stable across inserts.
+        if ($this->request->getGet('cursor') !== null) {
+            return $this->indexByCursor($definition, $model, $spec, $perPage);
+        }
+
+        $page  = max((int) ($this->request->getGet('page') ?? 1), 1);
+        $total = $model->countAllResults(false);
 
         [$column, $direction] = $this->sort($definition);
         $model->orderBy($column, $direction);
@@ -60,6 +68,85 @@ class ResourceController extends BaseController
         $rows = array_map(fn (array $row): array => $this->present($row, $definition), $rows);
 
         return $this->response->setJSON(ResponseEnvelope::collection($rows, $page, $perPage, $total));
+    }
+
+    /**
+     * Keyset pagination over the primary key. Iterates with `WHERE pk > cursor`
+     * (or `<` when descending) instead of OFFSET, so paging stays O(page) and
+     * never skips/duplicates rows when the table changes mid-iteration. The client
+     * follows `meta.pagination.nextCursor` until it is null.
+     */
+    private function indexByCursor(ResourceDefinition $definition, GenericResourceModel $model, QuerySpec $spec, int $perPage): ResponseInterface
+    {
+        $pk = $definition->primaryKey;
+
+        // Keyset needs a unique, ordered key: iterate by the primary key. Honour an
+        // explicit ±pk sort for direction; reject any other sort as ambiguous.
+        $direction = 'ASC';
+        $sortParam = (string) ($this->request->getGet('sort') ?? '');
+        if ($sortParam !== '') {
+            if (ltrim($sortParam, '-+') !== $pk) {
+                return $this->problem(400, "Cursor pagination iterates by {$pk}; drop ?sort or use sort={$pk} / -{$pk}.");
+            }
+            $direction = str_starts_with($sortParam, '-') ? 'DESC' : 'ASC';
+        }
+
+        $cursor = (string) $this->request->getGet('cursor');
+        if ($cursor !== '') {
+            $lastSeen = self::decodeCursor($cursor);
+            if ($lastSeen === null) {
+                return $this->problem(400, 'Invalid cursor.');
+            }
+            $model->where($pk . ($direction === 'DESC' ? ' <' : ' >'), $lastSeen);
+        }
+
+        $model->orderBy($pk, $direction);
+
+        // The primary key must be selected to build the next cursor; add it back if
+        // a sparse fieldset omitted it, then strip it from the output.
+        $stripPk = $spec->fields !== null && ! in_array($pk, $spec->fields, true);
+        if ($spec->fields !== null) {
+            $model->select($stripPk ? [...$spec->fields, $pk] : $spec->fields);
+        }
+
+        // Fetch one extra row to detect whether another page exists.
+        $rows    = $model->findAll($perPage + 1, 0);
+        $hasMore = count($rows) > $perPage;
+        if ($hasMore) {
+            array_pop($rows);
+        }
+
+        $nextCursor = null;
+        if ($hasMore && $rows !== []) {
+            $nextCursor = self::encodeCursor((string) $rows[count($rows) - 1][$pk]);
+        }
+
+        $rows = array_map(function (array $row) use ($definition, $stripPk, $pk): array {
+            $out = $this->present($row, $definition);
+            if ($stripPk) {
+                unset($out[$pk]);
+            }
+
+            return $out;
+        }, $rows);
+
+        return $this->response->setJSON(ResponseEnvelope::cursorCollection($rows, $perPage, $nextCursor));
+    }
+
+    /** Opaque, versioned cursor token for a primary-key value (not a security boundary). */
+    private static function encodeCursor(string $id): string
+    {
+        return rtrim(strtr(base64_encode('c1|' . $id), '+/', '-_'), '=');
+    }
+
+    private static function decodeCursor(string $token): ?string
+    {
+        $decoded = base64_decode(strtr($token, '-_', '+/'), true);
+        if ($decoded === false || ! str_starts_with($decoded, 'c1|')) {
+            return null;
+        }
+
+        return substr($decoded, 3);
     }
 
     public function show(string $slug, string $id): ResponseInterface

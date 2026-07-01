@@ -52,4 +52,28 @@ final class ResponseEnvelope
             ],
         ];
     }
+
+    /**
+     * Wrap a collection paginated by keyset (cursor). No total/page — the client
+     * follows `nextCursor` until it is null. Stable and index-fast on large tables
+     * and directly consumable by n8n's cursor pagination mode.
+     *
+     * @param list<mixed> $items
+     *
+     * @return array<string, mixed>
+     */
+    public static function cursorCollection(array $items, int $perPage, ?string $nextCursor): array
+    {
+        return [
+            'data' => $items,
+            'meta' => [
+                'pagination' => [
+                    'perPage'    => $perPage,
+                    'cursor'     => true,
+                    'hasMore'    => $nextCursor !== null,
+                    'nextCursor' => $nextCursor,
+                ],
+            ],
+        ];
+    }
 }

@@ -753,6 +753,15 @@
                         }
                     },
                     {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": false,
+                        "description": "Opt into keyset pagination (stable, index-fast, ideal for n8n). Send the param empty to start, then follow meta.pagination.nextCursor until it is null. Iterates by id; combine only with sort=id / -id.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,

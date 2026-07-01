@@ -169,8 +169,16 @@ Base path: **`/api/v1`**. `{resource}` is the registry slug.
 
 ### 5.4 Query conventions (list endpoint)
 
-- **Pagination:** `?page=2&perPage=50` (perPage capped per resource). Meta returns
-  `page, perPage, total, totalPages`. Keyset pagination is a later optimization for large tables.
+- **Pagination:** two modes, same endpoint.
+  - *Offset (default):* `?page=2&perPage=50` (perPage capped per resource). Meta returns
+    `page, perPage, total, totalPages`.
+  - *Keyset/cursor (opt-in):* add a `cursor` param (empty to start), then follow
+    `meta.pagination.nextCursor` until it is null. Iterates by the primary key with
+    `WHERE pk > cursor` — no `OFFSET`/`COUNT`, so paging stays index-fast and never skips or
+    duplicates rows when the table changes mid-iteration. This is the shape n8n's cursor
+    pagination consumes. Direction follows an explicit `sort={pk}` / `-{pk}`; any other `sort`
+    alongside `cursor` is rejected (keyset needs a unique ordered key). Cursors are opaque,
+    versioned tokens (not a security boundary). Meta returns `perPage, cursor, hasMore, nextCursor`.
 - **Sorting:** `?sort=-created_at,name` (`-` = descending). Only `sortable` columns allowed.
 - **Filtering:** `?filter[status]=active&filter[price][gte]=100`. Operators:
   `eq, ne, gt, gte, lt, lte, like, in`. Only `filterable` columns allowed; values bound as

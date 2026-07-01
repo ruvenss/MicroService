@@ -295,7 +295,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{baseUrl}}/api/v1/products?page=&perPage=&sort=&fields=&filter[sku]=",
+                            "raw": "{{baseUrl}}/api/v1/products?page=&perPage=&cursor=&sort=&fields=&filter[sku]=",
                             "host": [
                                 "{{baseUrl}}"
                             ],
@@ -315,6 +315,12 @@
                                     "key": "perPage",
                                     "value": "",
                                     "description": "Items per page (capped per resource).",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "cursor",
+                                    "value": "",
+                                    "description": "Opt into keyset pagination (stable, index-fast, ideal for n8n). Send the param empty to start, then follow meta.pagination.nextCursor until it is null. Iterates by id; combine only with sort=id / -id.",
                                     "disabled": true
                                 },
                                 {
