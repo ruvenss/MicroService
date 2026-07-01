@@ -979,7 +979,10 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   `record_id`) is the resource's **declared `primaryKey` value**, resolved from the registry — not a
   hardcoded `id` — so notifications carry the real key even for resources keyed on something else (the
   engine is generic over `primaryKey`; the Postman collection's create→reuse-id script is likewise keyed
-  off the resource's primary key). Covered by `WebhookTest`.
+  off the resource's primary key). The payload's **`data`** (and, on update, **`previous`**) is typed
+  through the resource's casts at the single enqueue choke point, so **every** event — create, update
+  *and delete* — reaches n8n in the same int/float/bool + ISO-8601-`Z` shape as a live `GET` (delete
+  `data` and update `previous` were previously raw MySQLi strings). Covered by `WebhookTest`.
   **No double-delivery under concurrency:** `dispatch()` first *claims* a batch with a single row-locked
   `UPDATE … SET status='dispatching', claim_token=? … ORDER BY id LIMIT n`, so overlapping
   `webhooks:dispatch` runs partition the work and never POST the same row twice. The claim is released

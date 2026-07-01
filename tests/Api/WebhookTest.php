@@ -75,6 +75,34 @@ final class WebhookTest extends FeatureTestCase
         $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $payload['timestamp']);
     }
 
+    public function testDeleteDataAndUpdatePreviousAreTypedLikeTheLiveApi(): void
+    {
+        // Every webhook payload an n8n workflow receives must be typed like a live GET:
+        // delete `data` and update `previous` used to be raw MySQLi strings while
+        // create/update `data` was cast. Use a fractional price so the float survives
+        // the JSON round-trip.
+        $id = json_decode((string) $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'WH-TYPED', 'name' => 'N', 'price' => '3.50'])
+            ->response()->getBody(), true)['data']['id'];
+        $this->withHeaders($this->auth)->withBodyFormat('json')->patch("api/v1/products/{$id}", ['price' => '4.75']);
+        $this->withHeaders($this->auth)->delete("api/v1/products/{$id}");
+
+        $model = new WebhookOutboxModel();
+
+        // afterUpdate: data (new) and previous (old) both typed.
+        $update = json_decode((string) $model->where('event', 'products.afterUpdate')->first()['payload_json'], true);
+        $this->assertSame(4.75, $update['data']['price']);
+        $this->assertSame(3.50, $update['previous']['price']);          // previous now cast, not "3.50"
+        $this->assertIsInt($update['previous']['id']);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $update['previous']['created_at']);
+
+        // afterDelete: data typed (was raw hide()).
+        $delete = json_decode((string) $model->where('event', 'products.afterDelete')->first()['payload_json'], true);
+        $this->assertSame(4.75, $delete['data']['price']);
+        $this->assertIsInt($delete['data']['id']);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $delete['data']['created_at']);
+    }
+
     public function testEnqueueIsControllerDrivenNotPostCommitEvent(): void
     {
         // The outbox is written by the controller inside the mutation transaction,

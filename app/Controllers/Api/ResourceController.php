@@ -981,6 +981,14 @@ class ResourceController extends BaseController
      */
     private function enqueueWebhook(string $action, ResourceDefinition $definition, array $row, array $before = []): void
     {
+        // Type the payload at the one choke point that builds every outbound webhook,
+        // so `data` and `previous` reach n8n in the same int/float/bool + ISO-8601-`Z`
+        // shape as a live GET — regardless of whether the caller passed an already
+        // presented row (create/update) or a raw hidden row (delete `data`, update
+        // `previous`). castRow is idempotent (re-casting cast values is a no-op) and
+        // never re-fires the serialize hook, so presented rows pass through unchanged.
+        $row    = $definition->castRow($row);
+        $before = $before === [] ? [] : $definition->castRow($before);
         WebhookDispatcher::enqueue(new ResourceEvent($definition->slug, $action, data: $before, row: $row));
     }
 
