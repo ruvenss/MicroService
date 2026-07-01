@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controllers\Api;
 
+use App\Core\Plugin\ResourceEvent;
 use App\Libraries\AuditWriter;
 use App\Libraries\ResourceRegistry;
 use App\Libraries\ResponseEnvelope;
 use App\Models\ArchivedRecordModel;
+use CodeIgniter\Events\Events;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
@@ -107,6 +109,8 @@ class Archive extends ApiController
         $model->update($archive['id'], ['restored_at' => date('Y-m-d H:i:s')]);
         AuditWriter::record('restore', $definition->slug, $pkVal !== null ? (string) $pkVal : null, null, $redacted);
         $db->transComplete();
+
+        Events::trigger('resource.afterRestore', new ResourceEvent($definition->slug, 'afterRestore', row: $redacted));
 
         return $this->response->setJSON(ResponseEnvelope::wrap([
             'restored' => true,

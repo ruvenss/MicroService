@@ -118,10 +118,13 @@ class ResourceController extends BaseController
         AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
         $db->transComplete();
 
+        $presented = $this->present($row, $definition);
+        $this->fireAfter('afterCreate', $definition, $presented);
+
         return $this->response
             ->setStatusCode(201)
             ->setHeader('Location', site_url("api/v1/{$slug}/{$id}"))
-            ->setJSON(ResponseEnvelope::wrap($this->present($row, $definition)));
+            ->setJSON(ResponseEnvelope::wrap($presented));
     }
 
     /**
@@ -177,6 +180,10 @@ class ResourceController extends BaseController
         }
         $db->transComplete();
 
+        foreach ($created as $createdRow) {
+            $this->fireAfter('afterCreate', $definition, $createdRow);
+        }
+
         return $this->response->setStatusCode(201)->setJSON([
             'data' => $created,
             'meta' => ['created' => count($created)],
@@ -214,7 +221,10 @@ class ResourceController extends BaseController
         AuditWriter::record('update', $definition->slug, (string) $id, $this->hide($before, $definition), $this->hide($after, $definition));
         $db->transComplete();
 
-        return $this->response->setJSON(ResponseEnvelope::wrap($this->present($after, $definition)));
+        $presented = $this->present($after, $definition);
+        $this->fireAfter('afterUpdate', $definition, $presented, $this->hide($before, $definition));
+
+        return $this->response->setJSON(ResponseEnvelope::wrap($presented));
     }
 
     /**
@@ -249,6 +259,8 @@ class ResourceController extends BaseController
         $model->delete($id);
         AuditWriter::record('delete', $definition->slug, (string) $id, $this->hide($row, $definition), null);
         $db->transComplete();
+
+        $this->fireAfter('afterDelete', $definition, $this->hide($row, $definition));
 
         return $this->response->setStatusCode(204);
     }
@@ -401,6 +413,20 @@ class ResourceController extends BaseController
     private function fireBeforeQuery(ResourceDefinition $definition, GenericResourceModel $model): void
     {
         Events::trigger('resource.beforeQuery', new ResourceEvent($definition->slug, 'list', model: $model));
+    }
+
+    /**
+     * Fire a post-commit mutation event (resource.afterCreate/afterUpdate/
+     * afterDelete). Plugins subscribe to react to durable changes — e.g. POST to
+     * an n8n webhook, invalidate a cache, or cascade. `$row` is the presented row
+     * (the client's view); `$before` carries the prior state for updates.
+     *
+     * @param array<string, mixed> $row
+     * @param array<string, mixed> $before
+     */
+    private function fireAfter(string $action, ResourceDefinition $definition, array $row, array $before = []): void
+    {
+        Events::trigger('resource.' . $action, new ResourceEvent($definition->slug, $action, data: $before, row: $row));
     }
 
     /**

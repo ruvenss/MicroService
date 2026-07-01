@@ -483,10 +483,14 @@ to confirm indexing/retention; very high delete-volume resources may warrant a d
 > archival delete, and generated docs with **zero** core change.
 >
 > The generic engine also fires **lifecycle events** plugins subscribe to (CodeIgniter Events, via a
-> mutable `App\Core\Plugin\ResourceEvent`): **`resource.beforeSave`** (mutate the create/update payload
-> before validation), **`resource.beforeQuery`** (constrain the list query — e.g. tenant scoping), and
-> **`resource.serialize`** (transform each outgoing row — e.g. computed fields / numeric casts for n8n).
-> Covered by `ResourceEventsTest`.
+> mutable `App\Core\Plugin\ResourceEvent`). **Before/around:** `resource.beforeSave` (mutate the
+> create/update payload before validation), `resource.beforeQuery` (constrain the list query — tenant
+> scoping), `resource.serialize` (transform each outgoing row). **Post-commit:** `resource.afterCreate`,
+> `resource.afterUpdate` (carries prior state in `->data`), `resource.afterDelete`, and
+> `resource.afterRestore` — fired **after** the transaction commits, so a plugin can safely react to a
+> durable change: **push a webhook to n8n**, invalidate a cache, or cascade. This is the framework's
+> outbound n8n integration point (the service triggering n8n workflows). Covered by `ResourceEventsTest`
+> and `AfterEventsTest`.
 >
 > **Plugins are self-contained:** `Config\Autoload` registers each enabled plugin's namespace, so a
 > plugin owns its **migrations** (`plugins/<V>/<N>/Database/Migrations/`, run by `spark migrate --all`),
