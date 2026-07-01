@@ -51,6 +51,12 @@ final class EndpointCatalog
                 'success' => 200, 'successKind' => 'item', 'captureId' => false,
             ],
             [
+                'tag' => 'System', 'resource' => null, 'method' => 'GET', 'path' => '/api/v1/_me',
+                'operationId' => 'whoAmI', 'summary' => 'Introspect the authenticated API key (name, scopes, limits) — no secret.',
+                'auth' => true, 'scope' => null, 'pathParams' => [], 'query' => [], 'body' => null,
+                'success' => 200, 'successKind' => 'item', 'captureId' => false,
+            ],
+            [
                 'tag' => 'System', 'resource' => null, 'method' => 'GET', 'path' => '/api/v1/_resources',
                 'operationId' => 'discoverResources', 'summary' => 'Discover registered resources and how to query them.',
                 'auth' => true, 'scope' => null, 'pathParams' => [], 'query' => [], 'body' => null,

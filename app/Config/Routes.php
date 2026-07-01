@@ -25,6 +25,7 @@ if (ENVIRONMENT !== 'production') {
 // controllers). Usage is tracked. Declared before the generic CRUD group so the
 // underscore-prefixed paths win over the resource matcher.
 $routes->group('api/v1', ['filter' => ['apikey', 'usagetracker']], static function (RouteCollection $routes): void {
+    $routes->get('_me', 'Api\Me::index');
     $routes->get('_resources', 'Api\Discovery::resources');
     $routes->get('_archive', 'Api\Archive::index');
     $routes->get('_archive/(:segment)', 'Api\Archive::show/$1');

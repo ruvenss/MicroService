@@ -13,6 +13,13 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Scope:** —
 - **Success:** `200` (`item` envelope)
 
+### `GET /api/v1/_me`
+
+- **Summary:** Introspect the authenticated API key (name, scopes, limits) — no secret.
+- **Auth:** bearer
+- **Scope:** —
+- **Success:** `200` (`item` envelope)
+
 ### `GET /api/v1/_resources`
 
 - **Summary:** Discover registered resources and how to query them.

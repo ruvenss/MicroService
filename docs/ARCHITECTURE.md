@@ -776,6 +776,8 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   back to the workflow.
 - **Typed JSON output:** a resource declares `casts` (e.g. `id => int`, `price => float`) so responses
   carry real JSON types instead of MySQLi's all-strings — n8n maps typed fields without conversion nodes.
+- **`GET /api/v1/_me`** lets a workflow introspect its own key (name, scopes, rate limit, expiry — never
+  the secret) to verify connectivity and permissions before running.
 - **Unauthenticated `/api/v1/health`** for n8n schedule/health checks and uptime polling.
 - **Importable Postman collection** (`docs/postman/`) documents each endpoint for humans and serves
   as the reference when configuring the matching n8n node.

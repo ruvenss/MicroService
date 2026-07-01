@@ -70,6 +70,31 @@
                     "response": []
                 },
                 {
+                    "name": "Introspect the authenticated API key (name, scopes, limits) \u2014 no secret.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_me"
+                            ]
+                        },
+                        "description": "Introspect the authenticated API key (name, scopes, limits) \u2014 no secret."
+                    },
+                    "response": []
+                },
+                {
                     "name": "Discover registered resources and how to query them.",
                     "request": {
                         "method": "GET",
