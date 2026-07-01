@@ -108,4 +108,31 @@ final class CursorPaginationTest extends FeatureTestCase
         $this->assertArrayHasKey('page', $json['meta']['pagination']);
         $this->assertArrayNotHasKey('nextCursor', $json['meta']['pagination']);
     }
+
+    public function testOffsetResponseCarriesRfc8288LinkHeader(): void
+    {
+        $this->seedProducts(5); // perPage 2 → 3 pages
+
+        $link = $this->withHeaders($this->auth)->get('api/v1/products?perPage=2&page=1&filter[status]=active')
+            ->response()->getHeaderLine('Link');
+
+        $this->assertStringContainsString('rel="next"', $link);
+        $this->assertStringContainsString('page=2', $link);
+        $this->assertStringContainsString('rel="last"', $link);
+        $this->assertStringNotContainsString('rel="prev"', $link);  // page 1 has no prev
+        $this->assertStringContainsString('filter', $link);         // preserves other params
+        $this->assertStringNotContainsString('index.php', $link);   // never leak the front controller
+    }
+
+    public function testCursorResponseCarriesLinkNextHeader(): void
+    {
+        $this->seedProducts(3); // perPage 2 → hasMore on page 1
+
+        $link = $this->withHeaders($this->auth)->get('api/v1/products?cursor=&perPage=2')
+            ->response()->getHeaderLine('Link');
+
+        $this->assertStringContainsString('rel="next"', $link);
+        $this->assertStringContainsString('cursor=', $link);
+        $this->assertStringNotContainsString('rel="prev"', $link); // keyset is forward-only
+    }
 }

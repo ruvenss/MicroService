@@ -186,6 +186,11 @@ authorized). Covered by `HeadRequestTest`.
     pagination consumes. Direction follows an explicit `sort={pk}` / `-{pk}`; any other `sort`
     alongside `cursor` is rejected (keyset needs a unique ordered key). Cursors are opaque,
     versioned tokens (not a security boundary). Meta returns `perPage, cursor, hasMore, nextCursor`.
+  - *`Link` header (RFC 8288):* every list response also carries a `Link` header — `rel="next"`/`prev`/
+    `first`/`last` for offset, `rel="next"` for cursor — so a client (e.g. n8n's HTTP node "next URL from
+    header" pagination) can auto-follow pages without rebuilding the query. URLs are **relative** and
+    preserve every other param (filter/sort/fields); the front controller (`index.php`) is stripped so it
+    neither leaks PHP nor breaks clean URLs. No `next` on the last page, so a follower stops cleanly.
 - **Sorting:** `?sort=-created_at,name` — one or more comma-separated columns applied in order (`-` =
   descending). Only `sortable` columns are honoured (each is allow-listed, never interpolated). A column
   that is not sortable is **rejected with `400`** — validated in `QueryParser` alongside `filter`/`fields`

@@ -15,7 +15,6 @@ use App\Libraries\RequestContext;
 use App\Libraries\ResourceDefinition;
 use App\Libraries\ResourceRegistry;
 use App\Libraries\ResponseEnvelope;
-use App\Libraries\Timestamp;
 use App\Libraries\WebhookDispatcher;
 use App\Models\ArchivedRecordModel;
 use App\Models\GenericResourceModel;
@@ -79,6 +78,18 @@ class ResourceController extends BaseController
 
         $rows = array_map(fn (array $row): array => $this->present($row, $definition), $rows);
 
+        $totalPages = $perPage > 0 ? (int) ceil($total / $perPage) : 1;
+        $rels       = [];
+        if ($page < $totalPages) {
+            $rels['next'] = ['page' => $page + 1];
+        }
+        if ($page > 1) {
+            $rels['prev'] = ['page' => $page - 1];
+        }
+        $rels['first'] = ['page' => 1];
+        $rels['last']  = ['page' => max(1, $totalPages)];
+        $this->response->setHeader('Link', $this->linkHeader($rels));
+
         return $this->respondCacheable(ResponseEnvelope::collection($rows, $page, $perPage, $total));
     }
 
@@ -141,6 +152,10 @@ class ResourceController extends BaseController
 
             return $out;
         }, $rows);
+
+        if ($nextCursor !== null) {
+            $this->response->setHeader('Link', $this->linkHeader(['next' => ['cursor' => $nextCursor]]));
+        }
 
         return $this->respondCacheable(ResponseEnvelope::cursorCollection($rows, $perPage, $nextCursor));
     }
@@ -844,6 +859,32 @@ class ResourceController extends BaseController
         $requested = (int) ($this->request->getGet('perPage') ?? $definition->perPageDefault);
 
         return max(1, min($requested, $definition->perPageMax));
+    }
+
+    /**
+     * RFC 8288 `Link` header for a list response, so a client — e.g. n8n's HTTP node
+     * "next URL from header" pagination — can follow next/prev without reconstructing
+     * the query. URLs are relative (resolved against the request), preserving every
+     * other param (filter/sort/fields/perPage); each `rel` overrides only page/cursor.
+     *
+     * @param array<string, array<string, int|string>> $rels rel => query overrides
+     */
+    private function linkHeader(array $rels): string
+    {
+        // Strip the front controller — Apache rewrites clean URLs to `index.php/…`, so
+        // getPath() carries it; a `/index.php/` in the Link would both leak PHP and be
+        // a non-clean URL. Keeps any real base-path prefix intact.
+        $path  = (string) preg_replace('#/index\.php(?=/|$)#', '', $this->request->getUri()->getPath());
+        $path  = '/' . ltrim($path, '/');
+        $query = $this->request->getGet() ?? [];
+
+        $parts = [];
+        foreach ($rels as $rel => $override) {
+            $qs      = http_build_query(array_merge($query, $override));
+            $parts[] = '<' . $path . ($qs !== '' ? '?' . $qs : '') . '>; rel="' . $rel . '"';
+        }
+
+        return implode(', ', $parts);
     }
 
     /**
