@@ -47,7 +47,7 @@ class ApiKeyAuth implements FilterInterface
 
         $model = new ApiKeyModel();
         $key   = $model->findActiveByPrefix($prefix);
-        if ($key === null || ! hash_equals((string) $key['secret_hash'], hash('sha256', $secret))) {
+        if ($key === null || ! $model->verifySecret($key, $secret)) {
             return $this->fail($request);
         }
 
