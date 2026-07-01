@@ -64,4 +64,50 @@ final class IdempotencyTest extends FeatureTestCase
             ->post('api/v1/products', ['sku' => 'IK-1', 'name' => 'A', 'price' => '1.00'])
             ->assertStatus(400);
     }
+
+    public function testIdempotencyKeysAreIsolatedPerApiKey(): void
+    {
+        // Two DIFFERENT API keys reuse the same Idempotency-Key value. Key B must
+        // NOT replay key A's response, nor be rejected as a "different request":
+        // the key is scoped per authenticated API key (no cross-tenant leak).
+        $keyA = ['Authorization' => 'Bearer ' . $this->makeKey(['products:*'])];
+        $keyB = ['Authorization' => 'Bearer ' . $this->makeKey(['products:*'])];
+        $idem = ['Idempotency-Key' => 'shared-run'];
+
+        $this->withHeaders($keyA + $idem)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'ISO-A', 'name' => 'A', 'price' => '1.00'])
+            ->assertStatus(201);
+
+        $this->withHeaders($keyB + $idem)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'ISO-B', 'name' => 'B', 'price' => '2.00'])
+            ->assertStatus(201);
+
+        // Both executed independently (key B did not replay key A): two distinct
+        // records exist. If the key were global, B would have replayed A's 201 and
+        // created nothing, leaving only ISO-A.
+        $skus = array_column(
+            json_decode((string) $this->withHeaders($keyA)->get('api/v1/products?perPage=100')->response()->getBody(), true)['data'],
+            'sku',
+        );
+        $this->assertContains('ISO-A', $skus);
+        $this->assertContains('ISO-B', $skus);
+    }
+
+    public function testExpiredKeyIsNotReplayed(): void
+    {
+        $headers = $this->auth + ['Idempotency-Key' => 'expiring'];
+        $payload = ['sku' => 'EXP-1', 'name' => 'A', 'price' => '1.00'];
+
+        $this->withHeaders($headers)->withBodyFormat('json')->post('api/v1/products', $payload)->assertStatus(201);
+
+        // Age the stored key past its TTL.
+        db_connect()->table('idempotency_keys')->where('idem_key', 'expiring')
+            ->update(['expires_at' => date('Y-m-d H:i:s', time() - 1)]);
+
+        // Same key + same body now re-executes → the unique sku collides → 422
+        // validation (proving it did NOT replay the stored 201).
+        $this->withHeaders($headers)->withBodyFormat('json')
+            ->post('api/v1/products', $payload)
+            ->assertStatus(422);
+    }
 }

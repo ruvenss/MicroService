@@ -920,7 +920,10 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
 - **Idempotency keys (implemented):** a client sends `Idempotency-Key: <key>` on a write; the first
   response is recorded and any retry with the same key + request **replays** it (with
   `Idempotency-Replayed: true`) instead of re-executing — so an n8n retry after a timeout never
-  double-creates or double-deletes. Reusing a key with a different request → 422. Scoped per API key,
-  24 h TTL (`idempotency_keys` table, `Idempotency` filter). Sequential-retry safe; concurrent-retry
-  de-dup (unique reserve + Redis lock) is a follow-up.
+  double-creates or double-deletes. Reusing a key with a different request → 422. **Scoped per API
+  key** — the lookup filters on `api_key_id` and a `UNIQUE(api_key_id, idem_key)` index enforces it, so
+  two different keys reusing the same `Idempotency-Key` never see each other's response (no cross-tenant
+  replay; covered by `IdempotencyTest`). 24 h TTL — an expired key re-executes rather than replaying.
+  Sequential-retry safe (n8n's behaviour); concurrent-retry de-dup (unique reserve + Redis lock) is a
+  follow-up.
 
