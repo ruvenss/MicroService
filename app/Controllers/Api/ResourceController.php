@@ -917,6 +917,8 @@ class ResourceController extends BaseController
     /**
      * Cast output columns to their declared types so responses carry proper JSON
      * types (int/float/bool) instead of MySQLi's all-strings — friendlier for n8n.
+     * Delegates to the resource definition so the CRUD response and the `_audit`
+     * change feed present the same record identically.
      *
      * @param array<string, mixed> $row
      *
@@ -924,21 +926,7 @@ class ResourceController extends BaseController
      */
     private function cast(array $row, ResourceDefinition $definition): array
     {
-        foreach ($definition->casts as $field => $type) {
-            if (! array_key_exists($field, $row) || $row[$field] === null) {
-                continue;
-            }
-            $row[$field] = match ($type) {
-                'int'      => (int) $row[$field],
-                'float'    => (float) $row[$field],
-                'bool'     => (bool) $row[$field],
-                'string'   => (string) $row[$field],
-                'datetime' => Timestamp::iso((string) $row[$field]),
-                default    => $row[$field],
-            };
-        }
-
-        return $row;
+        return $definition->castRow($row);
     }
 
     /**

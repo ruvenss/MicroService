@@ -467,7 +467,12 @@ auditing. Two complementary layers, both write to the single DB:
    This answers "who called what, when, and what happened."
 2. **Data audit — `audit_log`.** One row per *state-changing* operation (create / update /
    delete / restore, plus key management actions) capturing **before** and **after** snapshots
-   so any change can be reconstructed and attributed.
+   so any change can be reconstructed and attributed. When the change feed is *read* back
+   (`GET /_audit`, incl. `?sinceId=` polling), those snapshots are presented through the
+   resource's own casts (`ResourceDefinition::castRow` — the same one the CRUD response uses):
+   the `after` an n8n workflow consumes carries typed `int`/`float`/`bool` and ISO-8601-`Z`
+   timestamps, **identical to a live `GET`**, so both surfaces parse with one rule. The stored
+   JSON is untouched (forensic record); only the presentation is normalised.
 
 ```sql
 audit_log

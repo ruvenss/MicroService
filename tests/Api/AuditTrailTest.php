@@ -103,4 +103,25 @@ final class AuditTrailTest extends FeatureTestCase
         $entry = json_decode((string) $this->withHeaders($headers)->get('api/v1/_audit')->response()->getBody(), true)['data'][0];
         $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $entry['created_at']);
     }
+
+    public function testAuditSnapshotsAreCastLikeTheLiveApi(): void
+    {
+        // The `after` snapshot is what an n8n change-feed consumer reads; it must be
+        // the same typed, ISO-8601-Z shape as a live GET — not raw MySQLi strings and
+        // a bare `Y-m-d H:i:s` timestamp — so both surfaces parse identically. Use a
+        // fractional price so the float survives the JSON round-trip (a whole float
+        // re-decodes to int).
+        $headers = $this->authHeaders(['products:*', 'audit:read']);
+        $id      = (string) json_decode((string) $this->withHeaders($headers)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'SKU-' . uniqid(), 'name' => 'N', 'price' => '2.50'])
+            ->response()->getBody(), true)['data']['id'];
+
+        $entry = json_decode((string) $this->withHeaders($headers)->get("api/v1/_audit?resource=products&record_id={$id}")->response()->getBody(), true)['data'][0];
+        $after = $entry['after'];
+
+        $this->assertIsInt($after['id']);                    // int, not "73"
+        $this->assertIsFloat($after['price']);               // float 2.5, not "2.50"
+        $this->assertSame(2.5, $after['price']);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $after['created_at']);
+    }
 }

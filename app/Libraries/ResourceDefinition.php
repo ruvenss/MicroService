@@ -81,4 +81,34 @@ final class ResourceDefinition
             upsertKey: isset($def['upsertKey']) ? (string) $def['upsertKey'] : null,
         );
     }
+
+    /**
+     * Cast a raw DB row (MySQLi returns every column as a string) to the declared
+     * JSON types, so every surface that emits this resource's records — the CRUD
+     * response and the `_audit` change feed's before/after snapshots — presents
+     * int/float/bool and ISO-8601 `Z` timestamps identically, and an n8n workflow
+     * parses them with one rule. Absent/null/undeclared fields pass through.
+     *
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>
+     */
+    public function castRow(array $row): array
+    {
+        foreach ($this->casts as $field => $type) {
+            if (! array_key_exists($field, $row) || $row[$field] === null) {
+                continue;
+            }
+            $row[$field] = match ($type) {
+                'int'      => (int) $row[$field],
+                'float'    => (float) $row[$field],
+                'bool'     => (bool) $row[$field],
+                'string'   => (string) $row[$field],
+                'datetime' => Timestamp::iso((string) $row[$field]),
+                default    => $row[$field],
+            };
+        }
+
+        return $row;
+    }
 }

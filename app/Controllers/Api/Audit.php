@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers\Api;
 
+use App\Libraries\ResourceRegistry;
 use App\Libraries\ResponseEnvelope;
 use App\Libraries\Timestamp;
 use App\Models\AuditLogModel;
@@ -47,18 +48,35 @@ class Audit extends ApiController
         $total = $model->countAllResults(false);
         $rows  = $model->orderBy('id', $incremental ? 'ASC' : 'DESC')->findAll($perPage, ($page - 1) * $perPage);
 
-        $data = array_map(static fn (array $r): array => [
-            'id'         => (int) $r['id'],
-            'action'     => $r['action'],
-            'resource'   => $r['resource'],
-            'record_id'  => $r['record_id'],
-            'api_key_id' => $r['api_key_id'] !== null ? (int) $r['api_key_id'] : null,
-            'request_id' => $r['request_id'],
-            'before'     => $r['before_json'] !== null ? json_decode((string) $r['before_json'], true) : null,
-            'after'      => $r['after_json'] !== null ? json_decode((string) $r['after_json'], true) : null,
-            'changed'    => $r['changed_json'] !== null ? json_decode((string) $r['changed_json'], true) : null,
-            'created_at' => Timestamp::iso($r['created_at']),
-        ], $rows);
+        $registry = ResourceRegistry::instance();
+
+        $data = array_map(static function (array $r) use ($registry): array {
+            $before = $r['before_json'] !== null ? json_decode((string) $r['before_json'], true) : null;
+            $after  = $r['after_json'] !== null ? json_decode((string) $r['after_json'], true) : null;
+
+            // Present the snapshots in the same typed, ISO-8601-`Z` shape as the live
+            // CRUD API, so an n8n workflow consuming this change feed parses `after`
+            // exactly like a GET response. The raw JSON is untouched in the audit
+            // table (forensic record); only the presentation is normalised.
+            $definition = $registry->get($r['resource']);
+            if ($definition !== null) {
+                $before = is_array($before) ? $definition->castRow($before) : $before;
+                $after  = is_array($after) ? $definition->castRow($after) : $after;
+            }
+
+            return [
+                'id'         => (int) $r['id'],
+                'action'     => $r['action'],
+                'resource'   => $r['resource'],
+                'record_id'  => $r['record_id'],
+                'api_key_id' => $r['api_key_id'] !== null ? (int) $r['api_key_id'] : null,
+                'request_id' => $r['request_id'],
+                'before'     => $before,
+                'after'      => $after,
+                'changed'    => $r['changed_json'] !== null ? json_decode((string) $r['changed_json'], true) : null,
+                'created_at' => Timestamp::iso($r['created_at']),
+            ];
+        }, $rows);
 
         return $this->response->setJSON(ResponseEnvelope::collection($data, $page, $perPage, $total));
     }
