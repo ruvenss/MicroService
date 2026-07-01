@@ -19,6 +19,7 @@ final class ResourceEventsTest extends FeatureTestCase
         Events::removeAllListeners('resource.beforeSave');
         Events::removeAllListeners('resource.serialize');
         Events::removeAllListeners('resource.beforeQuery');
+        Events::removeAllListeners('resource.beforeDelete');
         parent::tearDown();
     }
 
@@ -68,5 +69,61 @@ final class ResourceEventsTest extends FeatureTestCase
 
         $this->assertCount(1, $json['data']);
         $this->assertSame('active', $json['data'][0]['status']);
+    }
+
+    public function testBeforeDeleteCanVetoADelete(): void
+    {
+        // A plugin refuses to delete an 'archived' product (its stand-in for "locked").
+        Events::on('resource.beforeDelete', static function (ResourceEvent $e): void {
+            if (($e->row['status'] ?? null) === 'archived') {
+                $e->cancel('This product is archived and cannot be deleted.');
+            }
+        });
+
+        $auth = $this->authHeaders(['products:*']);
+        $id   = $this->create(['sku' => 'EV-LOCK', 'name' => 'N', 'price' => '1.00', 'status' => 'archived'])['data']['id'];
+
+        $result = $this->withHeaders($auth)->delete("api/v1/products/{$id}");
+        $result->assertStatus(409);
+        $this->assertSame('This product is archived and cannot be deleted.', json_decode((string) $result->response()->getBody(), true)['detail']);
+
+        // The row survives — the veto ran before any archive/delete.
+        $this->withHeaders($auth)->get("api/v1/products/{$id}")->assertStatus(200);
+    }
+
+    public function testBeforeDeleteAllowsUnvetoedDeletes(): void
+    {
+        Events::on('resource.beforeDelete', static function (ResourceEvent $e): void {
+            if (($e->row['status'] ?? null) === 'archived') {
+                $e->cancel('archived');
+            }
+        });
+
+        $auth = $this->authHeaders(['products:*']);
+        $id   = $this->create(['sku' => 'EV-OPEN', 'name' => 'N', 'price' => '1.00', 'status' => 'active'])['data']['id'];
+
+        $this->withHeaders($auth)->delete("api/v1/products/{$id}")->assertStatus(204);
+        $this->withHeaders($auth)->get("api/v1/products/{$id}")->assertStatus(404);
+    }
+
+    public function testBeforeDeleteVetoAbortsAWholeBulkBatch(): void
+    {
+        Events::on('resource.beforeDelete', static function (ResourceEvent $e): void {
+            if (($e->row['sku'] ?? null) === 'BULK-LOCK') {
+                $e->cancel('locked');
+            }
+        });
+
+        $auth = $this->authHeaders(['products:*']);
+        $a    = $this->create(['sku' => 'BULK-OK', 'name' => 'N', 'price' => '1.00'])['data']['id'];
+        $b    = $this->create(['sku' => 'BULK-LOCK', 'name' => 'N', 'price' => '1.00'])['data']['id'];
+
+        $this->withHeaders($auth)->withBodyFormat('json')
+            ->delete('api/v1/products', ['ids' => [$a, $b]])
+            ->assertStatus(409);
+
+        // All-or-nothing: the un-vetoed row is untouched too.
+        $this->withHeaders($auth)->get("api/v1/products/{$a}")->assertStatus(200);
+        $this->withHeaders($auth)->get("api/v1/products/{$b}")->assertStatus(200);
     }
 }

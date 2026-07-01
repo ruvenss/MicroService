@@ -180,8 +180,11 @@ final class OpenApiGenerator
             $errors = array_values(array_diff($errors, [422]));
         } else {
             $errors[] = 413; // body-carrying requests can exceed the size limit
-            sort($errors);
         }
+        if ($ep['method'] === 'DELETE' && $ep['auth']) {
+            $errors[] = 409; // a plugin (resource.beforeDelete) may veto the delete
+        }
+        sort($errors);
         foreach ($errors as $code) {
             $response = [
                 'description' => 'Error',

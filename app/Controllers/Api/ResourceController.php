@@ -439,6 +439,17 @@ class ResourceController extends BaseController
             return $this->problem(422, 'One or more ids are invalid.', ['errors' => $errors]);
         }
 
+        // A plugin veto on any row aborts the whole batch (all-or-nothing).
+        foreach ($rows as $rowId => $row) {
+            $veto = $this->fireBeforeDelete($definition, $this->hide($row, $definition));
+            if ($veto !== null) {
+                $errors[$rowId] = ['_' => $veto];
+            }
+        }
+        if ($errors !== []) {
+            return $this->problem(409, 'One or more deletes were not permitted.', ['errors' => $errors]);
+        }
+
         $db      = db_connect();
         $archive = new ArchivedRecordModel();
         $db->transStart();
@@ -510,6 +521,11 @@ class ResourceController extends BaseController
         $row   = $model->find($id);
         if ($row === null) {
             return $this->notFound();
+        }
+
+        $veto = $this->fireBeforeDelete($definition, $this->hide($row, $definition));
+        if ($veto !== null) {
+            return $this->problem(409, $veto);
         }
 
         $db = db_connect();
@@ -737,6 +753,21 @@ class ResourceController extends BaseController
     private function fireBeforeQuery(ResourceDefinition $definition, GenericResourceModel $model): void
     {
         Events::trigger('resource.beforeQuery', new ResourceEvent($definition->slug, 'list', model: $model));
+    }
+
+    /**
+     * Give plugins a vetoable say before a row is archived (resource.beforeDelete)
+     * — e.g. refuse to delete a record still referenced elsewhere. Returns the veto
+     * reason when a listener cancelled, or null to proceed.
+     *
+     * @param array<string, mixed> $row the hidden row about to be deleted
+     */
+    private function fireBeforeDelete(ResourceDefinition $definition, array $row): ?string
+    {
+        $event = new ResourceEvent($definition->slug, 'delete', row: $row);
+        Events::trigger('resource.beforeDelete', $event);
+
+        return $event->isCancelled() ? ($event->cancelReason() ?? 'Operation not permitted.') : null;
     }
 
     /**
