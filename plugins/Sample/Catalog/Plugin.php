@@ -42,7 +42,8 @@ final class Plugin implements PluginInterface
             'perPage'     => ['default' => 25, 'max' => 100],
             'timestamps'  => true,
             // Typed JSON output (MySQLi returns strings) — friendlier for n8n.
-            'casts'       => ['id' => 'int', 'price' => 'float'],
+            // `datetime` emits ISO-8601 UTC (…Z) so n8n never has to guess the zone.
+            'casts'       => ['id' => 'int', 'price' => 'float', 'created_at' => 'datetime', 'updated_at' => 'datetime'],
             // Natural key for PUT /products upsert (create-or-update) — n8n data sync.
             'upsertKey'   => 'sku',
         ]);

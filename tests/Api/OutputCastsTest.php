@@ -35,4 +35,16 @@ final class OutputCastsTest extends FeatureTestCase
         $this->assertIsInt($json['data'][0]['id']);
         $this->assertIsFloat($json['data'][0]['price']);
     }
+
+    public function testTimestampsAreIso8601Utc(): void
+    {
+        $body = json_decode((string) $this->withHeaders($this->authHeaders(['products:*']))
+            ->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'CAST-DT', 'name' => 'N', 'price' => '1.00'])
+            ->response()->getBody(), true);
+
+        // e.g. 2026-07-01T10:19:30Z — unambiguous UTC, not a bare "Y-m-d H:i:s".
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $body['data']['created_at']);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $body['data']['updated_at']);
+    }
 }

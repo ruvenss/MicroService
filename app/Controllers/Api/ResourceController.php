@@ -904,15 +904,30 @@ class ResourceController extends BaseController
                 continue;
             }
             $row[$field] = match ($type) {
-                'int'   => (int) $row[$field],
-                'float' => (float) $row[$field],
-                'bool'  => (bool) $row[$field],
-                'string' => (string) $row[$field],
-                default => $row[$field],
+                'int'      => (int) $row[$field],
+                'float'    => (float) $row[$field],
+                'bool'     => (bool) $row[$field],
+                'string'   => (string) $row[$field],
+                'datetime' => self::toIso8601((string) $row[$field]),
+                default    => $row[$field],
             };
         }
 
         return $row;
+    }
+
+    /**
+     * Format a stored (UTC) DATETIME string as unambiguous ISO-8601 with a `Z`,
+     * e.g. `2026-07-01 10:19:30` → `2026-07-01T10:19:30Z`, so n8n's date handling
+     * never has to guess the zone. Unparseable values pass through unchanged.
+     */
+    private static function toIso8601(string $value): string
+    {
+        try {
+            return (new \DateTimeImmutable($value, new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s\Z');
+        } catch (\Exception) {
+            return $value;
+        }
     }
 
     /**

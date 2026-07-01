@@ -899,8 +899,11 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
 - **Bearer API-key auth** maps directly to an n8n *Generic Credential → Header/Bearer*; per-key
   scopes (§7) let each workflow get a least-privilege key, and usage tracking (§13) attributes calls
   back to the workflow.
-- **Typed JSON output:** a resource declares `casts` (e.g. `id => int`, `price => float`) so responses
-  carry real JSON types instead of MySQLi's all-strings — n8n maps typed fields without conversion nodes.
+- **Typed JSON output:** a resource declares `casts` (`int`, `float`, `bool`, `string`, `datetime`) so
+  responses carry real JSON types instead of MySQLi's all-strings — n8n maps typed fields without
+  conversion nodes. The **`datetime`** cast emits **ISO-8601 UTC** (`2026-07-01T10:19:30Z`) rather than a
+  bare `Y-m-d H:i:s`, so n8n's date handling never has to guess the zone (the sample `products` casts
+  `created_at`/`updated_at`). Covered by `OutputCastsTest`.
 - **`GET /api/v1/_me`** lets a workflow introspect its own key (name, scopes, rate limit, expiry — never
   the secret) to verify connectivity and permissions before running.
 - **Unauthenticated `/api/v1/health`** for n8n schedule/health checks and uptime polling.
