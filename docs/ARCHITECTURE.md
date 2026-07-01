@@ -475,7 +475,10 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
 > fields are redacted. Read the trail at `GET /api/v1/_audit` (scope `audit:read`), filterable by
 > `?resource=` / `?record_id=`. **Change-data-capture polling:** `?sinceId=N` returns only entries
 > after audit id `N`, **oldest-first**, so an n8n schedule can pull changes in order and resume from the
-> last id it saw — a pull-based complement to the push webhooks (§18). Covered by `AuditTrailTest`.
+> last id it saw — a pull-based complement to the push webhooks (§18). The **per-resource** poll
+> (`?resource=X&sinceId=N` → `WHERE resource=? AND id>? ORDER BY id`) is served by a `(resource, id)`
+> index (`AddAuditResourceIdIndex`; guarded by `AuditLogIndexTest`) so it range-scans instead of
+> filesorting as the trail grows; the all-resources poll rides the primary key. Covered by `AuditTrailTest`.
 > Deletes are archival (§14). Outstanding: routing CLI key actions through `audit_log`.
 
 **Requirement:** every transaction in the microservice is recorded in the database for later
