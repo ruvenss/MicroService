@@ -211,8 +211,10 @@ All errors flow through one handler so the shape is guaranteed.
 
 > **Status (implemented):** bearer API keys with per-key scopes are live. `ApiKeyAuth` +
 > `RequirePermission` filters gate `/api/v1/*` (health open; `_resources` needs a valid key); keys are
-> managed via `php spark key:create|key:list|key:revoke`. Still to come: the Redis key-lookup cache,
-> `last_used_at`, and the usage log/rate limiting (Phase 4).
+> managed via `php spark key:create|key:list|key:revoke`. **Brute-force / DoS guard:** repeated auth
+> failures from one IP are counted (cache) and, past 30/minute, answered with **429** instead of 401 —
+> so an exposed service can't be key-probed or flooded on the auth path. A valid key never fails, so
+> legitimate n8n traffic is never throttled by this (it hits only the generous per-key rate limit).
 
 ### 7.1 Key format & verification
 
