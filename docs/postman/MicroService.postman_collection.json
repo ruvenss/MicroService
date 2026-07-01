@@ -283,7 +283,7 @@
                             }
                         ],
                         "url": {
-                            "raw": "{{baseUrl}}/api/v1/_audit?resource=&record_id=&page=&perPage=",
+                            "raw": "{{baseUrl}}/api/v1/_audit?resource=&record_id=&sinceId=&page=&perPage=",
                             "host": [
                                 "{{baseUrl}}"
                             ],
@@ -303,6 +303,12 @@
                                     "key": "record_id",
                                     "value": "",
                                     "description": "Optional record id filter.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "sinceId",
+                                    "value": "",
+                                    "description": "Incremental polling: return only entries after this audit id, oldest-first \u2014 poll with the last id you saw (n8n change-data-capture).",
                                     "disabled": true
                                 },
                                 {

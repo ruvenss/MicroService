@@ -54,4 +54,44 @@ final class AuditTrailTest extends FeatureTestCase
         $this->assertNotEmpty($json['data']);
         $this->assertSame('create', $json['data'][0]['action']);
     }
+
+    public function testSinceIdReturnsOnlyNewerEntriesOldestFirst(): void
+    {
+        $headers = $this->authHeaders(['products:*', 'audit:read']);
+
+        $this->createProduct($headers);
+        $this->createProduct($headers);
+        $this->createProduct($headers);
+
+        // Baseline is newest-first; use the second entry's id as a cursor.
+        $all = json_decode((string) $this->withHeaders($headers)->get('api/v1/_audit')->response()->getBody(), true)['data'];
+        $this->assertGreaterThanOrEqual(3, count($all));
+        $cursor = (int) $all[1]['id'];
+
+        $inc = json_decode((string) $this->withHeaders($headers)->get("api/v1/_audit?sinceId={$cursor}")->response()->getBody(), true)['data'];
+
+        // Only entries strictly after the cursor, ascending (oldest-first).
+        $ids = array_column($inc, 'id');
+        $this->assertNotEmpty($ids);
+        foreach ($ids as $id) {
+            $this->assertGreaterThan($cursor, $id);
+        }
+        $sorted = $ids;
+        sort($sorted);
+        $this->assertSame($sorted, $ids);
+    }
+
+    public function testSinceIdBeyondTheLatestReturnsEmpty(): void
+    {
+        $headers = $this->authHeaders(['products:*', 'audit:read']);
+        $this->createProduct($headers);
+
+        $json = json_decode((string) $this->withHeaders($headers)->get('api/v1/_audit?sinceId=999999999')->response()->getBody(), true);
+        $this->assertSame([], $json['data']);
+    }
+
+    public function testInvalidSinceIdReturns400(): void
+    {
+        $this->withHeaders($this->authHeaders(['audit:read']))->get('api/v1/_audit?sinceId=abc')->assertStatus(400);
+    }
 }

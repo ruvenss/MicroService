@@ -589,6 +589,15 @@
                         }
                     },
                     {
+                        "name": "sinceId",
+                        "in": "query",
+                        "required": false,
+                        "description": "Incremental polling: return only entries after this audit id, oldest-first \u2014 poll with the last id you saw (n8n change-data-capture).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "name": "page",
                         "in": "query",
                         "required": false,

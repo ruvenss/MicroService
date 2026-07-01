@@ -71,6 +71,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Query params:**
   - `resource` — Optional resource filter.
   - `record_id` — Optional record id filter.
+  - `sinceId` — Incremental polling: return only entries after this audit id, oldest-first — poll with the last id you saw (n8n change-data-capture).
   - `page` — Page number (1-based).
   - `perPage` — Items per page (capped per resource).
 - **Success:** `200` (`collection` envelope)

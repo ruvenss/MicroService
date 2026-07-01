@@ -10,7 +10,7 @@ use CodeIgniter\HTTP\ResponseInterface;
 
 /**
  * Read access to the data-mutation audit trail. Requires `audit:read`.
- * Optional filters: ?resource= and ?record_id=.
+ * Optional filters: ?resource=, ?record_id=, and ?sinceId= (incremental polling).
  */
 class Audit extends ApiController
 {
@@ -31,8 +31,20 @@ class Audit extends ApiController
             $model->where('record_id', $recordId);
         }
 
+        // Incremental (change-data-capture) polling: `?sinceId=N` returns only
+        // entries after id N, oldest-first, so an n8n schedule can process changes
+        // in order and resume from the last id it saw. Without it, newest-first.
+        $sinceId     = $this->request->getGet('sinceId');
+        $incremental = $sinceId !== null && $sinceId !== '';
+        if ($incremental) {
+            if (! ctype_digit((string) $sinceId)) {
+                return $this->problem(400, 'sinceId must be a non-negative integer.');
+            }
+            $model->where('id >', (int) $sinceId);
+        }
+
         $total = $model->countAllResults(false);
-        $rows  = $model->orderBy('id', 'DESC')->findAll($perPage, ($page - 1) * $perPage);
+        $rows  = $model->orderBy('id', $incremental ? 'ASC' : 'DESC')->findAll($perPage, ($page - 1) * $perPage);
 
         $data = array_map(static fn (array $r): array => [
             'id'         => (int) $r['id'],

@@ -88,7 +88,7 @@ final class EndpointCatalog
                 'tag' => 'Audit & recycle bin', 'resource' => null, 'method' => 'GET', 'path' => '/api/v1/_audit',
                 'operationId' => 'auditList', 'summary' => 'Read the data-mutation audit trail.',
                 'auth' => true, 'scope' => 'audit:read', 'pathParams' => [],
-                'query' => [['name' => 'resource', 'description' => 'Optional resource filter.'], ['name' => 'record_id', 'description' => 'Optional record id filter.'], self::pageParam(), self::perPageParam()],
+                'query' => [['name' => 'resource', 'description' => 'Optional resource filter.'], ['name' => 'record_id', 'description' => 'Optional record id filter.'], ['name' => 'sinceId', 'description' => 'Incremental polling: return only entries after this audit id, oldest-first — poll with the last id you saw (n8n change-data-capture).'], self::pageParam(), self::perPageParam()],
                 'body' => null, 'success' => 200, 'successKind' => 'collection', 'captureId' => false,
             ],
         ];
