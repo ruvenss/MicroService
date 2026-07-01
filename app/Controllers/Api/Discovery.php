@@ -50,24 +50,49 @@ class Discovery extends BaseController
     }
 
     /**
-     * Input schema per writable field: JSON type + whether it is required on
-     * create. Type comes from the declared output cast, else is inferred from the
-     * validation rule.
+     * Input schema per writable field: JSON type, whether it is required on create,
+     * and — for a constrained field — its allowed `enum` values. Type comes from the
+     * declared output cast, else is inferred from the validation rule. The `enum`
+     * (from an `in_list[...]` rule) mirrors what OpenAPI/Postman expose, so an n8n
+     * node building a request from this single live call knows the valid choices
+     * (e.g. status = active|archived) instead of guessing at a bare "string".
      *
-     * @return array<string, array{type: string, required: bool}>
+     * @return array<string, array{type: string, required: bool, enum?: list<string>}>
      */
     private function schemaFor(ResourceDefinition $definition): array
     {
         $schema = [];
         foreach ($definition->fillable as $field) {
-            $rule           = $definition->createRules[$field] ?? '';
-            $schema[$field] = [
+            $rule  = $definition->createRules[$field] ?? '';
+            $entry = [
                 'type'     => $definition->casts[$field] ?? $this->inferType($rule),
                 'required' => str_contains($rule, 'required'),
             ];
+
+            $enum = $this->enumValues($rule);
+            if ($enum !== []) {
+                $entry['enum'] = $enum;
+            }
+
+            $schema[$field] = $entry;
         }
 
         return $schema;
+    }
+
+    /**
+     * Allowed values from an `in_list[a,b,c]` validation rule, else empty. Same
+     * derivation as the docs generator, so discovery and OpenAPI never disagree.
+     *
+     * @return list<string>
+     */
+    private function enumValues(string $rule): array
+    {
+        if (preg_match('/in_list\[([^\]]+)\]/', $rule, $m) === 1) {
+            return array_values(array_filter(array_map('trim', explode(',', $m[1])), static fn (string $v): bool => $v !== ''));
+        }
+
+        return [];
     }
 
     private function inferType(string $rule): string

@@ -55,4 +55,26 @@ final class DiscoveryTest extends FeatureTestCase
         $this->assertSame('string', $products['schema']['sku']['type']);
         $this->assertSame('float', $products['schema']['price']['type']); // from the declared cast
     }
+
+    public function testAdvertisesEnumChoicesForConstrainedFields(): void
+    {
+        $result = $this->withHeaders($this->authHeaders(['*:read']))->get('api/v1/_resources');
+        $json   = json_decode((string) $result->response()->getBody(), true);
+
+        $products = null;
+        foreach ($json['data'] as $entry) {
+            if ($entry['resource'] === 'products') {
+                $products = $entry;
+            }
+        }
+
+        // A constrained field advertises its allowed values (from in_list[...]), so an
+        // n8n node building a create request from this live call knows the choices —
+        // consistent with what OpenAPI/Postman expose, not a bare "string".
+        $this->assertSame(['active', 'archived'], $products['schema']['status']['enum']);
+
+        // Unconstrained fields carry no enum key (kept lean).
+        $this->assertArrayNotHasKey('enum', $products['schema']['sku']);
+        $this->assertArrayNotHasKey('enum', $products['schema']['price']);
+    }
 }
