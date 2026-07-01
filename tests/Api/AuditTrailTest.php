@@ -12,7 +12,7 @@ final class AuditTrailTest extends FeatureTestCase
 {
     private function createProduct(array $headers, string $name = 'Name'): string
     {
-        return json_decode((string) $this->withHeaders($headers)->withBodyFormat('json')
+        return (string) json_decode((string) $this->withHeaders($headers)->withBodyFormat('json')
             ->post('api/v1/products', ['sku' => 'SKU-' . uniqid(), 'name' => $name, 'price' => '1.00'])
             ->response()->getBody(), true)['data']['id'];
     }

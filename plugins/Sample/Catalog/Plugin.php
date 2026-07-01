@@ -41,6 +41,8 @@ final class Plugin implements PluginInterface
             'defaultSort' => '-created_at',
             'perPage'     => ['default' => 25, 'max' => 100],
             'timestamps'  => true,
+            // Typed JSON output (MySQLi returns strings) — friendlier for n8n.
+            'casts'       => ['id' => 'int', 'price' => 'float'],
         ]);
     }
 

@@ -18,6 +18,7 @@ final class ResourceDefinition
      * @param array<string, string> $updateRules validation rules for update
      * @param list<string>          $sortable    columns allowed in ?sort
      * @param list<string>          $filterable  columns allowed in ?filter
+     * @param array<string, string> $casts       output column => int|float|bool|string
      */
     public function __construct(
         public readonly string $slug,
@@ -33,6 +34,7 @@ final class ResourceDefinition
         public readonly int $perPageDefault,
         public readonly int $perPageMax,
         public readonly bool $timestamps,
+        public readonly array $casts = [],
     ) {
     }
 
@@ -74,6 +76,7 @@ final class ResourceDefinition
             perPageDefault: (int) ($def['perPage']['default'] ?? 25),
             perPageMax: (int) ($def['perPage']['max'] ?? 100),
             timestamps: $def['timestamps'] ?? true,
+            casts: $def['casts'] ?? [],
         );
     }
 }

@@ -768,6 +768,8 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
 - **Bearer API-key auth** maps directly to an n8n *Generic Credential → Header/Bearer*; per-key
   scopes (§7) let each workflow get a least-privilege key, and usage tracking (§13) attributes calls
   back to the workflow.
+- **Typed JSON output:** a resource declares `casts` (e.g. `id => int`, `price => float`) so responses
+  carry real JSON types instead of MySQLi's all-strings — n8n maps typed fields without conversion nodes.
 - **Unauthenticated `/api/v1/health`** for n8n schedule/health checks and uptime polling.
 - **Importable Postman collection** (`docs/postman/`) documents each endpoint for humans and serves
   as the reference when configuring the matching n8n node.

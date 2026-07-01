@@ -279,10 +279,36 @@ class ResourceController extends BaseController
      */
     private function present(array $row, ResourceDefinition $definition): array
     {
-        $event = new ResourceEvent($definition->slug, 'serialize', row: $this->hide($row, $definition));
+        $event = new ResourceEvent($definition->slug, 'serialize', row: $this->cast($this->hide($row, $definition), $definition));
         Events::trigger('resource.serialize', $event);
 
         return $event->row;
+    }
+
+    /**
+     * Cast output columns to their declared types so responses carry proper JSON
+     * types (int/float/bool) instead of MySQLi's all-strings — friendlier for n8n.
+     *
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>
+     */
+    private function cast(array $row, ResourceDefinition $definition): array
+    {
+        foreach ($definition->casts as $field => $type) {
+            if (! array_key_exists($field, $row) || $row[$field] === null) {
+                continue;
+            }
+            $row[$field] = match ($type) {
+                'int'   => (int) $row[$field],
+                'float' => (float) $row[$field],
+                'bool'  => (bool) $row[$field],
+                'string' => (string) $row[$field],
+                default => $row[$field],
+            };
+        }
+
+        return $row;
     }
 
     /**
