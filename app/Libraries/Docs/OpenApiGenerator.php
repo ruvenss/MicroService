@@ -175,9 +175,14 @@ final class OpenApiGenerator
                 'content'     => ['application/json' => ['schema' => $envelope]],
             ];
         } else {
-            $data = $ep['successKind'] === 'collection'
-                ? ['type' => 'array', 'items' => ['type' => 'object']]
+            // Document the actual response fields for a resource (types + enums);
+            // non-resource endpoints (_me, health, …) stay a generic object.
+            $item = ! empty($ep['output'])
+                ? ['type' => 'object', 'properties' => $ep['output']]
                 : ['type' => 'object'];
+            $data = $ep['successKind'] === 'collection'
+                ? ['type' => 'array', 'items' => $item]
+                : $item;
             $envelope = ['type' => 'object', 'properties' => ['data' => $data, 'meta' => ['type' => 'object']]];
             $responses[(string) $ep['success']] = [
                 'description' => 'Success',

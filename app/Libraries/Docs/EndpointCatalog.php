@@ -181,7 +181,39 @@ final class EndpointCatalog
             ];
         }
 
-        return $endpoints;
+        // Attach the resource's output schema to every endpoint so the OpenAPI can
+        // document the response `data` fields (types + enums), not just the input body.
+        $output = self::outputSchema($def);
+
+        return array_map(static fn (array $e): array => $e + ['output' => $output], $endpoints);
+    }
+
+    /**
+     * Response `data` schema for a resource: each output column mapped to its JSON
+     * type (from the declared cast) with an `enum` where the field is constrained.
+     * Mirrors what the CRUD response actually returns.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private static function outputSchema(ResourceDefinition $def): array
+    {
+        $props = [];
+        foreach ($def->outputColumns() as $column) {
+            $schema = match ($def->casts[$column] ?? null) {
+                'int'      => ['type' => 'integer'],
+                'float'    => ['type' => 'number'],
+                'bool'     => ['type' => 'boolean'],
+                'datetime' => ['type' => 'string', 'format' => 'date-time'],
+                default    => ['type' => 'string'],
+            };
+            $enum = self::enumValues($def->createRules[$column] ?? '');
+            if ($enum !== []) {
+                $schema['enum'] = $enum;
+            }
+            $props[$column] = $schema;
+        }
+
+        return $props;
     }
 
     /**

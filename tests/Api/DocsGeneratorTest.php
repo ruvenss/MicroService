@@ -42,6 +42,24 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertContains('sku', $schema['required']);
     }
 
+    public function testResponseSchemaDocumentsResourceFieldsAndTypes(): void
+    {
+        $spec = OpenApiGenerator::generate();
+
+        // A single-resource GET documents the response `data` fields with real types.
+        $data = $spec['paths']['/api/v1/products/{id}']['get']['responses']['200']['content']['application/json']['schema']['properties']['data'];
+        $props = $data['properties'];
+        $this->assertSame('integer', $props['id']['type']);
+        $this->assertSame('number', $props['price']['type']);           // decimal cast → number
+        $this->assertSame(['active', 'archived'], $props['status']['enum']);
+        $this->assertSame('date-time', $props['created_at']['format']);
+
+        // The list response is an array of that same item shape.
+        $list = $spec['paths']['/api/v1/products']['get']['responses']['200']['content']['application/json']['schema']['properties']['data'];
+        $this->assertSame('array', $list['type']);
+        $this->assertArrayHasKey('price', $list['items']['properties']);
+    }
+
     public function testDocumentsIdempotency409AndHealth503(): void
     {
         $spec = OpenApiGenerator::generate();
