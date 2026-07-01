@@ -131,32 +131,58 @@ final class PostmanGenerator
 
         $item = ['name' => $ep['summary'], 'request' => $request, 'response' => []];
 
-        // Capture the created id into the resource's id variable so a human can run
-        // create → show/update/delete in order without copying ids by hand. The
-        // capture target is derived from the RESOURCE ({slug}Id), not the request's
-        // own path — the create endpoint (POST /api/v1/products) has no {id} segment,
-        // so $idVar is null here even though it must still populate `productsId`.
-        $captureVar = $ep['captureId'] === true && $ep['resource'] !== null
-            ? $ep['resource'] . 'Id'
-            : null;
-        if ($captureVar !== null) {
-            $pk            = $ep['primaryKey'] ?? 'id';
-            $item['event'] = [[
-                'listen' => 'test',
-                'script' => [
-                    'type' => 'text/javascript',
-                    'exec' => [
-                        'const ct = pm.response.headers.get("Content-Type") || "";',
-                        "if (pm.response.code === 201 && ct.indexOf('json') !== -1) {",
-                        '    const d = pm.response.json().data;',
-                        "    if (d && d.{$pk} !== undefined) { pm.collectionVariables.set('{$captureVar}', d.{$pk}); }",
-                        '}',
-                    ],
-                ],
-            ]];
+        $script = self::captureScript($ep);
+        if ($script !== null) {
+            $item['event'] = [['listen' => 'test', 'script' => ['type' => 'text/javascript', 'exec' => $script]]];
         }
 
         return $item;
+    }
+
+    /**
+     * The test script that populates an id collection variable so a human can run the
+     * chained requests (show/update/delete/restore) without copying ids by hand:
+     *
+     *   - a **create** stashes the new record's id (always, on 201);
+     *   - a **list** seeds the id from the first row *only if it is still empty*, so
+     *     the chain is runnable straight after import even for resources with no
+     *     create in the flow (notably the recycle bin: nothing else sets archiveId).
+     *
+     * @param array<string, mixed> $ep
+     *
+     * @return list<string>|null the script lines, or null when this endpoint feeds no id
+     */
+    private static function captureScript(array $ep): ?array
+    {
+        $var = self::idVarName($ep);
+        if ($var === null) {
+            return null;
+        }
+        $pk      = $ep['primaryKey'] ?? 'id';
+        $hasIdIn = in_array('id', $ep['pathParams'], true);
+
+        if ($ep['captureId'] === true) {
+            return [
+                'const ct = pm.response.headers.get("Content-Type") || "";',
+                "if (pm.response.code === 201 && ct.indexOf('json') !== -1) {",
+                '    const d = pm.response.json().data;',
+                "    if (d && d.{$pk} !== undefined) { pm.collectionVariables.set('{$var}', d.{$pk}); }",
+                '}',
+            ];
+        }
+
+        if ($ep['method'] === 'GET' && $ep['successKind'] === 'collection' && ! $hasIdIn) {
+            return [
+                "if (pm.response.code === 200 && !pm.collectionVariables.get('{$var}')) {",
+                '    const rows = (pm.response.json() || {}).data;',
+                "    if (Array.isArray(rows) && rows.length && rows[0].{$pk} !== undefined) {",
+                "        pm.collectionVariables.set('{$var}', rows[0].{$pk});",
+                '    }',
+                '}',
+            ];
+        }
+
+        return null;
     }
 
     /**
@@ -178,17 +204,30 @@ final class PostmanGenerator
     }
 
     /**
+     * The id collection-variable name substituted into this request's `{id}` path
+     * segment ({{productsId}}, {{archiveId}}) — null when the path has no `{id}`.
+     *
      * @param array<string, mixed> $ep
      */
     private static function idVar(array $ep): ?string
     {
-        if (! in_array('id', $ep['pathParams'], true)) {
-            return null;
-        }
+        return in_array('id', $ep['pathParams'], true) ? (self::idVarName($ep) ?? 'id') : null;
+    }
+
+    /**
+     * The id variable a resource/recycle-bin family shares across its requests,
+     * independent of whether this particular endpoint's path carries `{id}` — so a
+     * create or a list (neither has `{id}`) can still populate the id the show/
+     * update/delete/restore requests read.
+     *
+     * @param array<string, mixed> $ep
+     */
+    private static function idVarName(array $ep): ?string
+    {
         if ($ep['resource'] !== null) {
             return $ep['resource'] . 'Id';
         }
 
-        return str_contains($ep['path'], '_archive') ? 'archiveId' : 'id';
+        return str_contains($ep['path'], '_archive') ? 'archiveId' : null;
     }
 }

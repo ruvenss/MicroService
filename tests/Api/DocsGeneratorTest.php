@@ -146,6 +146,34 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertContains('productsId', $varKeys);
     }
 
+    public function testListRequestsSeedTheIdForChainedRequests(): void
+    {
+        // The recycle-bin show/restore requests target {{archiveId}}, but nothing
+        // creates an archive row through the collection — so without a seed the whole
+        // "Audit & recycle bin" chain is un-runnable after import. The archive LIST
+        // must stash the first row's id (only if unset, so it never clobbers a live
+        // value), and the products LIST likewise seeds productsId.
+        $collection = PostmanGenerator::generate();
+
+        $scripts = [];
+        foreach ($collection['item'] as $folder) {
+            foreach ($folder['item'] as $req) {
+                if ($req['request']['method'] === 'GET' && str_starts_with($req['name'], 'List')) {
+                    $scripts[$req['name']] = isset($req['event']) ? implode("\n", $req['event'][0]['script']['exec']) : '';
+                }
+            }
+        }
+
+        $archive = $scripts['List archived (deleted) rows.'] ?? null;
+        $this->assertNotNull($archive);
+        $this->assertStringContainsString("pm.collectionVariables.set('archiveId'", $archive);
+        $this->assertStringContainsString("!pm.collectionVariables.get('archiveId')", $archive); // seed only if empty
+
+        $products = $scripts['List products.'] ?? null;
+        $this->assertNotNull($products);
+        $this->assertStringContainsString("pm.collectionVariables.set('productsId'", $products);
+    }
+
     public function testMarkdownReferenceContainsResources(): void
     {
         $md = MarkdownGenerator::generate();

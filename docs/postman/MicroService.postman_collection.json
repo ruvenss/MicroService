@@ -205,7 +205,23 @@
                         },
                         "description": "List archived (deleted) rows. Scope: archive:read."
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200 && !pm.collectionVariables.get('archiveId')) {",
+                                    "    const rows = (pm.response.json() || {}).data;",
+                                    "    if (Array.isArray(rows) && rows.length && rows[0].id !== undefined) {",
+                                    "        pm.collectionVariables.set('archiveId', rows[0].id);",
+                                    "    }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Inspect one archived record (full payload).",
@@ -407,7 +423,23 @@
                         },
                         "description": "List products. Scope: products:read."
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (pm.response.code === 200 && !pm.collectionVariables.get('productsId')) {",
+                                    "    const rows = (pm.response.json() || {}).data;",
+                                    "    if (Array.isArray(rows) && rows.length && rows[0].id !== undefined) {",
+                                    "        pm.collectionVariables.set('productsId', rows[0].id);",
+                                    "    }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Create a products record (send a JSON array of objects to bulk-create, all-or-nothing).",

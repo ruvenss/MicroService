@@ -115,6 +115,7 @@ final class EndpointCatalog
                 'operationId' => $def->slug . 'List', 'summary' => 'List ' . $def->slug . '.',
                 'auth' => true, 'scope' => $def->slug . ':read', 'pathParams' => [], 'query' => $listQuery, 'body' => null,
                 'success' => 200, 'successKind' => 'collection', 'captureId' => false,
+                'primaryKey' => $def->primaryKey,
             ],
             [
                 'tag' => $tag, 'resource' => $def->slug, 'method' => 'POST', 'path' => $base,

@@ -47,7 +47,9 @@ curl -s "http://localhost:8080/api/v1/products?filter[status]=active&sort=-creat
 - **Postman:** import `docs/postman/MicroService.postman_collection.json` and the environment
   `docs/postman/MicroService.local.postman_environment.json`; set the `apiKey` variable to your
   key. Bearer auth is inherited by every request; a create captures the new id so the
-  create → show → update → delete chain runs in order.
+  create → show → update → delete chain runs in order, and a **List** seeds the id from the
+  first row when unset — so the recycle-bin chain (List archive → inspect → restore, which
+  targets `{{archiveId}}`) is runnable straight after import without copying ids by hand.
 - **OpenAPI / Swagger UI:** the spec is `public/docs/openapi.json` (served via `php spark serve`
   in dev; excluded from the production image on purpose). It documents request **and** response
   schemas, error codes, and the `X-RateLimit-*` / `ETag` / `Link` headers.
