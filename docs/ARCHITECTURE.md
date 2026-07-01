@@ -842,6 +842,11 @@ last, so it sees the final headers — even on 404s and errors). It:
 - sets an engine-neutral `Server: MicroService`;
 - adds baseline security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
   a restrictive `Content-Security-Policy` (`default-src 'none'`), and `Permissions-Policy`.
+- every response carries `Cache-Control: no-store` (max-age=0, no-cache), so a shared cache/CDN never
+  stores a per-key/sensitive response if the service is exposed behind one — n8n's manual
+  `ETag`/`If-None-Match` revalidation is unaffected. Asserted across every response path by
+  `StealthAuditTest`. The importable Postman collection's full create→show→update→upsert→delete flow is
+  verified to work with the generated example bodies.
 
 Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`, and the default
 **welcome page is deleted** — unknown paths and the bare root return a neutral `application/problem+json`
