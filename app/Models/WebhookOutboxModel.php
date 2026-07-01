@@ -77,4 +77,48 @@ class WebhookOutboxModel extends Model
             ->orderBy('id', 'ASC')
             ->findAll();
     }
+
+    /**
+     * Rows that have exhausted their retry budget — permanently `failed` with
+     * `attempts >= maxAttempts`, so the claim query no longer picks them up. This
+     * is the dead-letter queue an operator can inspect/replay after an outage.
+     */
+    public function deadLetterCount(int $maxAttempts): int
+    {
+        return $this->where('status', 'failed')
+            ->where('attempts >=', $maxAttempts)
+            ->countAllResults();
+    }
+
+    /**
+     * Replay the dead-letter queue: reset exhausted rows back to `pending` with a
+     * fresh attempt budget so `webhooks:dispatch` delivers them again — e.g. once
+     * n8n recovers from an extended outage. Returns how many were resurrected.
+     */
+    public function resurrectDeadLettered(int $maxAttempts, int $limit): int
+    {
+        $ids = array_map(
+            static fn (array $row): int => (int) $row['id'],
+            $this->select('id')
+                ->where('status', 'failed')
+                ->where('attempts >=', $maxAttempts)
+                ->orderBy('id', 'ASC')
+                ->findAll(max(1, $limit)),
+        );
+
+        if ($ids === []) {
+            return 0;
+        }
+
+        $this->whereIn('id', $ids)->set([
+            'status'          => 'pending',
+            'attempts'        => 0,
+            'claim_token'     => null,
+            'claimed_at'      => null,
+            'next_attempt_at' => null,
+            'last_error'      => null,
+        ])->update();
+
+        return count($ids);
+    }
 }

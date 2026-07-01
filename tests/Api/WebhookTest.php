@@ -213,4 +213,59 @@ final class WebhookTest extends FeatureTestCase
 
         $this->assertSame(0, (new WebhookOutboxModel())->countAllResults());
     }
+
+    public function testDeadLetteredRowIsSkippedUntilReplayed(): void
+    {
+        $this->createProduct('WH-DL');
+        $model = new WebhookOutboxModel();
+        $id    = $model->first()['id'];
+
+        // Simulate an exhausted retry budget (maxAttempts = 5).
+        $model->update($id, ['status' => 'failed', 'attempts' => 5, 'next_attempt_at' => null]);
+        $this->assertSame(1, $model->deadLetterCount(5));
+
+        // dispatch() must not touch it — the budget is spent.
+        WebhookDispatcher::$sender = static fn (): int => 200;
+        $this->assertSame(0, WebhookDispatcher::dispatch()['processed']);
+
+        // Replaying the dead-letter queue resurrects it with a fresh budget...
+        $result = WebhookDispatcher::retryDeadLettered();
+        $this->assertSame(1, $result['deadLettered']);
+        $this->assertSame(1, $result['resurrected']);
+        $this->assertSame('pending', $model->find($id)['status']);
+        $this->assertSame(0, (int) $model->find($id)['attempts']);
+
+        // ...and the next dispatch delivers it.
+        $this->assertSame(1, WebhookDispatcher::dispatch()['sent']);
+    }
+
+    public function testRetryCommandRequeuesDeadLetters(): void
+    {
+        $this->createProduct('WH-DLC');
+        $model = new WebhookOutboxModel();
+        $id    = $model->first()['id'];
+        $model->update($id, ['status' => 'failed', 'attempts' => 5]);
+
+        ob_start();
+        command('webhooks:retry');
+        ob_end_clean();
+
+        $this->assertSame('pending', $model->find($id)['status']);
+    }
+
+    public function testRetryDryRunChangesNothing(): void
+    {
+        $this->createProduct('WH-DLDRY');
+        $model = new WebhookOutboxModel();
+        $id    = $model->first()['id'];
+        $model->update($id, ['status' => 'failed', 'attempts' => 5]);
+
+        ob_start();
+        command('webhooks:retry --dry-run');
+        ob_end_clean();
+
+        $row = $model->find($id);
+        $this->assertSame('failed', $row['status']);
+        $this->assertSame(5, (int) $row['attempts']);
+    }
 }

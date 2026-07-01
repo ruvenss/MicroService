@@ -868,8 +868,11 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   300 s (a crashed dispatcher) is reclaimed. **Exponential backoff:** a failed delivery sets
   `next_attempt_at = now + 60·2^(attempts-1) s` (capped at 1 h), and the claim query skips a `failed`
   row until it is due — so a flapping/unavailable n8n is not hammered and the `maxAttempts` budget is
-  spread over time instead of burned in seconds. Covered by `WebhookTest` (concurrent-claim,
-  stale-reclaim, backoff).
+  spread over time instead of burned in seconds. **Dead-letter replay:** once a row exhausts
+  `maxAttempts` it is parked (the claim query ignores it), so no failing endpoint blocks the queue;
+  after n8n recovers, `php spark webhooks:retry` (`--dry-run` to just count) resets the dead-lettered
+  rows to `pending` with a fresh budget for another `webhooks:dispatch` pass — no event is silently
+  lost. Covered by `WebhookTest` (concurrent-claim, stale-reclaim, backoff, dead-letter replay).
 - **Idempotency keys (implemented):** a client sends `Idempotency-Key: <key>` on a write; the first
   response is recorded and any retry with the same key + request **replays** it (with
   `Idempotency-Replayed: true`) instead of re-executing — so an n8n retry after a timeout never

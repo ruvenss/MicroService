@@ -155,6 +155,23 @@ final class WebhookDispatcher
     }
 
     /**
+     * Replay the dead-letter queue (rows that exhausted `maxAttempts`) back into
+     * the delivery pipeline — e.g. after n8n recovers from a long outage.
+     *
+     * @return array{deadLettered: int, resurrected: int}
+     */
+    public static function retryDeadLettered(int $limit = 100): array
+    {
+        $config = self::config();
+        $model  = new WebhookOutboxModel();
+
+        return [
+            'deadLettered' => $model->deadLetterCount($config->maxAttempts),
+            'resurrected'  => $model->resurrectDeadLettered($config->maxAttempts, $limit > 0 ? $limit : 100),
+        ];
+    }
+
+    /**
      * @param list<string> $events
      */
     private static function matches(array $events, string $resource, string $action): bool
