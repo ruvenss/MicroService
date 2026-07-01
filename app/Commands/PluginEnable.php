@@ -23,9 +23,16 @@ class PluginEnable extends BaseCommand
 
     public function run(array $params)
     {
-        $name = $params[0] ?? CLI::prompt('Plugin name (Vendor/Name)');
+        // Required identifier — never CLI::prompt() (TypeErrors on a non-interactive
+        // EOF, e.g. CI or a scripted `docker exec -T`); report a clean message instead.
+        $name = (string) ($params[0] ?? '');
+        if ($name === '') {
+            CLI::error('Provide the plugin name: php spark plugin:enable Vendor/Name. Run `php spark plugin:list`.');
 
-        $result = PluginManager::setEnabled((string) $name, true);
+            return EXIT_ERROR;
+        }
+
+        $result = PluginManager::setEnabled($name, true);
         if ($result === null) {
             CLI::error("Plugin '{$name}' not found. Run `php spark plugin:list` to see available plugins.");
 

@@ -27,8 +27,11 @@ class KeyCreate extends BaseCommand
 
     public function run(array $params)
     {
-        $name      = CLI::getOption('name') ?? CLI::prompt('Key name', 'default');
-        $scopesOpt = CLI::getOption('scopes') ?? CLI::prompt('Scopes (comma-separated)', '*:read');
+        // Use the documented defaults when the flags are omitted. We do NOT fall back
+        // to CLI::prompt(): on a non-interactive STDIN (CI, `docker exec -T`, a
+        // provisioning script wiring up n8n) it TypeErrors at EOF instead of prompting.
+        $name      = CLI::getOption('name') ?? 'default';
+        $scopesOpt = CLI::getOption('scopes') ?? '*:read';
         $expires   = CLI::getOption('expires');
         $rateLimit = CLI::getOption('rate-limit');
 

@@ -24,8 +24,15 @@ class KeyRotate extends BaseCommand
 
     public function run(array $params)
     {
-        $prefix = $params[0] ?? CLI::prompt('Key prefix to rotate');
-        $grace  = (int) ($params['grace-hours'] ?? CLI::getOption('grace-hours') ?? 24);
+        // Required identifier — never CLI::prompt() (TypeErrors on a non-interactive
+        // EOF, e.g. CI or a scripted `docker exec -T`); report a clean message instead.
+        $prefix = (string) ($params[0] ?? '');
+        if ($prefix === '') {
+            CLI::error('Provide the key prefix: php spark key:rotate <prefix>. Run `php spark key:list`.');
+
+            return EXIT_ERROR;
+        }
+        $grace = (int) ($params['grace-hours'] ?? CLI::getOption('grace-hours') ?? 24);
 
         $result = (new ApiKeyModel())->rotate((string) $prefix, $grace);
         if ($result === null) {

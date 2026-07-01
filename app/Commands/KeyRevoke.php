@@ -22,7 +22,14 @@ class KeyRevoke extends BaseCommand
 
     public function run(array $params)
     {
-        $prefix = $params[0] ?? CLI::prompt('Key prefix to revoke');
+        // Required identifier — never CLI::prompt() (TypeErrors on a non-interactive
+        // EOF, e.g. CI or a scripted `docker exec -T`); report a clean message instead.
+        $prefix = (string) ($params[0] ?? '');
+        if ($prefix === '') {
+            CLI::error('Provide the key prefix: php spark key:revoke <prefix>. Run `php spark key:list`.');
+
+            return EXIT_ERROR;
+        }
 
         $model = new ApiKeyModel();
         $key   = $model->where('prefix', $prefix)->first();
