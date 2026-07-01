@@ -36,6 +36,9 @@ services:
       WEBHOOK_URL: ${WEBHOOK_URL:-}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
       WEBHOOK_EVENTS: ${WEBHOOK_EVENTS:-*}
+      # Retention windows for `maintenance:prune` (audit_log/recycle bin excluded).
+      RETENTION_ACCESS_LOG_DAYS: ${RETENTION_ACCESS_LOG_DAYS:-30}
+      RETENTION_DELIVERED_WEBHOOK_DAYS: ${RETENTION_DELIVERED_WEBHOOK_DAYS:-7}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

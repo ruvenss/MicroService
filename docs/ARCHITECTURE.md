@@ -401,8 +401,13 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
    Any invalid/unknown item aborts the whole batch with per-index errors and writes nothing.
    Scopes are the same as the single-row routes (`:write` for create/update, `:delete` for delete);
    both accept an `Idempotency-Key` so n8n retries replay the first response.
-5. Audit/archive retention & purge policy — how long to keep `api_request_log`, `audit_log`,
-   and `archived_records` before rollup/purge; whether purge is even allowed for compliance.
+5. **Retention/purge — implemented for the transient tables.** `php spark maintenance:prune`
+   (`--dry-run` to preview; run on a schedule) purges **expired `idempotency_keys`**, **`api_request_log`**
+   older than `RETENTION_ACCESS_LOG_DAYS` (default 30), and **delivered `webhook_outbox`** rows older
+   than `RETENTION_DELIVERED_WEBHOOK_DAYS` (default 7) — see `Config\Retention` and
+   `App\Libraries\Maintenance\Pruner`, covered by `MaintenancePruneTest`. `audit_log` (compliance trail)
+   and `archived_records` (restorable recycle bin) are **deliberately never auto-pruned**; their
+   long-term retention/rollup remains an ops policy decision.
 6. Whether audit/archive payloads need encryption-at-rest or field redaction for sensitive resources.
 
 ## 13. Auditing (transaction audit trail)
