@@ -376,9 +376,17 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
 1. Rate-limit fail-open vs fail-closed when Redis is unavailable (current lean: closed for writes).
 2. ~~Soft-delete default~~ — **resolved**: deletes are archival framework-wide (§14).
 3. Relationship/embedding support (e.g. `?include=`) — out of scope for v1, revisit later.
-4. **Bulk create implemented** — `POST /api/v1/{resource}` with a JSON array inserts up to 100 items
-   all-or-nothing in one transaction (per-index 422 errors, one audit row each, typed response). Batch
-   update/delete remain deferred.
+4. **Bulk create/update/delete implemented** — collection-level batch mutations, each all-or-nothing
+   in one transaction, capped at 100 items, so an n8n workflow can mutate many rows in one call:
+   - `POST /api/v1/{resource}` with a JSON array of objects → bulk create (per-index 422, one audit
+     row each, typed `{data, meta:{created}}`).
+   - `PATCH /api/v1/{resource}` with a JSON array of objects, each carrying its primary key plus the
+     fields to change → bulk update (`{data, meta:{updated}}`; before/after audit per row).
+   - `DELETE /api/v1/{resource}` with `{"ids": [...]}` (or a bare id array) → bulk archival delete
+     (each row moved to the recycle bin, restorable; `{meta:{deleted}}`).
+   Any invalid/unknown item aborts the whole batch with per-index errors and writes nothing.
+   Scopes are the same as the single-row routes (`:write` for create/update, `:delete` for delete);
+   both accept an `Idempotency-Key` so n8n retries replay the first response.
 5. Audit/archive retention & purge policy — how long to keep `api_request_log`, `audit_log`,
    and `archived_records` before rollup/purge; whether purge is even allowed for compliance.
 6. Whether audit/archive payloads need encryption-at-rest or field redaction for sensitive resources.

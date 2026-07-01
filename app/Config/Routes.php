@@ -40,6 +40,8 @@ $routes->group('api/v1', ['filter' => ['apikey', 'usagetracker']], static functi
 $routes->group('api/v1', ['filter' => ['apikey', 'ratelimit', 'permission', 'idempotency', 'contentguard', 'usagetracker']], static function (RouteCollection $routes): void {
     $routes->get('(:segment)', 'Api\ResourceController::index/$1');
     $routes->post('(:segment)', 'Api\ResourceController::create/$1');
+    $routes->patch('(:segment)', 'Api\ResourceController::updateCollection/$1');
+    $routes->delete('(:segment)', 'Api\ResourceController::deleteCollection/$1');
     $routes->get('(:segment)/(:segment)', 'Api\ResourceController::show/$1/$2');
     $routes->put('(:segment)/(:segment)', 'Api\ResourceController::update/$1/$2');
     $routes->patch('(:segment)/(:segment)', 'Api\ResourceController::update/$1/$2');

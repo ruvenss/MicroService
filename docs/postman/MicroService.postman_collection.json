@@ -381,6 +381,84 @@
                     "response": []
                 },
                 {
+                    "name": "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100).",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products"
+                            ]
+                        },
+                        "description": "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100). Scope: products:write.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[\n    {\n        \"id\": \"1\",\n        \"sku\": \"string\",\n        \"name\": \"string\",\n        \"price\": \"0.00\",\n        \"status\": \"string\"\n    }\n]"
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Bulk archival delete products: send {\"ids\": [...]} (all-or-nothing, max 100, restorable via the recycle bin).",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products"
+                            ]
+                        },
+                        "description": "Bulk archival delete products: send {\"ids\": [...]} (all-or-nothing, max 100, restorable via the recycle bin). Scope: products:delete.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"ids\": [\"1\", \"2\"]\n}"
+                        }
+                    },
+                    "response": []
+                },
+                {
                     "name": "Fetch one products by id.",
                     "request": {
                         "method": "GET",

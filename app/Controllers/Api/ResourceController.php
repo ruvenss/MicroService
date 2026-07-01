@@ -27,8 +27,8 @@ use CodeIgniter\HTTP\ResponseInterface;
  */
 class ResourceController extends BaseController
 {
-    /** Maximum items accepted in a single bulk-create request. */
-    private const BULK_MAX = 100;
+    /** Maximum items accepted in a single bulk (create/update/delete) request. */
+    public const BULK_MAX = 100;
 
     public function index(string $slug): ResponseInterface
     {
@@ -190,6 +190,176 @@ class ResourceController extends BaseController
         ]);
     }
 
+    /**
+     * Collection-level PATCH: bulk update. Body is a JSON array of objects, each
+     * carrying its primary key plus the fields to change. Lets an n8n workflow
+     * update many rows in one call.
+     */
+    public function updateCollection(string $slug): ResponseInterface
+    {
+        $definition = $this->resolve($slug);
+        if ($definition === null) {
+            return $this->notFound();
+        }
+
+        $items = $this->request->getJSON(true);
+        if (! is_array($items) || $items === [] || ! array_is_list($items)) {
+            return $this->problem(400, 'Request body must be a non-empty JSON array of objects.');
+        }
+
+        return $this->updateBulk($definition, $items);
+    }
+
+    /**
+     * Collection-level DELETE: bulk archival delete. Body is either a JSON array
+     * of ids or an object `{"ids": [...]}`. Every row is archived (restorable) in
+     * one all-or-nothing transaction.
+     */
+    public function deleteCollection(string $slug): ResponseInterface
+    {
+        $definition = $this->resolve($slug);
+        if ($definition === null) {
+            return $this->notFound();
+        }
+
+        $body = $this->request->getJSON(true);
+        $ids  = is_array($body) && array_is_list($body) ? $body : ($body['ids'] ?? null);
+        if (! is_array($ids)) {
+            return $this->problem(400, 'Provide ids as a JSON array, or an object with an "ids" array.');
+        }
+
+        return $this->deleteBulk($definition, array_values($ids));
+    }
+
+    /**
+     * Validate every item first (each must exist and pass update rules), then
+     * apply them all in one transaction (all-or-nothing). Any invalid item → 422
+     * with per-index errors and nothing is written.
+     * Response: { data: [...updated...], meta: { updated: N } }.
+     *
+     * @param list<mixed> $items each element should be an object carrying the primary key
+     */
+    private function updateBulk(ResourceDefinition $definition, array $items): ResponseInterface
+    {
+        if (count($items) > self::BULK_MAX) {
+            return $this->problem(422, 'Bulk update is limited to ' . self::BULK_MAX . ' items per request.');
+        }
+
+        $model  = $this->model($definition);
+        $pk     = $definition->primaryKey;
+        $errors = [];
+        $plan   = [];
+        foreach ($items as $index => $item) {
+            if (! is_array($item)) {
+                $errors[$index] = ['_' => 'Each item must be a JSON object.'];
+
+                continue;
+            }
+            $id = $item[$pk] ?? null;
+            if ($id === null || $id === '') {
+                $errors[$index] = ['_' => "Each item must include its {$pk}."];
+
+                continue;
+            }
+            $before = $model->find($id);
+            if ($before === null) {
+                $errors[$index] = [$pk => 'No record matches this identifier.'];
+
+                continue;
+            }
+            $data      = $this->fireBeforeSave($definition, 'update', $item);
+            $itemError = $this->validateAgainst($data, $definition->updateRules);
+            if ($itemError !== []) {
+                $errors[$index] = $itemError;
+
+                continue;
+            }
+            $clean = $this->onlyFillable($data, $definition);
+            if ($clean === []) {
+                $errors[$index] = ['_' => 'No updatable fields provided.'];
+
+                continue;
+            }
+            $plan[] = [(string) $id, $before, $clean];
+        }
+
+        if ($errors !== []) {
+            return $this->problem(422, 'One or more items are invalid.', ['errors' => $errors]);
+        }
+
+        $db = db_connect();
+        $db->transStart();
+        $updated = [];
+        foreach ($plan as [$id, $before, $clean]) {
+            $model->update($id, $clean);
+            $after = (array) $model->find($id);
+            AuditWriter::record('update', $definition->slug, $id, $this->hide($before, $definition), $this->hide($after, $definition));
+            $updated[] = [$this->present($after, $definition), $this->hide($before, $definition)];
+        }
+        $db->transComplete();
+
+        $data = [];
+        foreach ($updated as [$row, $beforeHidden]) {
+            $this->fireAfter('afterUpdate', $definition, $row, $beforeHidden);
+            $data[] = $row;
+        }
+
+        return $this->response->setJSON(['data' => $data, 'meta' => ['updated' => count($data)]]);
+    }
+
+    /**
+     * Archive-and-delete every id in one transaction (all-or-nothing). Any id that
+     * does not resolve → 422 with per-index errors and nothing is deleted.
+     * Response: { meta: { deleted: N } }.
+     *
+     * @param list<mixed> $ids
+     */
+    private function deleteBulk(ResourceDefinition $definition, array $ids): ResponseInterface
+    {
+        if ($ids === []) {
+            return $this->problem(422, 'Provide a non-empty list of ids to delete.');
+        }
+        if (count($ids) > self::BULK_MAX) {
+            return $this->problem(422, 'Bulk delete is limited to ' . self::BULK_MAX . ' items per request.');
+        }
+
+        $model  = $this->model($definition);
+        $errors = [];
+        $rows   = [];
+        foreach ($ids as $index => $id) {
+            if (! is_scalar($id) || (string) $id === '') {
+                $errors[$index] = ['_' => 'Each id must be a non-empty scalar value.'];
+
+                continue;
+            }
+            $row = $model->find($id);
+            if ($row === null) {
+                $errors[$index] = ['_' => 'No record matches this identifier.'];
+
+                continue;
+            }
+            $rows[(string) $id] = $row;
+        }
+
+        if ($errors !== []) {
+            return $this->problem(422, 'One or more ids are invalid.', ['errors' => $errors]);
+        }
+
+        $db      = db_connect();
+        $archive = new ArchivedRecordModel();
+        $db->transStart();
+        foreach ($rows as $id => $row) {
+            $this->archiveAndDelete($definition, (string) $id, $row, $model, $archive);
+        }
+        $db->transComplete();
+
+        foreach ($rows as $row) {
+            $this->fireAfter('afterDelete', $definition, $this->hide($row, $definition));
+        }
+
+        return $this->response->setJSON(['meta' => ['deleted' => count($rows)]]);
+    }
+
     public function update(string $slug, string $id): ResponseInterface
     {
         $definition = $this->resolve($slug);
@@ -247,17 +417,7 @@ class ResourceController extends BaseController
 
         $db = db_connect();
         $db->transStart();
-        (new ArchivedRecordModel())->insert([
-            'resource'     => $definition->slug,
-            'source_table' => $definition->table,
-            'record_id'    => (string) $id,
-            'payload_json' => json_encode($row),
-            'deleted_by'   => AuthContext::keyId(),
-            'request_id'   => RequestContext::id(),
-            'deleted_at'   => date('Y-m-d H:i:s'),
-        ]);
-        $model->delete($id);
-        AuditWriter::record('delete', $definition->slug, (string) $id, $this->hide($row, $definition), null);
+        $this->archiveAndDelete($definition, (string) $id, $row, $model, new ArchivedRecordModel());
         $db->transComplete();
 
         $this->fireAfter('afterDelete', $definition, $this->hide($row, $definition));
@@ -266,6 +426,27 @@ class ResourceController extends BaseController
     }
 
     // ── helpers ──────────────────────────────────────────────────────────
+
+    /**
+     * Move one row to the recycle bin and remove it from its table, recording the
+     * mutation. Callers wrap this in a transaction and fire afterDelete post-commit.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function archiveAndDelete(ResourceDefinition $definition, string $id, array $row, GenericResourceModel $model, ArchivedRecordModel $archive): void
+    {
+        $archive->insert([
+            'resource'     => $definition->slug,
+            'source_table' => $definition->table,
+            'record_id'    => $id,
+            'payload_json' => json_encode($row),
+            'deleted_by'   => AuthContext::keyId(),
+            'request_id'   => RequestContext::id(),
+            'deleted_at'   => date('Y-m-d H:i:s'),
+        ]);
+        $model->delete($id);
+        AuditWriter::record('delete', $definition->slug, $id, $this->hide($row, $definition), null);
+    }
 
     private function resolve(string $slug): ?ResourceDefinition
     {

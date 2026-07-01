@@ -104,9 +104,13 @@ final class PostmanGenerator
             ];
         }
 
+        $bodyExample = $ep['bodyExample'] ?? null;
         if (is_array($ep['body'])) {
             $request['header'][] = ['key' => 'Content-Type', 'value' => 'application/json'];
             $request['body']     = ['mode' => 'raw', 'raw' => self::exampleBody($ep['body'])];
+        } elseif (is_string($bodyExample)) {
+            $request['header'][] = ['key' => 'Content-Type', 'value' => 'application/json'];
+            $request['body']     = ['mode' => 'raw', 'raw' => $bodyExample];
         }
 
         $item = ['name' => $ep['summary'], 'request' => $request, 'response' => []];

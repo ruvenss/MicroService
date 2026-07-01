@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Libraries\Docs;
 
+use App\Controllers\Api\ResourceController;
 use App\Libraries\QueryParser;
 use App\Libraries\ResourceDefinition;
 use App\Libraries\ResourceRegistry;
@@ -16,7 +17,8 @@ use App\Libraries\ResourceRegistry;
  * Each endpoint descriptor:
  *   tag, resource, method, path, operationId, summary, auth(bool), scope(?string),
  *   pathParams(list<string>), query(list<array{name,description}>),
- *   body(?array<string,array{type,required}>), success(int), successKind, captureId(bool)
+ *   body(?array<string,array{type,required}>), bodyExample(?string raw JSON),
+ *   success(int), successKind(item|collection|meta|none), captureId(bool)
  */
 final class EndpointCatalog
 {
@@ -119,6 +121,24 @@ final class EndpointCatalog
                 'body' => self::body($def), 'success' => 201, 'successKind' => 'item', 'captureId' => true,
             ],
             [
+                'tag' => $tag, 'resource' => $def->slug, 'method' => 'PATCH', 'path' => $base,
+                'operationId' => $def->slug . 'BulkUpdate',
+                'summary' => 'Bulk update ' . $def->slug . ': a JSON array of objects, each with its ' . $def->primaryKey
+                    . ' plus fields to change (all-or-nothing, max ' . ResourceController::BULK_MAX . ').',
+                'auth' => true, 'scope' => $def->slug . ':write', 'pathParams' => [], 'query' => [],
+                'body' => null, 'bodyExample' => self::bulkUpdateExample($def),
+                'success' => 200, 'successKind' => 'collection', 'captureId' => false,
+            ],
+            [
+                'tag' => $tag, 'resource' => $def->slug, 'method' => 'DELETE', 'path' => $base,
+                'operationId' => $def->slug . 'BulkDelete',
+                'summary' => 'Bulk archival delete ' . $def->slug . ': send {"ids": [...]} (all-or-nothing, max '
+                    . ResourceController::BULK_MAX . ', restorable via the recycle bin).',
+                'auth' => true, 'scope' => $def->slug . ':delete', 'pathParams' => [], 'query' => [],
+                'body' => null, 'bodyExample' => "{\n    \"ids\": [\"1\", \"2\"]\n}",
+                'success' => 200, 'successKind' => 'meta', 'captureId' => false,
+            ],
+            [
                 'tag' => $tag, 'resource' => $def->slug, 'method' => 'GET', 'path' => $base . '/{id}',
                 'operationId' => $def->slug . 'Show', 'summary' => 'Fetch one ' . $def->slug . ' by id.',
                 'auth' => true, 'scope' => $def->slug . ':read', 'pathParams' => ['id'], 'query' => [], 'body' => null,
@@ -154,6 +174,24 @@ final class EndpointCatalog
         }
 
         return $fields;
+    }
+
+    /**
+     * A one-object example for bulk update: the primary key plus each writable
+     * field with a type-appropriate placeholder, wrapped in an array.
+     */
+    private static function bulkUpdateExample(ResourceDefinition $def): string
+    {
+        $object = [$def->primaryKey => '1'];
+        foreach (self::body($def) as $field => $meta) {
+            $object[$field] = match ($meta['type']) {
+                'number'  => '0.00',
+                'integer' => 0,
+                default   => 'string',
+            };
+        }
+
+        return (string) json_encode([$object], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }
 
     private static function inferType(string $rule): string

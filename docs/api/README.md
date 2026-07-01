@@ -95,6 +95,40 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `status` (string, optional)
 - **Success:** `201` (`item` envelope)
 
+### `PATCH /api/v1/products`
+
+- **Summary:** Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100).
+- **Auth:** bearer
+- **Scope:** products:write
+- **Body (JSON example):**
+
+```json
+[
+    {
+        "id": "1",
+        "sku": "string",
+        "name": "string",
+        "price": "0.00",
+        "status": "string"
+    }
+]
+```
+- **Success:** `200` (`collection` envelope)
+
+### `DELETE /api/v1/products`
+
+- **Summary:** Bulk archival delete products: send {"ids": [...]} (all-or-nothing, max 100, restorable via the recycle bin).
+- **Auth:** bearer
+- **Scope:** products:delete
+- **Body (JSON example):**
+
+```json
+{
+    "ids": ["1", "2"]
+}
+```
+- **Success:** `200` (`meta` envelope)
+
 ### `GET /api/v1/products/{id}`
 
 - **Summary:** Fetch one products by id.

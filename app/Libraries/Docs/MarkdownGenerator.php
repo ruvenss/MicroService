@@ -63,6 +63,8 @@ final class MarkdownGenerator
                 $req = $meta['required'] ? 'required' : 'optional';
                 $md .= "  - `{$field}` ({$meta['type']}, {$req})\n";
             }
+        } elseif (is_string($ep['bodyExample'] ?? null)) {
+            $md .= "- **Body (JSON example):**\n\n```json\n{$ep['bodyExample']}\n```\n";
         }
 
         $md .= "- **Success:** `{$ep['success']}`"

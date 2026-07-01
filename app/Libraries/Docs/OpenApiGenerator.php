@@ -112,6 +112,15 @@ final class OpenApiGenerator
                 'required' => true,
                 'content'  => ['application/json' => ['schema' => $schema]],
             ];
+        } elseif (is_string($ep['bodyExample'] ?? null)) {
+            $decoded = json_decode($ep['bodyExample'], true);
+            $schema  = is_array($decoded) && array_is_list($decoded)
+                ? ['type' => 'array', 'items' => ['type' => 'object']]
+                : ['type' => 'object'];
+            $op['requestBody'] = [
+                'required' => true,
+                'content'  => ['application/json' => ['schema' => $schema, 'example' => $decoded]],
+            ];
         }
 
         $op['responses'] = self::responses($ep);
@@ -130,6 +139,12 @@ final class OpenApiGenerator
 
         if ($ep['successKind'] === 'none') {
             $responses[(string) $ep['success']] = ['description' => 'No content'];
+        } elseif ($ep['successKind'] === 'meta') {
+            $envelope = ['type' => 'object', 'properties' => ['meta' => ['type' => 'object']]];
+            $responses[(string) $ep['success']] = [
+                'description' => 'Success',
+                'content'     => ['application/json' => ['schema' => $envelope]],
+            ];
         } else {
             $data = $ep['successKind'] === 'collection'
                 ? ['type' => 'array', 'items' => ['type' => 'object']]
@@ -141,8 +156,9 @@ final class OpenApiGenerator
             ];
         }
 
-        $errors = $ep['auth'] ? [400, 401, 403, 404, 422, 429] : [400, 404, 429];
-        if (! is_array($ep['body'])) {
+        $hasBody = is_array($ep['body']) || is_string($ep['bodyExample'] ?? null);
+        $errors  = $ep['auth'] ? [400, 401, 403, 404, 422, 429] : [400, 404, 429];
+        if (! $hasBody) {
             $errors = array_values(array_diff($errors, [422]));
         }
         foreach ($errors as $code) {
