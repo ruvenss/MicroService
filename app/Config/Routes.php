@@ -11,8 +11,8 @@ $routes->set404Override('App\Controllers\Api\Errors::notFound');
 // ── Open endpoints (no auth) ─────────────────────────────────────────────
 // Health is unauthenticated so monitors / n8n schedule checks can reach it.
 // GET routes also answer HEAD (same status/headers, empty body — cheap probes)
-// via `match(['get','head'], …)`; the server drops the body for HEAD.
-$routes->match(['get', 'head'], 'api/v1/health', 'Api\Health::index');
+// via `match(['GET','HEAD'], …)`; the server drops the body for HEAD.
+$routes->match(['GET', 'HEAD'], 'api/v1/health', 'Api\Health::index');
 
 // Diagnostic-only: a route that throws, exercising the global exception handler.
 // Never registered in production.
@@ -27,12 +27,12 @@ if (ENVIRONMENT !== 'production') {
 // controllers). Usage is tracked. Declared before the generic CRUD group so the
 // underscore-prefixed paths win over the resource matcher.
 $routes->group('api/v1', ['filter' => ['apikey', 'usagetracker']], static function (RouteCollection $routes): void {
-    $routes->match(['get', 'head'], '_me', 'Api\Me::index');
-    $routes->match(['get', 'head'], '_resources', 'Api\Discovery::resources');
-    $routes->match(['get', 'head'], '_archive', 'Api\Archive::index');
-    $routes->match(['get', 'head'], '_archive/(:segment)', 'Api\Archive::show/$1');
+    $routes->match(['GET', 'HEAD'], '_me', 'Api\Me::index');
+    $routes->match(['GET', 'HEAD'], '_resources', 'Api\Discovery::resources');
+    $routes->match(['GET', 'HEAD'], '_archive', 'Api\Archive::index');
+    $routes->match(['GET', 'HEAD'], '_archive/(:segment)', 'Api\Archive::show/$1');
     $routes->post('_archive/(:segment)/restore', 'Api\Archive::restore/$1');
-    $routes->match(['get', 'head'], '_audit', 'Api\Audit::index');
+    $routes->match(['GET', 'HEAD'], '_audit', 'Api\Audit::index');
 });
 
 // Generic CRUD engine. Filters run in order: authenticate → rate-limit →
@@ -40,12 +40,12 @@ $routes->group('api/v1', ['filter' => ['apikey', 'usagetracker']], static functi
 // Declared AFTER the reserved paths above so they win. The resource slug is
 // resolved against the registry; unknown slugs → neutral 404.
 $routes->group('api/v1', ['filter' => ['apikey', 'ratelimit', 'permission', 'idempotency', 'contentguard', 'usagetracker']], static function (RouteCollection $routes): void {
-    $routes->match(['get', 'head'], '(:segment)', 'Api\ResourceController::index/$1');
+    $routes->match(['GET', 'HEAD'], '(:segment)', 'Api\ResourceController::index/$1');
     $routes->post('(:segment)', 'Api\ResourceController::create/$1');
     $routes->put('(:segment)', 'Api\ResourceController::upsertCollection/$1');
     $routes->patch('(:segment)', 'Api\ResourceController::updateCollection/$1');
     $routes->delete('(:segment)', 'Api\ResourceController::deleteCollection/$1');
-    $routes->match(['get', 'head'], '(:segment)/(:segment)', 'Api\ResourceController::show/$1/$2');
+    $routes->match(['GET', 'HEAD'], '(:segment)/(:segment)', 'Api\ResourceController::show/$1/$2');
     $routes->put('(:segment)/(:segment)', 'Api\ResourceController::update/$1/$2');
     $routes->patch('(:segment)/(:segment)', 'Api\ResourceController::update/$1/$2');
     $routes->delete('(:segment)/(:segment)', 'Api\ResourceController::delete/$1/$2');
