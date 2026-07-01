@@ -25,6 +25,24 @@ final class OutputCastsTest extends FeatureTestCase
         $this->assertIsString($body['data']['sku']); // uncast columns stay as-is
     }
 
+    public function testGetResponsesEmitRawUtf8AndUnescapedSlashes(): void
+    {
+        // Reads go through respondCacheable's manual json_encode; it must use the same
+        // unescaped flags as writes (Config\Format) so unicode and slashes reach n8n /
+        // a human in Postman raw ("Café/☕"), not "Café\/☕". Asserts on the raw
+        // body bytes, since json_decode would hide the escaping either way.
+        $auth = $this->authHeaders(['products:*']);
+        $this->withHeaders($auth)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'UTFWIRE1', 'name' => 'Café/☕', 'price' => '1.00']);
+
+        $raw = (string) $this->withHeaders($auth)->get('api/v1/products?filter[sku]=UTFWIRE1')->response()->getBody();
+
+        $backslash = chr(92);
+        $this->assertStringContainsString('Café/☕', $raw);              // raw UTF-8 + unescaped slash
+        $this->assertStringNotContainsString($backslash . 'u', $raw);    // no \uXXXX unicode escape
+        $this->assertStringNotContainsString($backslash . '/', $raw);    // no \/ escaped slash
+    }
+
     public function testListRowsAreTyped(): void
     {
         $auth = $this->authHeaders(['products:*']);

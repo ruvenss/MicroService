@@ -230,6 +230,12 @@ authorized). Covered by `HeadRequestTest`.
 ```
 - `data` is an object for single-resource responses, an array for collections.
 - `meta` is present when there is pagination or other metadata; omitted otherwise.
+- **Wire format:** JSON is emitted with `JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES` — international
+  text and emoji travel as raw UTF-8 (`"Café ☕ 日本語"`, not `"Café …"`) and `/` is unescaped,
+  so payloads are smaller and human-readable in Postman. Reads (which carry an ETag and so are encoded by
+  hand in `respondCacheable`) use the **same** flags as writes (CI4's `setJSON` via `Config\Format`), so
+  the format is identical across every verb — and the ETag is hashed from those same bytes, keeping
+  `If-None-Match`/304 and `If-Match`/412 consistent. utf8mb4 round-trips byte-exact end to end.
 
 ### 6.2 Error envelope — RFC 9457 Problem Details (`application/problem+json`)
 

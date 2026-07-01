@@ -33,6 +33,15 @@ class ResourceController extends BaseController
     /** Maximum items accepted in a single bulk (create/update/delete) request. */
     public const BULK_MAX = 100;
 
+    /**
+     * JSON flags for the manually-encoded GET bodies (respondCacheable) and the
+     * ETag hash, matching what CI4's setJSON uses for writes via Config\Format:
+     * raw UTF-8 and unescaped slashes. Without this, reads escaped `café` → `café`
+     * and `a/b` → `a\/b` while writes did not — a mismatched, bulkier wire format
+     * and unreadable output for a human testing GETs in Postman.
+     */
+    private const RESPONSE_JSON_FLAGS = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+
     public function index(string $slug): ResponseInterface
     {
         $definition = $this->resolve($slug);
@@ -696,7 +705,7 @@ class ResourceController extends BaseController
      */
     private function respondCacheable(array $payload): ResponseInterface
     {
-        $body = (string) json_encode($payload);
+        $body = (string) json_encode($payload, self::RESPONSE_JSON_FLAGS);
         $etag = '"' . sha1($body) . '"';
 
         $ifNoneMatch = $this->request->getHeaderLine('If-None-Match');
@@ -734,7 +743,7 @@ class ResourceController extends BaseController
     /** The ETag a GET of this single row would carry (same recipe as respondCacheable). */
     private function etagForResource(array $row, ResourceDefinition $definition): string
     {
-        return '"' . sha1((string) json_encode(ResponseEnvelope::wrap($this->present($row, $definition)))) . '"';
+        return '"' . sha1((string) json_encode(ResponseEnvelope::wrap($this->present($row, $definition)), self::RESPONSE_JSON_FLAGS)) . '"';
     }
 
     /**
