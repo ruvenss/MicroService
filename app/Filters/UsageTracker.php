@@ -62,8 +62,11 @@ class UsageTracker implements FilterInterface
             if ($keyId !== null && $this->shouldStampLastUsed($keyId)) {
                 (new ApiKeyModel())->update($keyId, ['last_used_at' => $now]);
             }
-        } catch (Throwable) {
-            // Observability must never break the API response.
+        } catch (Throwable $e) {
+            // Observability must never break the API response — but a swallowed failure
+            // means an access-audit row (or last-used stamp) was silently lost, so record
+            // that it happened rather than letting it vanish.
+            log_message('error', 'Usage tracking failed: {message}', ['message' => $e->getMessage()]);
         }
 
         return $response;

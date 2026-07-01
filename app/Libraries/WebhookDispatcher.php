@@ -88,8 +88,15 @@ final class WebhookDispatcher
                     'created_at'   => date('Y-m-d H:i:s'),
                 ]);
             }
-        } catch (Throwable) {
-            // Best effort — enqueue must never break the API response.
+        } catch (Throwable $e) {
+            // Best effort — enqueue must never break the API response. But a swallowed
+            // failure means a webhook (an n8n trigger) was silently lost, so make it
+            // observable instead of vanishing: log at `critical` with the event only —
+            // never the payload (it may carry record data) or the secret.
+            log_message('critical', 'Webhook enqueue failed for {event}: {message}', [
+                'event'   => $event->resource . '.' . $event->action,
+                'message' => $e->getMessage(),
+            ]);
         }
     }
 

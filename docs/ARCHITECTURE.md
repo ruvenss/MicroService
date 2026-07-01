@@ -1086,6 +1086,13 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   (`MicroService-Webhook/1.0`) that never reveals the engine to the receiver. **The outbox row is written inside the
   same DB transaction as the mutation** (by the controller, not a post-commit event), so the change and
   its notification commit atomically — a crash after commit can never drop the event (no dual-write gap).
+  **Atomicity is honoured on failure too:** the controller checks `transComplete()` — if the outbox insert
+  fails the managed transaction rolls the whole change back, so the API returns **`500`** (never a `201`/`200`
+  for a write that didn't persist) and the swallowed enqueue error is logged at `critical` (so a lost n8n
+  trigger is observable, not silent). Because the app uses **persistent connections** (pConnect) and each
+  request is one independent mutation, controllers run **non-strict** managed transactions
+  (`transStrict(false)` in `BaseController`) — otherwise a single rolled-back write would leave the pooled
+  connection's `transStatus` false and silently cascade into failing every later request that reuses it.
   Enqueue is DB-only on the request thread; delivery is out-of-band with retries (`maxAttempts`), so a
   slow/unavailable n8n never affects the API response. Subscriptions filter by
   `{resource}.{afterCreate|afterUpdate|afterDelete|afterRestore}` / wildcards. This is the service→n8n

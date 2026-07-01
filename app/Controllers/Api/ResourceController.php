@@ -253,7 +253,9 @@ class ResourceController extends BaseController
         $presented = $this->present($row, $definition);
         AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
         $this->enqueueWebhook('afterCreate', $definition, $presented);
-        $db->transComplete();
+        if (($failed = $this->finishTransaction($db)) !== null) {
+            return $failed;
+        }
 
         $this->fireAfter('afterCreate', $definition, $presented);
 
@@ -316,7 +318,9 @@ class ResourceController extends BaseController
             $this->enqueueWebhook('afterCreate', $definition, $presented);
             $created[] = $presented;
         }
-        $db->transComplete();
+        if (($failed = $this->finishTransaction($db)) !== null) {
+            return $failed;
+        }
 
         foreach ($created as $createdRow) {
             $this->fireAfter('afterCreate', $definition, $createdRow);
@@ -466,7 +470,9 @@ class ResourceController extends BaseController
                 $updated++;
             }
         }
-        $db->transComplete();
+        if (($failed = $this->finishTransaction($db)) !== null) {
+            return $failed;
+        }
 
         $data = [];
         foreach ($rows as [$action, $row, $before]) {
@@ -570,7 +576,9 @@ class ResourceController extends BaseController
             $this->enqueueWebhook('afterUpdate', $definition, $presented, $beforeHidden);
             $updated[] = [$presented, $beforeHidden];
         }
-        $db->transComplete();
+        if (($failed = $this->finishTransaction($db)) !== null) {
+            return $failed;
+        }
 
         $data = [];
         foreach ($updated as [$row, $beforeHidden]) {
@@ -637,7 +645,9 @@ class ResourceController extends BaseController
             $this->archiveAndDelete($definition, (string) $id, $row, $model, $archive);
             $this->enqueueWebhook('afterDelete', $definition, $this->hide($row, $definition));
         }
-        $db->transComplete();
+        if (($failed = $this->finishTransaction($db)) !== null) {
+            return $failed;
+        }
 
         foreach ($rows as $row) {
             $this->fireAfter('afterDelete', $definition, $this->hide($row, $definition));
@@ -683,7 +693,9 @@ class ResourceController extends BaseController
         $presented    = $this->present($after, $definition);
         AuditWriter::record('update', $definition->slug, (string) $id, $beforeHidden, $this->hide($after, $definition));
         $this->enqueueWebhook('afterUpdate', $definition, $presented, $beforeHidden);
-        $db->transComplete();
+        if (($failed = $this->finishTransaction($db)) !== null) {
+            return $failed;
+        }
 
         $this->fireAfter('afterUpdate', $definition, $presented, $beforeHidden);
 
@@ -722,7 +734,9 @@ class ResourceController extends BaseController
         $db->transStart();
         $this->archiveAndDelete($definition, (string) $id, $row, $model, new ArchivedRecordModel());
         $this->enqueueWebhook('afterDelete', $definition, $this->hide($row, $definition));
-        $db->transComplete();
+        if (($failed = $this->finishTransaction($db)) !== null) {
+            return $failed;
+        }
 
         $this->fireAfter('afterDelete', $definition, $this->hide($row, $definition));
 
@@ -1044,6 +1058,21 @@ class ResourceController extends BaseController
         Events::trigger('resource.beforeDelete', $event);
 
         return $event->isCancelled() ? ($event->cancelReason() ?? 'Operation not permitted.') : null;
+    }
+
+    /**
+     * Close a mutation's transaction. `transComplete()` returns false when the managed
+     * transaction was rolled back — e.g. the transactional webhook-outbox insert failed
+     * (which also gets a `critical` log in WebhookDispatcher::enqueue). In that case the
+     * change did NOT persist, so callers must return this 500 instead of a success
+     * envelope rather than telling the client it created/updated something it didn't.
+     * Post-commit `fireAfter` events must run only when this returns null.
+     */
+    private function finishTransaction(\CodeIgniter\Database\BaseConnection $db): ?ResponseInterface
+    {
+        return $db->transComplete()
+            ? null
+            : $this->problem(500, 'The change could not be committed; please retry.');
     }
 
     /**

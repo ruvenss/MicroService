@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\Plugin\ResourceEvent;
 use App\Libraries\WebhookDispatcher;
 use App\Models\WebhookOutboxModel;
 use CodeIgniter\Events\Events;
@@ -160,6 +161,46 @@ final class WebhookTest extends FeatureTestCase
         $this->assertSame((string) $row['id'], $captured['headers']['X-Webhook-Id']);
         $this->assertSame('1', $captured['headers']['X-Webhook-Attempt']);
         $this->assertSame('MicroService-Webhook/1.0', $captured['headers']['User-Agent']);
+    }
+
+    public function testEnqueueFailureIsLoggedNotSilentlyLost(): void
+    {
+        // Enqueue is best-effort (it must never break the API response), but a swallowed
+        // failure means a webhook — an n8n trigger — was silently lost. Force a failure
+        // with a target_url past the column limit and assert it is logged, so a dropped
+        // trigger is observable rather than vanishing (the exact silent-loss mode that
+        // once masked a schema bug).
+        \Config\Services::injectMock('logger', new \CodeIgniter\Test\TestLogger(new \Config\Logger()));
+        // target_url is VARCHAR(500); a 600-char URL makes the outbox INSERT throw.
+        $this->subscribe([['url' => 'https://n8n.example/' . str_repeat('x', 600), 'secret' => 's', 'events' => ['*']]]);
+
+        // Drive enqueue directly (the HTTP pipeline would re-instantiate the logger and
+        // drop the injected mock); this is the same call the controller makes in-txn.
+        WebhookDispatcher::enqueue(new ResourceEvent('products', 'afterCreate', row: ['id' => 1, 'sku' => 'X', 'name' => 'N', 'price' => 1.0]));
+
+        $this->assertSame(0, (new WebhookOutboxModel())->countAllResults()); // nothing enqueued
+        $this->assertLogContains('critical', 'Webhook enqueue failed for products.afterCreate');
+    }
+
+    public function testEnqueueFailureRollsBackTheWriteAndReturns500(): void
+    {
+        // The outbox insert shares the mutation's transaction (atomic — no dual-write
+        // gap). If it fails, the managed transaction rolls the whole change back, so the
+        // API must report 500, never a 201 for a write that didn't persist. (Before the
+        // fix the controller ignored transComplete() and returned 201 + an id for a
+        // record that was actually rolled back.)
+        $auth = $this->authHeaders(['products:*']);
+        $this->subscribe([['url' => 'https://n8n.example/' . str_repeat('x', 600), 'secret' => 's', 'events' => ['*']]]);
+
+        $result = $this->withHeaders($auth)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'TXN-ROLLBACK', 'name' => 'N', 'price' => '1.00']);
+
+        $result->assertStatus(500);
+        $this->assertStringContainsString('application/problem+json', $result->response()->getHeaderLine('Content-Type'));
+
+        // The write did not persist: the sku is absent.
+        $list = json_decode((string) $this->withHeaders($auth)->get('api/v1/products?filter[sku]=TXN-ROLLBACK')->response()->getBody(), true);
+        $this->assertCount(0, $list['data']);
     }
 
     public function testUnsignedSubscriptionOmitsTheSignatureHeader(): void

@@ -39,7 +39,13 @@ abstract class BaseController extends Controller
         // Caution: Do not edit this line.
         parent::initController($request, $response, $logger);
 
-        // Preload any models, libraries, etc, here.
-        // $this->session = service('session');
+        // Each request is a single, independent mutation, so use NON-strict managed
+        // transactions: a rolled-back transaction must not leave the connection's
+        // transStatus false and poison the *next* transaction. That matters because the
+        // app uses persistent DB connections (pConnect) — with the default strict mode a
+        // single failed write (e.g. a transactional webhook-outbox insert that rolled the
+        // change back → 500) would silently cascade into failing every later request that
+        // reuses the same pooled connection.
+        db_connect()->transStrict(false);
     }
 }
