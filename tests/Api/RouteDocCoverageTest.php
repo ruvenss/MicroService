@@ -57,20 +57,29 @@ final class RouteDocCoverageTest extends CIUnitTestCase
     private function declaredRoutes(): array
     {
         $source = (string) file_get_contents(APPPATH . 'Config/Routes.php');
-        preg_match_all(
-            '/\$routes->(' . implode('|', self::VERBS) . ")\(\s*'([^']+)'/i",
-            $source,
-            $matches,
-            PREG_SET_ORDER,
-        );
+        $set    = [];
 
-        $set = [];
-        foreach ($matches as [, $verb, $pattern]) {
-            if (str_contains($pattern, '_throw')) {
-                continue; // dev-only diagnostic, intentionally undocumented
+        $add = function (string $verb, string $pattern) use (&$set): void {
+            $verb = strtolower($verb);
+            if (! in_array($verb, self::VERBS, true) || str_contains($pattern, '_throw')) {
+                return; // HEAD/OPTIONS are implicit; _throw is a dev-only diagnostic
             }
-            $path = str_starts_with($pattern, 'api/v1') ? $pattern : 'api/v1/' . ltrim($pattern, '/');
+            $path                              = str_starts_with($pattern, 'api/v1') ? $pattern : 'api/v1/' . ltrim($pattern, '/');
             $set[$this->canonical($verb, $path)] = true;
+        };
+
+        // Single-verb declarations: $routes->get('pattern', …)
+        preg_match_all('/\$routes->(' . implode('|', self::VERBS) . ")\(\s*'([^']+)'/i", $source, $single, PREG_SET_ORDER);
+        foreach ($single as [, $verb, $pattern]) {
+            $add($verb, $pattern);
+        }
+
+        // Multi-verb declarations: $routes->match(['get','head'], 'pattern', …)
+        preg_match_all("/\\\$routes->match\(\s*\[([^\]]+)\]\s*,\s*'([^']+)'/i", $source, $multi, PREG_SET_ORDER);
+        foreach ($multi as [, $verbList, $pattern]) {
+            foreach (explode(',', $verbList) as $verb) {
+                $add(trim($verb, " \t'\""), $pattern);
+            }
         }
 
         return $set;

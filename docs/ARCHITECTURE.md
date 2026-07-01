@@ -167,6 +167,13 @@ Base path: **`/api/v1`**. `{resource}` is the registry slug.
 | POST | `/api/v1/_archive/{archiveId}/restore` | restore an archived record to its original table |
 | GET | `/api/v1/_audit` | query the data-mutation audit trail (§13) |
 
+Every `GET` route also answers **`HEAD`** (registered via `match(['get','head'], …)`, so the same
+auth/rate-limit filters apply): same status and headers as `GET` (`ETag`, `X-RateLimit-*`, …) with an
+empty body, for cheap liveness/existence probes from n8n and uptime monitors. An anonymous `HEAD` on a
+gated resource still returns `401` — it never leaks existence. Verified in the container
+(`HEAD /health` → `200`, 0-byte body; `HEAD /products` → `401` without a key, `200` with `ETag` when
+authorized). Covered by `HeadRequestTest`.
+
 ### 5.4 Query conventions (list endpoint)
 
 - **Pagination:** two modes, same endpoint.

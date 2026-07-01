@@ -25,7 +25,8 @@ final class MarkdownGenerator
             . "Success responses are `{ \"data\": ..., \"meta\": ... }`; errors are RFC 9457 "
             . "`application/problem+json`. Every response carries `X-Request-Id`; rate limits surface via "
             . "`X-RateLimit-*` and `429`. Reads carry an `ETag` — resend it as `If-None-Match` to get "
-            . "`304 Not Modified` when nothing changed. Responses expose no PHP/CodeIgniter/Apache fingerprint.\n\n";
+            . "`304 Not Modified` when nothing changed. Every `GET` endpoint also answers `HEAD` (same "
+            . "status/headers, no body) for cheap probes. Responses expose no PHP/CodeIgniter/Apache fingerprint.\n\n";
 
         foreach ($byTag as $tag => $endpoints) {
             $out .= "## {$tag}\n\n";

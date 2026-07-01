@@ -2,7 +2,7 @@
 
 > Generated from the resource registry by `php spark docs:generate` — do not edit by hand.
 
-All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` except **health**. Success responses are `{ "data": ..., "meta": ... }`; errors are RFC 9457 `application/problem+json`. Every response carries `X-Request-Id`; rate limits surface via `X-RateLimit-*` and `429`. Reads carry an `ETag` — resend it as `If-None-Match` to get `304 Not Modified` when nothing changed. Responses expose no PHP/CodeIgniter/Apache fingerprint.
+All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` except **health**. Success responses are `{ "data": ..., "meta": ... }`; errors are RFC 9457 `application/problem+json`. Every response carries `X-Request-Id`; rate limits surface via `X-RateLimit-*` and `429`. Reads carry an `ETag` — resend it as `If-None-Match` to get `304 Not Modified` when nothing changed. Every `GET` endpoint also answers `HEAD` (same status/headers, no body) for cheap probes. Responses expose no PHP/CodeIgniter/Apache fingerprint.
 
 ## System
 

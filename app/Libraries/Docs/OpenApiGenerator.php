@@ -35,7 +35,8 @@ final class OpenApiGenerator
                 'description' => "Generated from the resource registry. Bearer API-key auth on all "
                     . "/api/v1/* except health. Success: `{data, meta}`. Errors: RFC 9457 problem+json. "
                     . "Every response carries X-Request-Id; rate limits via X-RateLimit-* / 429. "
-                    . "Reads carry an ETag — pass it back as If-None-Match for a 304 Not Modified.",
+                    . "Reads carry an ETag — pass it back as If-None-Match for a 304 Not Modified. "
+                    . "Every GET endpoint also answers HEAD (same status/headers, no body).",
             ],
             'servers'    => [['url' => $serverUrl]],
             'security'   => [['bearerAuth' => []]],

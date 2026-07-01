@@ -3,7 +3,7 @@
     "info": {
         "title": "MicroService API",
         "version": "1.0.0",
-        "description": "Generated from the resource registry. Bearer API-key auth on all /api/v1/* except health. Success: `{data, meta}`. Errors: RFC 9457 problem+json. Every response carries X-Request-Id; rate limits via X-RateLimit-* / 429. Reads carry an ETag \u2014 pass it back as If-None-Match for a 304 Not Modified."
+        "description": "Generated from the resource registry. Bearer API-key auth on all /api/v1/* except health. Success: `{data, meta}`. Errors: RFC 9457 problem+json. Every response carries X-Request-Id; rate limits via X-RateLimit-* / 429. Reads carry an ETag \u2014 pass it back as If-None-Match for a 304 Not Modified. Every GET endpoint also answers HEAD (same status/headers, no body)."
     },
     "servers": [
         {
