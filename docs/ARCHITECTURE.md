@@ -186,7 +186,10 @@ authorized). Covered by `HeadRequestTest`.
     pagination consumes. Direction follows an explicit `sort={pk}` / `-{pk}`; any other `sort`
     alongside `cursor` is rejected (keyset needs a unique ordered key). Cursors are opaque,
     versioned tokens (not a security boundary). Meta returns `perPage, cursor, hasMore, nextCursor`.
-- **Sorting:** `?sort=-created_at,name` (`-` = descending). Only `sortable` columns allowed.
+- **Sorting:** `?sort=-created_at,name` — one or more comma-separated columns applied in order (`-` =
+  descending). Only `sortable` columns are honoured (each is allow-listed, never interpolated); an
+  unknown column is ignored, and if none remain the resource's `defaultSort` applies. Covered by
+  `QueryFilterTest`.
 - **Filtering:** `?filter[status]=active&filter[price][gte]=100`. Operators:
   `eq, ne, gt, gte, lt, lte, like, in`. Only `filterable` columns allowed; values bound as
   parameters (never interpolated).

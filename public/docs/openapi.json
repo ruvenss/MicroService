@@ -1234,7 +1234,7 @@
                         "name": "sort",
                         "in": "query",
                         "required": false,
-                        "description": "Sort column; prefix \"-\" for descending. Allowed: sku, name, price, created_at.",
+                        "description": "Sort by one or more columns, comma-separated (e.g. -price,name); prefix \"-\" for descending. Allowed: sku, name, price, created_at.",
                         "schema": {
                             "type": "string"
                         }

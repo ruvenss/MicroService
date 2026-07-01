@@ -59,8 +59,9 @@ class ResourceController extends BaseController
         $page  = max((int) ($this->request->getGet('page') ?? 1), 1);
         $total = $model->countAllResults(false);
 
-        [$column, $direction] = $this->sort($definition);
-        $model->orderBy($column, $direction);
+        foreach ($this->sortColumns($definition) as [$column, $direction]) {
+            $model->orderBy($column, $direction);
+        }
         if ($spec->fields !== null) {
             $model->select($spec->fields);
         }
@@ -821,22 +822,34 @@ class ResourceController extends BaseController
     }
 
     /**
-     * @return array{0: string, 1: string} [column, direction]
+     * Parse `?sort=col,-col2,…` into an ordered list of [column, direction] pairs
+     * (allow-listed against `sortable`), so a client can sort by multiple columns.
+     *
+     * @return list<array{0: string, 1: string}> ordered [column, direction] pairs
      */
-    private function sort(ResourceDefinition $definition): array
+    private function sortColumns(ResourceDefinition $definition): array
     {
-        $candidate = (string) ($this->request->getGet('sort') ?? '');
-        if ($candidate === '') {
-            $candidate = $definition->defaultSort;
+        $raw    = trim((string) ($this->request->getGet('sort') ?? ''));
+        $tokens = $raw === '' ? [] : array_filter(array_map('trim', explode(',', $raw)), static fn (string $t): bool => $t !== '');
+
+        // Apply each requested column that is on the allow-list, in order; unknown
+        // columns are ignored (never interpolated). A `-` prefix means descending.
+        $orders = [];
+        foreach ($tokens as $token) {
+            $column = ltrim($token, '-+');
+            if ($column !== '' && in_array($column, $definition->sortable, true)) {
+                $orders[$column] = [$column, str_starts_with($token, '-') ? 'DESC' : 'ASC'];
+            }
         }
 
-        $column = ltrim($candidate, '-+');
-        if (! in_array($column, $definition->sortable, true)) {
-            $candidate = $definition->defaultSort;
-            $column    = ltrim($candidate, '-+');
+        if ($orders === []) {
+            // Fall back to the resource's declared default sort.
+            $default             = $definition->defaultSort;
+            $column              = ltrim($default, '-+');
+            $orders[$column]     = [$column, str_starts_with($default, '-') ? 'DESC' : 'ASC'];
         }
 
-        return [$column, str_starts_with($candidate, '-') ? 'DESC' : 'ASC'];
+        return array_values($orders);
     }
 
     /**
