@@ -209,7 +209,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -373,7 +373,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -527,8 +527,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -732,7 +750,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -888,7 +906,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1047,7 +1065,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1170,7 +1188,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1199,6 +1217,24 @@
                             },
                             "X-RateLimit-Reset": {
                                 "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable \u2014 readiness degraded (database or cache unreachable).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
                                 "schema": {
                                     "type": "string"
                                 }
@@ -1383,7 +1419,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1564,8 +1600,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "413": {
-                        "description": "Error",
+                        "description": "Payload Too Large.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1575,7 +1629,7 @@
                         }
                     },
                     "422": {
-                        "description": "Error",
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1585,7 +1639,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1754,8 +1808,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "413": {
-                        "description": "Error",
+                        "description": "Payload Too Large.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1765,7 +1837,7 @@
                         }
                     },
                     "422": {
-                        "description": "Error",
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1775,7 +1847,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1933,17 +2005,25 @@
                         }
                     },
                     "409": {
-                        "description": "Error",
+                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Problem"
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
                         }
                     },
                     "413": {
-                        "description": "Error",
+                        "description": "Payload Too Large.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1953,7 +2033,7 @@
                         }
                     },
                     "422": {
-                        "description": "Error",
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1963,7 +2043,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2144,8 +2224,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "413": {
-                        "description": "Error",
+                        "description": "Payload Too Large.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2155,7 +2253,7 @@
                         }
                     },
                     "422": {
-                        "description": "Error",
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2165,7 +2263,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2329,7 +2427,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2527,8 +2625,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "412": {
-                        "description": "Error",
+                        "description": "Precondition Failed \u2014 the If-Match ETag did not match the current resource.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2538,7 +2654,7 @@
                         }
                     },
                     "413": {
-                        "description": "Error",
+                        "description": "Payload Too Large.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2548,7 +2664,7 @@
                         }
                     },
                     "422": {
-                        "description": "Error",
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2558,7 +2674,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2756,8 +2872,26 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "412": {
-                        "description": "Error",
+                        "description": "Precondition Failed \u2014 the If-Match ETag did not match the current resource.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2767,7 +2901,7 @@
                         }
                     },
                     "413": {
-                        "description": "Error",
+                        "description": "Payload Too Large.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2777,7 +2911,7 @@
                         }
                     },
                     "422": {
-                        "description": "Error",
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2787,7 +2921,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2934,17 +3068,25 @@
                         }
                     },
                     "409": {
-                        "description": "Error",
+                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Problem"
                                 }
                             }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
                         }
                     },
                     "412": {
-                        "description": "Error",
+                        "description": "Precondition Failed \u2014 the If-Match ETag did not match the current resource.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2954,7 +3096,7 @@
                         }
                     },
                     "429": {
-                        "description": "Error",
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {

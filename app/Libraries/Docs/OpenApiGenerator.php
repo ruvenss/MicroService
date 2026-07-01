@@ -190,6 +190,8 @@ final class OpenApiGenerator
             $responses['304'] = ['description' => 'Not Modified — the ETag matched If-None-Match.'];
         }
 
+        $isWrite = in_array($ep['method'], ['POST', 'PUT', 'PATCH', 'DELETE'], true);
+
         $hasBody = is_array($ep['body']) || is_string($ep['bodyExample'] ?? null);
         $errors  = $ep['auth'] ? [400, 401, 403, 404, 422, 429] : [400, 404, 429];
         if (! $hasBody) {
@@ -197,16 +199,23 @@ final class OpenApiGenerator
         } else {
             $errors[] = 413; // body-carrying requests can exceed the size limit
         }
-        if ($ep['method'] === 'DELETE' && $ep['auth']) {
-            $errors[] = 409; // a plugin (resource.beforeDelete) may veto the delete
+        if ($isWrite && $ep['auth']) {
+            // A write may accept an Idempotency-Key whose original request is still in
+            // flight, and a DELETE may be vetoed by a plugin (resource.beforeDelete).
+            $errors[] = 409;
         }
         if (in_array($ep['method'], ['PUT', 'PATCH', 'DELETE'], true) && in_array('id', $ep['pathParams'], true)) {
             $errors[] = 412; // If-Match optimistic-concurrency precondition can fail
         }
+        if (str_ends_with((string) $ep['path'], '/health')) {
+            $errors[] = 503; // readiness degraded (database or cache unreachable)
+        }
+        $errors = array_values(array_unique($errors));
         sort($errors);
+
         foreach ($errors as $code) {
             $response = [
-                'description' => 'Error',
+                'description' => self::ERROR_DESCRIPTIONS[$code] ?? 'Error',
                 'content'     => ['application/problem+json' => ['schema' => ['$ref' => '#/components/schemas/Problem']]],
             ];
             if ($code === 429) {
@@ -216,12 +225,26 @@ final class OpenApiGenerator
                     'X-RateLimit-Remaining' => self::header('Requests remaining in the current window.'),
                     'X-RateLimit-Reset'     => self::header('Epoch second when the window resets.'),
                 ];
+            } elseif ($code === 409 || $code === 503) {
+                // Both may carry Retry-After (an in-progress Idempotency-Key; a degraded
+                // readiness cached for its TTL), so a client can back off precisely.
+                $response['headers'] = ['Retry-After' => self::header('Seconds to wait before retrying.')];
             }
             $responses[(string) $code] = $response;
         }
 
         return $responses;
     }
+
+    /** Human-readable descriptions for the error codes with specific semantics. */
+    private const ERROR_DESCRIPTIONS = [
+        409 => 'Conflict — an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.',
+        412 => 'Precondition Failed — the If-Match ETag did not match the current resource.',
+        413 => 'Payload Too Large.',
+        422 => 'Unprocessable Entity — validation failed (see the errors member).',
+        429 => 'Too Many Requests — rate limit exceeded.',
+        503 => 'Service Unavailable — readiness degraded (database or cache unreachable).',
+    ];
 
     /**
      * Standard success-response headers: the correlation id always, per-key

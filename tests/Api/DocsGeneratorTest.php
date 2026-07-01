@@ -42,6 +42,21 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertContains('sku', $schema['required']);
     }
 
+    public function testDocumentsIdempotency409AndHealth503(): void
+    {
+        $spec = OpenApiGenerator::generate();
+
+        // A write can conflict on an in-progress Idempotency-Key → 409 (with Retry-After).
+        $post = $spec['paths']['/api/v1/products']['post']['responses'];
+        $this->assertArrayHasKey('409', $post);
+        $this->assertArrayHasKey('Retry-After', $post['409']['headers']);
+
+        // Readiness can be degraded → 503 (with Retry-After) on the health endpoint.
+        $health = $spec['paths']['/api/v1/health']['get']['responses'];
+        $this->assertArrayHasKey('503', $health);
+        $this->assertArrayHasKey('Retry-After', $health['503']['headers']);
+    }
+
     public function testPostmanCollectionIsImportable(): void
     {
         $collection = PostmanGenerator::generate();
