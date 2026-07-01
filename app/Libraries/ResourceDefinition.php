@@ -35,6 +35,7 @@ final class ResourceDefinition
         public readonly int $perPageMax,
         public readonly bool $timestamps,
         public readonly array $casts = [],
+        public readonly ?string $upsertKey = null,
     ) {
     }
 
@@ -77,6 +78,7 @@ final class ResourceDefinition
             perPageMax: (int) ($def['perPage']['max'] ?? 100),
             timestamps: $def['timestamps'] ?? true,
             casts: $def['casts'] ?? [],
+            upsertKey: isset($def['upsertKey']) ? (string) $def['upsertKey'] : null,
         );
     }
 }

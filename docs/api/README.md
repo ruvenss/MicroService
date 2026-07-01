@@ -182,3 +182,15 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Path params:** `id`
 - **Success:** `204` (no body)
 
+### `PUT /api/v1/products`
+
+- **Summary:** Upsert products by `sku` (create-or-update): send one object or a JSON array; each item matched on sku is updated, others created (all-or-nothing, max 100). meta: {upserted, created, updated}.
+- **Auth:** bearer
+- **Scope:** products:write
+- **Body (JSON):**
+  - `sku` (string, required)
+  - `name` (string, required)
+  - `price` (number, required)
+  - `status` (string, optional)
+- **Success:** `200` (`item` envelope)
+

@@ -109,7 +109,7 @@ final class EndpointCatalog
             ['name' => 'filter[' . ($def->filterable[0] ?? 'col') . ']', 'description' => 'Filter. Columns: ' . implode(', ', $def->filterable) . '. Operators: ' . implode(', ', QueryParser::OPERATORS) . ' (e.g. filter[col][gte]=10).'],
         ];
 
-        return [
+        $endpoints = [
             [
                 'tag' => $tag, 'resource' => $def->slug, 'method' => 'GET', 'path' => $base,
                 'operationId' => $def->slug . 'List', 'summary' => 'List ' . $def->slug . '.',
@@ -165,6 +165,22 @@ final class EndpointCatalog
                 'success' => 204, 'successKind' => 'none', 'captureId' => false,
             ],
         ];
+
+        // Collection PUT = upsert (create-or-update by the natural key) — only for
+        // resources that declare one. Ideal for n8n data-sync workflows.
+        if ($def->upsertKey !== null) {
+            $endpoints[] = [
+                'tag' => $tag, 'resource' => $def->slug, 'method' => 'PUT', 'path' => $base,
+                'operationId' => $def->slug . 'Upsert',
+                'summary' => 'Upsert ' . $def->slug . ' by `' . $def->upsertKey . '` (create-or-update): send one object '
+                    . 'or a JSON array; each item matched on ' . $def->upsertKey . ' is updated, others created '
+                    . '(all-or-nothing, max ' . ResourceController::BULK_MAX . '). meta: {upserted, created, updated}.',
+                'auth' => true, 'scope' => $def->slug . ':write', 'pathParams' => [], 'query' => [],
+                'body' => self::body($def), 'success' => 200, 'successKind' => 'item', 'captureId' => false,
+            ];
+        }
+
+        return $endpoints;
     }
 
     /**

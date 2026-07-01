@@ -408,8 +408,14 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
      fields to change → bulk update (`{data, meta:{updated}}`; before/after audit per row).
    - `DELETE /api/v1/{resource}` with `{"ids": [...]}` (or a bare id array) → bulk archival delete
      (each row moved to the recycle bin, restorable; `{meta:{deleted}}`).
-   Any invalid/unknown item aborts the whole batch with per-index errors and writes nothing.
-   Scopes are the same as the single-row routes (`:write` for create/update, `:delete` for delete);
+   - `PUT /api/v1/{resource}` → **upsert** (create-or-update) by the resource's declared natural key
+     (`upsertKey`, e.g. `sku` for products). Send one object or an array; each item matched on the key
+     is updated (update rules), the rest created (create rules), all-or-nothing —
+     `{data, meta:{upserted, created, updated}}`. This lets an **n8n data-sync** workflow reconcile
+     records in one idempotent call instead of GET-then-POST/PATCH (which races). Fires the right
+     `afterCreate`/`afterUpdate` events + webhooks per item. Resources without an `upsertKey` return 422.
+   Any invalid/unknown/duplicate-key item aborts the whole batch with per-index errors and writes nothing.
+   Scopes are the same as the single-row routes (`:write` for create/update/upsert, `:delete` for delete);
    both accept an `Idempotency-Key` so n8n retries replay the first response.
 5. **Retention/purge — implemented for the transient tables.** `php spark maintenance:prune`
    (`--dry-run` to preview; run on a schedule) purges **expired `idempotency_keys`**, **`api_request_log`**

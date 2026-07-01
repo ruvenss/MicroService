@@ -302,6 +302,139 @@ class ResourceController extends BaseController
     }
 
     /**
+     * Collection-level PUT: upsert (create-or-update) by the resource's declared
+     * natural key (`upsertKey`). Body is a single object or a JSON array. Each item
+     * is matched by its key value: found → update, absent → create. All-or-nothing
+     * in one transaction. Lets an n8n sync workflow reconcile records in one
+     * idempotent call instead of GET-then-POST/PATCH (which races).
+     */
+    public function upsertCollection(string $slug): ResponseInterface
+    {
+        $definition = $this->resolve($slug);
+        if ($definition === null) {
+            return $this->notFound();
+        }
+        if ($definition->upsertKey === null) {
+            return $this->problem(422, 'Upsert is not supported for this resource.');
+        }
+
+        $body = $this->request->getJSON(true);
+        if (! is_array($body) || $body === []) {
+            return $this->problem(400, 'Request body must be a JSON object or a non-empty array of objects.');
+        }
+        // Normalise single object → one-element list; keep a flag for the response shape.
+        $isSingle = ! array_is_list($body);
+        $items    = $isSingle ? [$body] : $body;
+
+        return $this->upsert($definition, $items, $isSingle);
+    }
+
+    /**
+     * Plan every item (match by key → create or update, validate the right rule
+     * set) then apply the plan in one transaction. Any invalid/duplicate item →
+     * 422 and nothing is written.
+     *
+     * @param list<mixed> $items
+     */
+    private function upsert(ResourceDefinition $definition, array $items, bool $isSingle): ResponseInterface
+    {
+        if (count($items) > self::BULK_MAX) {
+            return $this->problem(422, 'Upsert is limited to ' . self::BULK_MAX . ' items per request.');
+        }
+
+        $key    = $definition->upsertKey;
+        $model  = $this->model($definition);
+        $errors = [];
+        $seen   = [];
+        $plan   = []; // [ 'update'|'create', ?before, cleanData ]
+
+        foreach ($items as $index => $item) {
+            if (! is_array($item)) {
+                $errors[$index] = ['_' => 'Each item must be a JSON object.'];
+
+                continue;
+            }
+            $keyValue = $item[$key] ?? null;
+            if ($keyValue === null || $keyValue === '') {
+                $errors[$index] = [$key => "Each item must include its {$key}."];
+
+                continue;
+            }
+            if (isset($seen[$keyValue])) {
+                $errors[$index] = [$key => "Duplicate {$key} in the same request."];
+
+                continue;
+            }
+            $seen[$keyValue] = true;
+
+            $item     = $this->fireBeforeSave($definition, 'upsert', $item);
+            $existing = $model->where($key, $keyValue)->first();
+
+            if ($existing !== null) {
+                $itemError = $this->validateAgainst($item, $definition->updateRules);
+                if ($itemError !== []) {
+                    $errors[$index] = $itemError;
+
+                    continue;
+                }
+                $plan[] = ['update', $existing, $this->onlyFillable($item, $definition)];
+            } else {
+                $itemError = $this->validateAgainst($item, $definition->createRules);
+                if ($itemError !== []) {
+                    $errors[$index] = $itemError;
+
+                    continue;
+                }
+                $plan[] = ['create', null, $this->onlyFillable($item, $definition)];
+            }
+        }
+
+        if ($errors !== []) {
+            return $this->problem(422, 'One or more items are invalid.', ['errors' => $errors]);
+        }
+
+        $db = db_connect();
+        $db->transStart();
+        $rows    = [];
+        $created = 0;
+        $updated = 0;
+        foreach ($plan as [$op, $before, $clean]) {
+            if ($op === 'create') {
+                $id  = $model->insert($clean, true);
+                $row = (array) $model->find($id);
+                $presented = $this->present($row, $definition);
+                AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
+                $this->enqueueWebhook('afterCreate', $definition, $presented);
+                $rows[] = ['afterCreate', $presented, []];
+                $created++;
+            } else {
+                $id           = $before[$definition->primaryKey];
+                $model->update($id, $clean);
+                $after        = (array) $model->find($id);
+                $beforeHidden = $this->hide($before, $definition);
+                $presented    = $this->present($after, $definition);
+                AuditWriter::record('update', $definition->slug, (string) $id, $beforeHidden, $this->hide($after, $definition));
+                $this->enqueueWebhook('afterUpdate', $definition, $presented, $beforeHidden);
+                $rows[] = ['afterUpdate', $presented, $beforeHidden];
+                $updated++;
+            }
+        }
+        $db->transComplete();
+
+        $data = [];
+        foreach ($rows as [$action, $row, $before]) {
+            $this->fireAfter($action, $definition, $row, $before);
+            $data[] = $row;
+        }
+
+        $meta = ['upserted' => count($data), 'created' => $created, 'updated' => $updated];
+
+        return $this->response
+            ->setStatusCode($created > 0 && $updated === 0 ? 201 : 200)
+            ->setJSON($isSingle ? ResponseEnvelope::wrap($data[0], $meta) : ['data' => $data, 'meta' => $meta]);
+    }
+
+    /**
      * Collection-level DELETE: bulk archival delete. Body is either a JSON array
      * of ids or an object `{"ids": [...]}`. Every row is archived (restorable) in
      * one all-or-nothing transaction.

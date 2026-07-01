@@ -43,6 +43,8 @@ final class Plugin implements PluginInterface
             'timestamps'  => true,
             // Typed JSON output (MySQLi returns strings) — friendlier for n8n.
             'casts'       => ['id' => 'int', 'price' => 'float'],
+            // Natural key for PUT /products upsert (create-or-update) — n8n data sync.
+            'upsertKey'   => 'sku',
         ]);
     }
 
