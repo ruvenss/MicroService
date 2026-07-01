@@ -84,6 +84,10 @@ final class WebhookDispatcher
     /** A row left in `dispatching` longer than this (crashed dispatcher) is reclaimable. */
     private const CLAIM_STALE_SECONDS = 300;
 
+    /** Exponential-backoff base and ceiling between retries (seconds). */
+    private const BACKOFF_BASE_SECONDS = 60;
+    private const BACKOFF_MAX_SECONDS  = 3600;
+
     /**
      * Deliver pending/retriable outbox rows. Rows are first claimed atomically so
      * that overlapping `webhooks:dispatch` runs never deliver the same row twice.
@@ -107,30 +111,47 @@ final class WebhookDispatcher
                 'X-Signature'  => (string) $row['signature'],
             ], (string) $row['payload_json']);
 
+            $attempts = (int) $row['attempts'] + 1;
+
             if ($status >= 200 && $status < 300) {
                 $model->update($row['id'], [
-                    'status'       => 'delivered',
-                    'attempts'     => (int) $row['attempts'] + 1,
-                    'delivered_at' => date('Y-m-d H:i:s'),
-                    'last_error'   => null,
-                    'claim_token'  => null,
-                    'claimed_at'   => null,
+                    'status'          => 'delivered',
+                    'attempts'        => $attempts,
+                    'delivered_at'    => date('Y-m-d H:i:s'),
+                    'last_error'      => null,
+                    'claim_token'     => null,
+                    'claimed_at'      => null,
+                    'next_attempt_at' => null,
                 ]);
                 $sent++;
             } else {
-                // Release the claim so a later run can retry (until the attempt cap).
+                // Release the claim and schedule the next retry with exponential
+                // backoff, so a flapping/unavailable n8n is not hammered and the
+                // attempt budget is spread over time (until the attempt cap).
                 $model->update($row['id'], [
-                    'status'      => 'failed',
-                    'attempts'    => (int) $row['attempts'] + 1,
-                    'last_error'  => 'HTTP ' . $status,
-                    'claim_token' => null,
-                    'claimed_at'  => null,
+                    'status'          => 'failed',
+                    'attempts'        => $attempts,
+                    'last_error'      => 'HTTP ' . $status,
+                    'claim_token'     => null,
+                    'claimed_at'      => null,
+                    'next_attempt_at' => date('Y-m-d H:i:s', time() + self::backoffSeconds($attempts)),
                 ]);
                 $failed++;
             }
         }
 
         return ['processed' => count($rows), 'sent' => $sent, 'failed' => $failed];
+    }
+
+    /**
+     * Delay before the Nth retry: BASE · 2^(attempts-1), capped at MAX. So with a
+     * 60 s base: 60 s, 120 s, 240 s, 480 s, … (n8n gets breathing room to recover).
+     */
+    private static function backoffSeconds(int $attempts): int
+    {
+        $delay = self::BACKOFF_BASE_SECONDS * (2 ** max(0, $attempts - 1));
+
+        return (int) min($delay, self::BACKOFF_MAX_SECONDS);
     }
 
     /**

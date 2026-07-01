@@ -105,20 +105,52 @@ final class WebhookTest extends FeatureTestCase
         $this->assertSame('delivered', (new WebhookOutboxModel())->first()['status']);
     }
 
-    public function testFailedDeliveryIsMarkedFailedThenRetriable(): void
+    public function testFailedDeliveryBacksOffThenRetries(): void
     {
         $this->createProduct('WH-3');
+        $model = new WebhookOutboxModel();
 
         WebhookDispatcher::$sender = static fn (): int => 500;
         $this->assertSame(1, WebhookDispatcher::dispatch()['failed']);
 
-        $row = (new WebhookOutboxModel())->first();
+        $row = $model->first();
         $this->assertSame('failed', $row['status']);
         $this->assertSame(1, (int) $row['attempts']);
+        $this->assertNotNull($row['next_attempt_at']);                       // backoff scheduled
+        $this->assertGreaterThan(time(), strtotime((string) $row['next_attempt_at']));
 
-        // still retriable → a later run succeeds
+        // An immediate run must NOT re-deliver — the backoff has not elapsed.
         WebhookDispatcher::$sender = static fn (): int => 200;
+        $this->assertSame(0, WebhookDispatcher::dispatch()['processed']);
+        $this->assertSame('failed', $model->first()['status']);
+
+        // Once the backoff window passes, the next run delivers it.
+        $model->update($row['id'], ['next_attempt_at' => date('Y-m-d H:i:s', time() - 1)]);
         $this->assertSame(1, WebhookDispatcher::dispatch()['sent']);
+        $this->assertSame('delivered', $model->first()['status']);
+    }
+
+    public function testBackoffGrowsExponentiallyWithAttempts(): void
+    {
+        $this->createProduct('WH-BO');
+        $model = new WebhookOutboxModel();
+        $id    = $model->first()['id'];
+
+        WebhookDispatcher::$sender = static fn (): int => 503;
+
+        $delays = [];
+        for ($n = 1; $n <= 3; $n++) {
+            $before = time();
+            WebhookDispatcher::dispatch();
+            $row      = $model->find($id);
+            $delays[] = strtotime((string) $row['next_attempt_at']) - $before;
+            // Fast-forward past the just-scheduled window so the next run re-claims it.
+            $model->update($id, ['next_attempt_at' => date('Y-m-d H:i:s', time() - 1)]);
+        }
+
+        // Roughly 60, 120, 240s — each at least ~1.5x the previous.
+        $this->assertGreaterThan($delays[0], $delays[1]);
+        $this->assertGreaterThan($delays[1], $delays[2]);
     }
 
     public function testConcurrentClaimsPartitionRowsWithoutOverlap(): void

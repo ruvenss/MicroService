@@ -865,7 +865,11 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   `UPDATE … SET status='dispatching', claim_token=? … ORDER BY id LIMIT n`, so overlapping
   `webhooks:dispatch` runs partition the work and never POST the same row twice. The claim is released
   (back to `failed`, retriable) on failure and cleared on delivery; a row stuck in `dispatching` past
-  300 s (a crashed dispatcher) is reclaimed. Covered by `WebhookTest` (concurrent-claim, stale-reclaim).
+  300 s (a crashed dispatcher) is reclaimed. **Exponential backoff:** a failed delivery sets
+  `next_attempt_at = now + 60·2^(attempts-1) s` (capped at 1 h), and the claim query skips a `failed`
+  row until it is due — so a flapping/unavailable n8n is not hammered and the `maxAttempts` budget is
+  spread over time instead of burned in seconds. Covered by `WebhookTest` (concurrent-claim,
+  stale-reclaim, backoff).
 - **Idempotency keys (implemented):** a client sends `Idempotency-Key: <key>` on a write; the first
   response is recorded and any retry with the same key + request **replays** it (with
   `Idempotency-Replayed: true`) instead of re-executing — so an n8n retry after a timeout never

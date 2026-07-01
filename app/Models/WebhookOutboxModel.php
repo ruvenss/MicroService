@@ -23,6 +23,7 @@ class WebhookOutboxModel extends Model
         'attempts',
         'claim_token',
         'claimed_at',
+        'next_attempt_at',
         'last_error',
         'created_at',
         'delivered_at',
@@ -57,11 +58,14 @@ class WebhookOutboxModel extends Model
         $limit = max(1, $limit);
         $stale = date('Y-m-d H:i:s', time() - $staleSeconds);
 
+        // A failed row is only re-claimable once its backoff has elapsed
+        // (next_attempt_at due); pending rows have next_attempt_at NULL = now. A
+        // stale `dispatching` row is reclaimed regardless (its dispatcher crashed).
         $sql = 'UPDATE ' . $this->db->DBPrefix . $this->table . "
                 SET status = 'dispatching', claim_token = ?, claimed_at = NOW()
                 WHERE attempts < ?
                   AND (
-                        status IN ('pending', 'failed')
+                        (status IN ('pending', 'failed') AND (next_attempt_at IS NULL OR next_attempt_at <= NOW()))
                         OR (status = 'dispatching' AND claimed_at < ?)
                       )
                 ORDER BY id ASC
