@@ -352,7 +352,12 @@ and busts the Redis cache. No key secret is ever logged or retrievable after cre
 > full trio `X-RateLimit-Limit` / `X-RateLimit-Remaining` / `X-RateLimit-Reset` (epoch second the window
 > frees up) rides on **every** response, so an n8n workflow can self-throttle proactively instead of only
 > reacting to a `429`. Each request is also logged to `api_request_log` by the `UsageTracker`
-> after-filter, stamping `last_used_at`.
+> after-filter (one append-only row per request — no contention). It also stamps the key's
+> `last_used_at`, but **throttled to at most once per 60 s per key** via a short cache marker: an
+> unthrottled UPDATE of the same `api_keys` row on every request is write amplification and row-lock
+> contention for a busy (e.g. n8n) key, and `last_used_at` is only a coarse "key is active" signal
+> (`_me`, stale-key audits) that never needs second precision. If the cache is down it safely falls back
+> to stamping every request. Covered by `UsageTrackingTest`.
 
 Target end state: a **sliding-window / token-bucket** limiter as an **atomic Redis Lua script**
 (see `php-redis-specialist`) plus an `api_key_usage_daily` rollup. Fail open or closed per config

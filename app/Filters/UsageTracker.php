@@ -23,6 +23,15 @@ use Throwable;
  */
 class UsageTracker implements FilterInterface
 {
+    /**
+     * Stamp a key's `last_used_at` at most once per this many seconds. The access
+     * log already records every request precisely; `last_used_at` is a coarse
+     * "is this key active" signal (`_me`, stale-key audits), so second precision is
+     * pointless — and an unthrottled UPDATE of the *same* api_keys row on every
+     * request is write amplification + row-lock contention for a busy (e.g. n8n) key.
+     */
+    private const LAST_USED_THROTTLE = 60;
+
     public function before(RequestInterface $request, $arguments = null)
     {
         return null;
@@ -50,7 +59,7 @@ class UsageTracker implements FilterInterface
                 'created_at' => $now,
             ]);
 
-            if ($keyId !== null) {
+            if ($keyId !== null && $this->shouldStampLastUsed($keyId)) {
                 (new ApiKeyModel())->update($keyId, ['last_used_at' => $now]);
             }
         } catch (Throwable) {
@@ -58,5 +67,25 @@ class UsageTracker implements FilterInterface
         }
 
         return $response;
+    }
+
+    /**
+     * True at most once per {@see LAST_USED_THROTTLE} seconds per key, via a short
+     * cache marker (Redis in prod, file otherwise). So a burst of requests from one
+     * key stamps `last_used_at` once, not once per request. If the cache is down the
+     * marker never sticks, so it safely falls back to stamping every request.
+     */
+    private function shouldStampLastUsed(int $keyId): bool
+    {
+        $cache  = service('cache');
+        $marker = 'lastused_' . $keyId;
+
+        if ($cache->get($marker) !== null) {
+            return false;
+        }
+
+        $cache->save($marker, 1, self::LAST_USED_THROTTLE);
+
+        return true;
     }
 }
