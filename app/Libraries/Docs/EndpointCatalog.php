@@ -104,7 +104,7 @@ final class EndpointCatalog
 
         $listQuery = [self::pageParam(), self::perPageParam(),
             ['name' => 'cursor', 'description' => 'Opt into keyset pagination (stable, index-fast, ideal for n8n). Send the param empty to start, then follow meta.pagination.nextCursor until it is null. Iterates by ' . $def->primaryKey . '; combine only with sort=' . $def->primaryKey . ' / -' . $def->primaryKey . '.'],
-            ['name' => 'sort', 'description' => 'Sort by one or more columns, comma-separated (e.g. -price,name); prefix "-" for descending. Allowed: ' . implode(', ', $def->sortable) . '.'],
+            ['name' => 'sort', 'description' => 'Sort by one or more columns, comma-separated (e.g. -price,name); prefix "-" for descending. Allowed: ' . implode(', ', $def->sortable) . ' (and ' . $def->primaryKey . '). Any other column is rejected with 400 (not silently ignored).'],
             ['name' => 'fields', 'description' => 'Comma-separated sparse fieldset. Allowed: ' . implode(', ', $def->outputColumns()) . '.'],
             ['name' => 'filter[' . ($def->filterable[0] ?? 'col') . ']', 'description' => 'Filter. Columns: ' . implode(', ', $def->filterable) . '. Operators: ' . implode(', ', QueryParser::OPERATORS) . ' (e.g. filter[col][gte]=10).'],
         ];

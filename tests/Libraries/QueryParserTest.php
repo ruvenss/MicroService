@@ -88,4 +88,26 @@ final class QueryParserTest extends CIUnitTestCase
         $this->assertSame([], $spec->filters);
         $this->assertNull($spec->fields);
     }
+
+    public function testAcceptsSortableColumnsIncludingDescendingAndPrimaryKey(): void
+    {
+        // Allow-listed columns, a `-` prefix, and the primary key (always sortable,
+        // even though it is not in `sortable`) all validate.
+        foreach (['name', '-sku', 'sku,-name', 'id', '-id'] as $sort) {
+            $spec = QueryParser::parse(['sort' => $sort], $this->definition());
+            $this->assertTrue($spec->isValid(), "sort={$sort} should be valid");
+        }
+    }
+
+    public function testRejectsNonSortableColumn(): void
+    {
+        // `price` is filterable but NOT sortable → rejected, like an unknown column.
+        $spec = QueryParser::parse(['sort' => 'price'], $this->definition());
+        $this->assertFalse($spec->isValid());
+        $this->assertStringContainsString('non-sortable', $spec->errors[0]);
+
+        $spec = QueryParser::parse(['sort' => 'name,bogus'], $this->definition());
+        $this->assertFalse($spec->isValid());
+        $this->assertStringContainsString('bogus', $spec->errors[0]);
+    }
 }

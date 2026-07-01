@@ -146,11 +146,27 @@ final class QueryFilterTest extends FeatureTestCase
         $this->assertLessThan(array_search('t1', $skus, true), array_search('t2', $skus, true)); // Alpha before Bravo
     }
 
-    public function testUnknownSortColumnIsIgnoredNotInjected(): void
+    public function testUnknownSortColumnIsRejectedNotSilentlyDropped(): void
     {
-        // A bogus sort column is dropped (allow-listed); the valid one still applies.
-        $skus = array_column($this->list('sort=bogus,-price&perPage=100')['data'], 'sku');
-        $this->assertSame('pricey', $skus[0]); // -price → highest first
+        // A non-sortable column must fail loudly with 400 (like ?filter and ?fields),
+        // never be silently dropped — otherwise the caller would get default-ordered
+        // rows without knowing their requested sort was ignored (an n8n order trap).
+        // The valid token in the same list does not rescue the request.
+        $result = $this->withHeaders($this->auth)->get('api/v1/products?sort=bogus,-price&perPage=100');
+        $result->assertStatus(400);
+        $this->assertStringContainsString('non-sortable', (string) $result->response()->getBody());
+    }
+
+    public function testPrimaryKeyIsAlwaysAcceptedAsSortTarget(): void
+    {
+        // The primary key is a valid sort target even when not listed in `sortable`
+        // (it is the guaranteed tiebreaker and the cursor iteration key).
+        $this->seedNamed('pk1', 'N', '1.00');
+        $this->seedNamed('pk2', 'N', '1.00');
+
+        $ids = array_column($this->list('sort=-id&perPage=100')['data'], 'id');
+        $this->assertSame($ids, array_values($ids));                 // request succeeded (200, data present)
+        $this->assertGreaterThan($ids[1], $ids[0]);                  // -id → descending
     }
 
     public function testTiesAreBrokenByPrimaryKeyForStablePagination(): void

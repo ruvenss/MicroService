@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Libraries;
 
 /**
- * Parses ?filter[...] and ?fields against a resource's allow-lists.
+ * Parses ?filter[...], ?fields and ?sort against a resource's allow-lists.
  *
  * Security: column names and operators are validated against the definition's
  * allow-lists (never taken from raw input as SQL); the controller binds values
- * through the query builder. Unknown columns/operators/fields are rejected (the
- * caller turns a non-empty error list into a 400).
+ * through the query builder. Unknown columns/operators/fields/sort keys are
+ * rejected (the caller turns a non-empty error list into a 400) — a request that
+ * asks for something the resource does not expose fails loudly rather than
+ * silently returning a different result than the caller expects.
  */
 final class QueryParser
 {
@@ -26,6 +28,7 @@ final class QueryParser
 
         $filters = self::parseFilters($get['filter'] ?? null, $definition, $errors);
         $fields  = self::parseFields($get['fields'] ?? null, $definition, $errors);
+        self::validateSort($get['sort'] ?? null, $definition, $errors);
 
         return new QuerySpec($filters, $fields, $errors);
     }
@@ -125,5 +128,41 @@ final class QueryParser
         }
 
         return $fields === [] ? null : array_values(array_unique($fields));
+    }
+
+    /**
+     * Reject any `?sort=col,-col2,…` token whose column is not sortable, so an
+     * unknown or non-exposed sort key fails with a 400 instead of being silently
+     * dropped (which would return default-ordered rows the caller didn't ask for —
+     * a subtle correctness trap for an n8n workflow that relies on the order). The
+     * primary key is always a valid sort target: it is the guaranteed tiebreaker
+     * and the key cursor pagination iterates by. Consistent with filter/fields.
+     *
+     * @param mixed        $raw
+     * @param list<string> $errors
+     */
+    private static function validateSort($raw, ResourceDefinition $definition, array &$errors): void
+    {
+        if ($raw === null || $raw === '') {
+            return;
+        }
+
+        if (! is_string($raw)) {
+            $errors[] = 'sort must be a comma-separated list of columns.';
+
+            return;
+        }
+
+        $tokens = array_filter(array_map('trim', explode(',', $raw)), static fn (string $t): bool => $t !== '');
+
+        foreach ($tokens as $token) {
+            $column = ltrim($token, '-+');
+            if ($column === '') {
+                continue;
+            }
+            if (! in_array($column, $definition->sortable, true) && $column !== $definition->primaryKey) {
+                $errors[] = "Unknown or non-sortable column: {$column}.";
+            }
+        }
     }
 }

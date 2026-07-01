@@ -89,7 +89,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `page` — Page number (1-based).
   - `perPage` — Items per page (capped per resource).
   - `cursor` — Opt into keyset pagination (stable, index-fast, ideal for n8n). Send the param empty to start, then follow meta.pagination.nextCursor until it is null. Iterates by id; combine only with sort=id / -id.
-  - `sort` — Sort by one or more columns, comma-separated (e.g. -price,name); prefix "-" for descending. Allowed: sku, name, price, created_at.
+  - `sort` — Sort by one or more columns, comma-separated (e.g. -price,name); prefix "-" for descending. Allowed: sku, name, price, created_at (and id). Any other column is rejected with 400 (not silently ignored).
   - `fields` — Comma-separated sparse fieldset. Allowed: id, sku, name, price, status, created_at, updated_at.
   - `filter[sku]` — Filter. Columns: sku, status, price. Operators: eq, ne, gt, gte, lt, lte, like, in, nin (e.g. filter[col][gte]=10).
 - **Success:** `200` (`collection` envelope)

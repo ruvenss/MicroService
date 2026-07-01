@@ -1252,7 +1252,7 @@
                         "name": "sort",
                         "in": "query",
                         "required": false,
-                        "description": "Sort by one or more columns, comma-separated (e.g. -price,name); prefix \"-\" for descending. Allowed: sku, name, price, created_at.",
+                        "description": "Sort by one or more columns, comma-separated (e.g. -price,name); prefix \"-\" for descending. Allowed: sku, name, price, created_at (and id). Any other column is rejected with 400 (not silently ignored).",
                         "schema": {
                             "type": "string"
                         }

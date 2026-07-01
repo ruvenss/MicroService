@@ -834,12 +834,14 @@ class ResourceController extends BaseController
         $raw    = trim((string) ($this->request->getGet('sort') ?? ''));
         $tokens = $raw === '' ? [] : array_filter(array_map('trim', explode(',', $raw)), static fn (string $t): bool => $t !== '');
 
-        // Apply each requested column that is on the allow-list, in order; unknown
-        // columns are ignored (never interpolated). A `-` prefix means descending.
+        // Apply each requested column on the allow-list (the primary key is always
+        // sortable — the tiebreaker/cursor key), in order; a `-` prefix means
+        // descending. Unknown columns never reach here: QueryParser already 400'd
+        // them at the spec gate, so they are never interpolated.
         $orders = [];
         foreach ($tokens as $token) {
             $column = ltrim($token, '-+');
-            if ($column !== '' && in_array($column, $definition->sortable, true)) {
+            if ($column !== '' && (in_array($column, $definition->sortable, true) || $column === $definition->primaryKey)) {
                 $orders[$column] = [$column, str_starts_with($token, '-') ? 'DESC' : 'ASC'];
             }
         }
