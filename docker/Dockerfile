@@ -49,11 +49,16 @@ RUN set -eux; \
     chown -R www-data:www-data writable; \
     rm -f /usr/bin/composer
 
-# Container health = readiness (DB + cache reachable). Dependency-free PHP probe,
-# so no extra packages (curl/wget) are added to the image. A 503 (degraded) or a
-# connection failure marks the container unhealthy.
+# Container health = LIVENESS (is the process up and serving?), not readiness.
+# The Docker healthcheck drives restart decisions, so it must not depend on the
+# external DB/cache: restarting the app can never fix a database outage, and a
+# readiness check here would restart-loop the container during one. `?probe=live`
+# touches no dependency and returns 200 whenever the process serves; readiness
+# (DB/cache) belongs to a load balancer probing /api/v1/health directly.
+# Dependency-free PHP probe, so no extra packages (curl/wget) are added to the
+# image. A hang (Docker timeout), a 5xx, or a connection failure marks it unhealthy.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD php -r 'exit(@file_get_contents("http://127.0.0.1/api/v1/health") === false ? 1 : 0);'
+    CMD php -r 'exit(@file_get_contents("http://127.0.0.1/api/v1/health?probe=live") === false ? 1 : 0);'
 
 EXPOSE 80
 CMD ["/usr/local/bin/entrypoint.sh"]

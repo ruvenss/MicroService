@@ -840,8 +840,11 @@ Makefile / spark command     # `make build` / `make up` — the "auto-docker" en
   external MySQL **and** the cache/Redis backend; `200` when all up, `503 degraded` with per-check
   status otherwise) from **liveness** (`?probe=live` — dependency-free, always `200`, so an
   orchestrator never restarts the container over a transient DB/cache blip). The image ships a Docker
-  `HEALTHCHECK` (a dependency-free PHP probe — no curl/wget added) that marks the container
-  healthy/unhealthy on readiness; verified reaching `healthy`. The endpoint is open (no key) and
+  `HEALTHCHECK` (a dependency-free PHP probe — no curl/wget added) that hits **`?probe=live`**, so the
+  container's restart decision tracks **liveness**, not readiness: restarting the app can never fix an
+  external-DB outage, and a readiness-based healthcheck would restart-loop the container during one.
+  Readiness (DB/cache) is for a load balancer probing `/api/v1/health` directly. Verified reaching
+  `healthy`; a hang, a 5xx, or a connection failure marks it unhealthy. The endpoint is open (no key) and
   engine-neutral. **The readiness result is cached ~5 s** (`health_readiness`), so a burst of monitor
   probes — or a flood against the open endpoint — runs at most one real `SELECT 1` + cache round-trip
   per window instead of one per request (a guard against health-flood DoS on the external DB if the
