@@ -534,7 +534,11 @@ archived_records
 `GET /api/v1/_archive` lists archived rows (scope `archive:read`), filterable by `?resource=` and by
 restoration state: **`?restored=false`** = still-deleted (restorable), **`?restored=true`** = already
 restored, omitted = all — so an n8n recycle-bin workflow can list exactly what it can restore.
-(Covered by `ArchivalDeleteTest`.)
+`GET /api/v1/_archive/{archiveId}` returns the full record; its **`payload`** is presented through the
+resource's own casts (`ResourceDefinition::castRow`), so an n8n workflow inspecting the recycle bin
+before restoring parses it in the **same typed, ISO-8601-`Z` shape as a live `GET`**. Restore re-inserts
+the *raw* `payload_json` (never the cast form — a `Z` timestamp would not fit a DATETIME column), so the
+presentation change is read-only. (Covered by `ArchivalDeleteTest`.)
 
 `POST /api/v1/_archive/{archiveId}/restore` re-inserts `payload_json` into `source_table`,
 within a transaction:

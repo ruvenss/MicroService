@@ -115,4 +115,24 @@ final class ArchivalDeleteTest extends FeatureTestCase
     {
         $this->withHeaders($this->authHeaders(['archive:read']))->get('api/v1/_archive?restored=maybe')->assertStatus(400);
     }
+
+    public function testArchiveShowPayloadIsCastLikeTheLiveApi(): void
+    {
+        // Inspecting the recycle bin before a restore must present the record in the
+        // same typed, ISO-8601-Z shape as a live GET — not raw MySQLi strings — so an
+        // n8n workflow parses payload exactly like the CRUD response. Fractional price
+        // so the float survives the JSON round-trip.
+        $headers = $this->authHeaders(['products:*', 'archive:read']);
+        $id      = (string) json_decode((string) $this->withHeaders($headers)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'SKU-' . uniqid(), 'name' => 'N', 'price' => '4.25'])
+            ->response()->getBody(), true)['data']['id'];
+        $this->withHeaders($headers)->delete("api/v1/products/{$id}");
+
+        $archiveId = $this->archiveIdFor($headers, $id);
+        $payload   = json_decode((string) $this->withHeaders($headers)->get("api/v1/_archive/{$archiveId}")->response()->getBody(), true)['data']['payload'];
+
+        $this->assertIsInt($payload['id']);          // int, not "NN"
+        $this->assertSame(4.25, $payload['price']);  // float, not "4.25"
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $payload['created_at']);
+    }
 }

@@ -72,11 +72,21 @@ class Archive extends ApiController
             return $this->problem(404);
         }
 
+        // Present the archived record in the same typed, ISO-8601-`Z` shape as a live
+        // GET (via the resource's own casts), so an n8n workflow inspecting the recycle
+        // bin before restoring parses `payload` exactly like the CRUD response — not raw
+        // MySQLi strings. The stored payload_json is untouched (forensic record).
+        $payload    = json_decode((string) $row['payload_json'], true);
+        $definition = ResourceRegistry::instance()->get($row['resource']);
+        if ($definition !== null && is_array($payload)) {
+            $payload = $definition->castRow($payload);
+        }
+
         return $this->response->setJSON(ResponseEnvelope::wrap([
             'id'          => (int) $row['id'],
             'resource'    => $row['resource'],
             'record_id'   => $row['record_id'],
-            'payload'     => json_decode((string) $row['payload_json'], true),
+            'payload'     => $payload,
             'deleted_by'  => $row['deleted_by'] !== null ? (int) $row['deleted_by'] : null,
             'deleted_at'  => Timestamp::iso($row['deleted_at']),
             'restored_at' => Timestamp::iso($row['restored_at']),
