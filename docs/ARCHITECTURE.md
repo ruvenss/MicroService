@@ -710,25 +710,27 @@ Each generated `.md` entry follows a fixed shape so it's diff-friendly and LLM-p
 running **PHP 8.5 + Apache2 + Redis** with all extensions; **no database in the container**
 (MySQL is external); **database connections are persistent**; code paths support parallel execution.
 
-> **Status (built & verified end-to-end):** `docker/Dockerfile` (PHP **8.5** + Apache +
-> mod_security/rewrite/headers/env, mysqli/pdo_mysql/intl) builds; `docker-compose.yml` runs the app +
-> a Redis sidecar against the **external** MySQL (`make build && make up`). Verified in the real
-> container: `health` **200** against the external DB (persistent `pConnect` connections), full CRUD,
-> **OPcache + JIT enabled** (tracing, 64 M; OPcache is compiled into php:8.5, configured in
-> `docker/php/php.ini`), **OPcache preload** warming the framework + core classes at startup
-> (**373 scripts** compiled & linked into shared memory, so no per-request compile/link — verified via
-> `opcache_get_status()`), and the engine fully hidden (§18.2).
+> **Status (built & verified end-to-end):** `docker/Dockerfile` (base **`php:8.5-fpm`** + Apache with
+> mod_security/proxy_fcgi/rewrite/headers, mysqli/pdo_mysql/intl) builds; `docker-compose.yml` runs the
+> app + a Redis sidecar against the **external** MySQL (`make build && make up`). **Runtime is Apache
+> `mpm_event` fronting a PHP-FPM worker pool over `mod_proxy_fcgi`** (decision #1 — *not* mod_php), so
+> the request layer is threaded/event-driven and PHP is a sized pool (`docker/php/www.conf`;
+> `entrypoint.sh` starts FPM then Apache). Verified in the real container: `apache2ctl -V` reports
+> **`Server MPM: event`**, both `apache2` + `php-fpm` processes run, `health` **200** against the
+> external DB (persistent `pConnect` connections), full CRUD, **OPcache + JIT** (tracing, 64 M), and
+> **OPcache preload** warming the framework + core classes at FPM startup (**376 scripts** — verified
+> via `opcache_get_status()`), engine fully hidden (§18.2).
 >
 > **Config is 12-factor via UNDERSCORE env vars** (`DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD/
-> DB_PERSISTENT`, `APP_BASE_URL`, `CI_ENVIRONMENT`, `WEBHOOK_URL/WEBHOOK_SECRET/WEBHOOK_EVENTS`): dotted
-> CI keys (`database.default.*`) do **not** propagate through Apache/mod_php, so the vhost `PassEnv`s
-> these and `Config\App`/`Config\Database`/`Config\Webhooks` map them (`env()`; port cast to int).
+> DB_PERSISTENT`, `APP_BASE_URL`, `CI_ENVIRONMENT`, `WEBHOOK_URL/WEBHOOK_SECRET/WEBHOOK_EVENTS`): under
+> FPM these reach PHP through the pool's **`clear_env = no`** (the FastCGI equivalent of the old mod_php
+> vhost `PassEnv`), and `Config\App`/`Config\Database`/`Config\Webhooks` map them (`env()`; port → int).
 >
-> **Full feature set verified in the real container** (PHP 8.5 + Apache + external MySQL): auth (401/403),
-> CRUD, typed casts, bulk create, filtering, idempotency replay, audit trail, archival delete + restore,
-> `_me`, and outbound **webhook enqueue** — all working, with the engine fully hidden (`Server:
-> MicroService`, `.php`→404, `/docs`→404, clean fingerprint scan). **Deferred:** the `redis` extension
-> (file cache until then) and mpm_event + PHP-FPM (vs the current mod_php) as a throughput optimisation.
+> **Full feature set verified in the real container** (Apache mpm_event + PHP-FPM + external MySQL):
+> auth (401/403), CRUD, typed casts, bulk create, filtering, idempotency replay, audit trail, archival
+> delete + restore, `_me`, and outbound **webhook enqueue** — all working, with the engine fully hidden
+> (`Server: MicroService`; `/index.php`, `/phpinfo.php`, `TRACE`, `/.env` all neutral problem+json,
+> zero Apache/PHP markers). **Deferred:** the `redis` extension (file cache until then).
 
 ### 17.1 Image composition
 
