@@ -218,7 +218,7 @@ final class EndpointCatalog
     }
 
     /**
-     * @return array<string, array{type: string, required: bool, enum: list<string>, example: string|int|float}>
+     * @return array<string, array{type: string, required: bool, enum: list<string>, unique: bool, example: string|int|float}>
      */
     private static function body(ResourceDefinition $def): array
     {
@@ -231,6 +231,10 @@ final class EndpointCatalog
                 'type'     => $type,
                 'required' => str_contains($rule, 'required'),
                 'enum'     => $enum,
+                // Unique columns get a fresh value each send in the Postman collection so
+                // re-running it never trips a duplicate-value 422 (OpenAPI/Markdown keep
+                // the readable placeholder — see `example`).
+                'unique'   => str_contains($rule, 'is_unique'),
                 // A VALID example: an allowed enum value where the field is
                 // constrained, else a type-appropriate placeholder. So a human can
                 // import the collection and the create/upsert request succeeds

@@ -110,9 +110,16 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertSame('active', $body['status']);            // valid enum, not "string"
         $this->assertIsFloat($body['price']);                    // typed number, not "0.00"
 
-        // OpenAPI documents the enum constraint too.
+        // The unique column (sku) uses Postman's {{$randomUUID}} so re-running the whole
+        // collection never trips a duplicate-value 422 on create/update/upsert.
+        $this->assertSame('{{$randomUUID}}', $body['sku']);
+
+        // OpenAPI documents the enum constraint too — and keeps a READABLE example for the
+        // unique field (no Postman {{...}} syntax leaks into the spec).
         $props = OpenApiGenerator::generate()['paths']['/api/v1/products']['post']['requestBody']['content']['application/json']['schema']['properties'];
         $this->assertSame(['active', 'archived'], $props['status']['enum']);
+        $this->assertSame('sku', $props['sku']['example']);
+        $this->assertStringNotContainsString('{{', json_encode($props));
     }
 
     public function testCreateRequestCapturesIdForTheChain(): void

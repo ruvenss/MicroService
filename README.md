@@ -50,6 +50,8 @@ curl -s "http://localhost:8080/api/v1/products?filter[status]=active&sort=-creat
   create → show → update → delete chain runs in order, and a **List** seeds the id from the
   first row when unset — so the recycle-bin chain (List archive → inspect → restore, which
   targets `{{archiveId}}`) is runnable straight after import without copying ids by hand.
+  Unique fields (e.g. `sku`) use Postman's `{{$randomUUID}}`, so you can **re-run the whole
+  collection repeatedly** without hitting duplicate-value errors.
 - **OpenAPI / Swagger UI:** the spec is `public/docs/openapi.json` (served via `php spark serve`
   in dev; excluded from the production image on purpose). It documents request **and** response
   schemas, error codes, and the `X-RateLimit-*` / `ETag` / `Link` headers.

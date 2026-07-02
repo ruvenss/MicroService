@@ -186,12 +186,21 @@ final class PostmanGenerator
     }
 
     /**
-     * @param array<string, array{type: string, required: bool, enum?: list<string>, example?: string|int|float}> $body
+     * @param array<string, array{type: string, required: bool, enum?: list<string>, unique?: bool, example?: string|int|float}> $body
      */
     private static function exampleBody(array $body): string
     {
         $example = [];
         foreach ($body as $field => $meta) {
+            // A unique string column gets Postman's `{{$randomUUID}}` — substituted fresh
+            // on every send — so re-running the whole collection never trips a
+            // duplicate-value 422 on create/update/upsert. (Non-string unique columns are
+            // rare; they fall through to the normal placeholder.)
+            if (($meta['unique'] ?? false) === true && $meta['type'] === 'string') {
+                $example[$field] = '{{$randomUUID}}';
+
+                continue;
+            }
             // A valid, type-appropriate value (enum-aware) so the request works as-is.
             $example[$field] = $meta['example'] ?? match ($meta['type']) {
                 'number'  => '0.00',
