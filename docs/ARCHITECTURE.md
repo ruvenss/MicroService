@@ -664,7 +664,15 @@ presentation change is read-only. (Covered by `ArchivalDeleteTest`.)
 `POST /api/v1/_archive/{archiveId}/restore` re-inserts `payload_json` into `source_table`,
 within a transaction:
 - Conflict handling: if the original PK is now taken, fail `409` (the operator can resolve);
-  configurable to restore under a new PK later.
+  configurable to restore under a new PK later. **A unique-column collision is caught the same way**
+  — a row created *after* the delete may have reused a value the archived row carries (e.g. its `sku`),
+  which the re-insert would trip on the unique index. Every `is_unique` column
+  (`ResourceDefinition::uniqueColumns`) is pre-checked and the restore fails with a clear
+  `409 Cannot restore: <col> '<value>' is already in use…`, leaving the archive row still restorable.
+  This matters because in production (`DBDebug` off) a unique-index violation fails **silently** and the
+  transaction rolls back — so without the guard the endpoint returned a lying `restored: true`; a
+  `transComplete()` backstop (mirroring the CRUD engine's `finishTransaction`) is the belt-and-suspenders
+  so a rolled-back restore never reports success nor fires the after-event.
 - Marks `restored_at`, and writes an `audit_log` entry (`action = restore`, `after_json` = row).
 - Restore requires an elevated scope (e.g. `{resource}:restore` or an admin scope) — it is not
   granted by ordinary write access.

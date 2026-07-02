@@ -55,6 +55,40 @@ final class ArchivalDeleteTest extends FeatureTestCase
         $this->withHeaders($headers)->post("api/v1/_archive/{$archiveId}/restore")->assertStatus(409);
     }
 
+    public function testRestoreIntoAReusedUniqueValueIs409AndDoesNotLie(): void
+    {
+        // Delete a row, then create a NEW row reusing its sku. Restoring the archived
+        // original would collide on the unique sku index. In production (DBDebug off) that
+        // insert fails SILENTLY and the transaction rolls back — so without the guard the
+        // endpoint returns a lying "restored: true". It must instead 409, leave the archive
+        // row restorable (restored_at still null), and never duplicate the sku.
+        $headers = $this->authHeaders(['products:*', 'archive:read', 'archive:write']);
+
+        $sku  = 'REUSE-' . uniqid();
+        $orig = json_decode((string) $this->withHeaders($headers)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => $sku, 'name' => 'Orig', 'price' => '1.00'])
+            ->response()->getBody(), true)['data']['id'];
+        $this->withHeaders($headers)->delete("api/v1/products/{$orig}");
+        $archiveId = $this->latestArchiveId($headers);
+
+        // Reuse the sku on a brand-new row while the original sits in the recycle bin.
+        $this->withHeaders($headers)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => $sku, 'name' => 'Reused', 'price' => '2.00'])
+            ->assertStatus(201);
+
+        // Restore must be refused with a conflict — not a lying success.
+        $this->withHeaders($headers)->post("api/v1/_archive/{$archiveId}/restore")->assertStatus(409);
+
+        // The archive row is untouched: still restorable, not marked restored.
+        $archive = json_decode((string) $this->withHeaders($headers)->get("api/v1/_archive/{$archiveId}")->response()->getBody(), true)['data'];
+        $this->assertNull($archive['restored_at'], 'a failed restore must not mark the archive row restored');
+
+        // Exactly one product carries the sku — no duplicate from a half-applied restore.
+        $rows = json_decode((string) $this->withHeaders($headers)->get("api/v1/products?filter[sku]={$sku}")->response()->getBody(), true)['data'];
+        $this->assertCount(1, $rows);
+        $this->assertSame('Reused', $rows[0]['name']);
+    }
+
     public function testRestoreRequiresWriteScope(): void
     {
         $headers = $this->authHeaders(['products:*', 'archive:read']); // no archive:write

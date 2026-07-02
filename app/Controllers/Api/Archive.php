@@ -131,6 +131,21 @@ class Archive extends ApiController
             return $this->problem(409, 'A record with the original id already exists.');
         }
 
+        // A row created after this delete may now hold a unique value the archived row
+        // carries (e.g. its `sku` was reused). The plain re-insert would trip the unique
+        // index — and in production (DBDebug off) that fails *silently*, so without this
+        // the restore would roll back yet still report a lying `restored: true`. Pre-check
+        // each unique column and refuse with a clear, actionable 409 (nothing changed).
+        foreach ($definition->uniqueColumns() as $column) {
+            $value = $payload[$column] ?? null;
+            if ($value === null || $value === '') {
+                continue;
+            }
+            if ($db->table($definition->table)->where($column, $value)->countAllResults() > 0) {
+                return $this->problem(409, "Cannot restore: {$column} '{$value}' is already in use by another record.");
+            }
+        }
+
         $redacted = $definition->hidden === [] ? $payload : array_diff_key($payload, array_flip($definition->hidden));
 
         $db->transStart();
@@ -139,7 +154,13 @@ class Archive extends ApiController
         AuditWriter::record('restore', $definition->slug, $pkVal !== null ? (string) $pkVal : null, null, $redacted);
         // Transactional outbox: enqueue the n8n notification atomically with the restore.
         WebhookDispatcher::enqueue(new ResourceEvent($definition->slug, 'afterRestore', row: $redacted));
-        $db->transComplete();
+
+        // Backstop: if the write rolled back for any other reason, never report success
+        // (and never fire the after-event) — the same transComplete() honesty the CRUD
+        // engine enforces via finishTransaction().
+        if ($db->transComplete() === false) {
+            return $this->problem(409, 'The record could not be restored due to a conflict; nothing was changed.');
+        }
 
         Events::trigger('resource.afterRestore', new ResourceEvent($definition->slug, 'afterRestore', row: $redacted));
 

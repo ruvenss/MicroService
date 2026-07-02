@@ -57,6 +57,25 @@ final class ResourceDefinition
     }
 
     /**
+     * Columns the create rules mark `is_unique` — i.e. backed by a unique index. Used
+     * to reject an intra-batch duplicate (bulk create), and to pre-check a restore
+     * against a value that was reused after the delete, before hitting the index.
+     *
+     * @return list<string>
+     */
+    public function uniqueColumns(): array
+    {
+        $columns = [];
+        foreach ($this->createRules as $column => $rule) {
+            if (str_contains($rule, 'is_unique')) {
+                $columns[] = $column;
+            }
+        }
+
+        return $columns;
+    }
+
+    /**
      * @param array<string, mixed> $def
      */
     public static function fromArray(string $slug, array $def): self
