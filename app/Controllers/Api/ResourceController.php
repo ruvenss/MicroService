@@ -522,8 +522,10 @@ class ResourceController extends BaseController
                 $rows[] = ['afterCreate', $presented, []];
                 $created++;
             } else {
-                $id           = $before[$definition->primaryKey];
-                $model->update($id, $clean);
+                $id = $before[$definition->primaryKey];
+                if (($conflict = $this->updateOrConflict($db, $model, $id, $clean)) !== null) {
+                    return $conflict;
+                }
                 $after        = (array) $model->find($id);
                 $beforeHidden = $this->hide($before, $definition);
                 $presented    = $this->present($after, $definition);
@@ -643,7 +645,9 @@ class ResourceController extends BaseController
         $db->transStart();
         $updated = [];
         foreach ($plan as [$id, $before, $clean]) {
-            $model->update($id, $clean);
+            if (($conflict = $this->updateOrConflict($db, $model, $id, $clean)) !== null) {
+                return $conflict;
+            }
             $after        = (array) $model->find($id);
             $presented    = $this->present($after, $definition);
             $beforeHidden = $this->hide($before, $definition);
@@ -770,7 +774,9 @@ class ResourceController extends BaseController
 
         $db = db_connect();
         $db->transStart();
-        $model->update($id, $clean);
+        if (($conflict = $this->updateOrConflict($db, $model, $id, $clean)) !== null) {
+            return $conflict;
+        }
         $after        = (array) $model->find($id);
         $beforeHidden = $this->hide($before, $definition);
         $presented    = $this->present($after, $definition);
@@ -1229,6 +1235,31 @@ class ResourceController extends BaseController
         return $isDup
             ? $this->problem(409, 'A record with a conflicting unique value already exists.')
             : null;
+    }
+
+    /**
+     * Run an update inside the open transaction and map a UNIQUE collision to a clean
+     * 409 (concurrent updates can both pass updateRulesWithUniqueness then race at the
+     * index — same TOCTOU as create). Returns null on success, or the error response
+     * (transaction finalised/rolled back). Both DB modes: a failed update returns false
+     * (DBDebug off) or throws (on).
+     *
+     * @param array<string, mixed> $clean
+     */
+    private function updateOrConflict(\CodeIgniter\Database\BaseConnection $db, GenericResourceModel $model, mixed $id, array $clean): ?ResponseInterface
+    {
+        try {
+            $ok = $model->update($id, $clean);
+        } catch (\Throwable) {
+            $ok = false;
+        }
+        if ($ok !== false) {
+            return null;
+        }
+        $conflict = $this->duplicateKeyConflict($db);
+        $db->transComplete();
+
+        return $conflict ?? $this->problem(500, 'The change could not be committed; please retry.');
     }
 
     /**

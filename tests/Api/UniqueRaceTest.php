@@ -75,4 +75,23 @@ final class UniqueRaceTest extends FeatureTestCase
         // The connection is still usable after the rolled-back conflict (a later write works).
         $this->withHeaders($this->auth)->withBodyFormat('json')->post('api/v1/ticket', ['code' => 'T-2'])->assertStatus(201);
     }
+
+    public function testDbUniqueCollisionOnUpdateIsA409NotA500(): void
+    {
+        // Updating a row's unique column to a value another row already holds is the same
+        // race, on UPDATE: two concurrent renames both pass validation, then the loser's
+        // UPDATE trips the index. Must be a clean 409, and the losing update rolls back.
+        $this->withHeaders($this->auth)->withBodyFormat('json')->post('api/v1/ticket', ['code' => 'A']);
+        $b = (int) json_decode((string) $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->post('api/v1/ticket', ['code' => 'B'])->response()->getBody(), true)['data']['id'];
+
+        $dup = $this->withHeaders($this->auth)->withBodyFormat('json')->patch("api/v1/ticket/{$b}", ['code' => 'A']);
+        $dup->assertStatus(409);
+
+        // B kept its own code (the failed update rolled back), and A is untouched.
+        $b_now = json_decode((string) $this->withHeaders($this->auth)->get("api/v1/ticket/{$b}")->response()->getBody(), true)['data']['code'];
+        $this->assertSame('B', $b_now);
+        $rowsA = json_decode((string) $this->withHeaders($this->auth)->get('api/v1/ticket?filter[code]=A')->response()->getBody(), true)['data'];
+        $this->assertCount(1, $rowsA);
+    }
 }
