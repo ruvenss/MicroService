@@ -43,6 +43,23 @@ final class KeyRotateTest extends FeatureTestCase
         $this->assertSame(200, $this->statusFor($new));
     }
 
+    public function testDoubleRotationDropsTheTwoGenerationsOldSecret(): void
+    {
+        // Only the current + the immediately-previous secret ever authenticate. Rotating
+        // twice shifts the window, so the ORIGINAL is now two generations back and must be
+        // rejected — the grace window is a 2-slot window, not an accumulating secret
+        // history an attacker (or a stale n8n credential) could keep using.
+        [$prefix, $original] = $this->seedKey();
+        $model               = new ApiKeyModel();
+
+        $second = $prefix . '.' . $model->rotate($prefix, 24)['secret']; // rotate #1
+        $third  = $prefix . '.' . $model->rotate($prefix, 24)['secret']; // rotate #2
+
+        $this->assertSame(401, $this->statusFor($original)); // two generations old → dropped
+        $this->assertSame(200, $this->statusFor($second));   // now the grace-previous
+        $this->assertSame(200, $this->statusFor($third));    // current
+    }
+
     public function testOldSecretStopsWorkingAfterGrace(): void
     {
         [$prefix, $old] = $this->seedKey();
