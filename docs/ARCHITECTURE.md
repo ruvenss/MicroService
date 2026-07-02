@@ -213,7 +213,10 @@ authorized). Covered by `HeadRequestTest`.
     `filter[col][in][]` values, echoed into every rel) would otherwise blow past the web server's
     response-header limit and crash the response with an empty `500` — so it degrades to "no Link header"
     (the client still has the query to page manually) rather than fail. Only reproducible behind Apache,
-    not the test client.
+    not the test client. Because a caller's filter/sort values flow into this response header, the query is
+    serialised with `http_build_query` (percent-encoding), so a `CRLF` in a value (`filter[status]=…%0d%0a…`)
+    is encoded to `%0D%0A` and **cannot split the response or inject a header** — pinned by
+    `CursorPaginationTest` (verified by mutation).
 - **Sorting:** `?sort=-created_at,name` — one or more comma-separated columns applied in order (`-` =
   descending). Only `sortable` columns are honoured (each is allow-listed, never interpolated). A column
   that is not sortable is **rejected with `400`** — validated in `QueryParser` alongside `filter`/`fields`

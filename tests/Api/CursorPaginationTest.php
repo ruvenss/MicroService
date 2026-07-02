@@ -179,4 +179,28 @@ final class CursorPaginationTest extends FeatureTestCase
         $this->assertStringContainsString('cursor=', $link);
         $this->assertStringNotContainsString('rel="prev"', $link); // keyset is forward-only
     }
+
+    public function testLinkHeaderEncodesReflectedQueryNoCrlfHeaderInjection(): void
+    {
+        // The Link header echoes the request query in every rel, so a caller-supplied
+        // filter value flows into a response header. It MUST be percent-encoded (the
+        // header is built with http_build_query), or a CRLF in the value would split
+        // the response / inject a header. Regression guard against a future refactor to
+        // manual string concatenation.
+        $this->seedProducts(3);
+
+        $link = $this->withHeaders($this->auth)
+            ->get('api/v1/products?perPage=1&filter[status]=active%0d%0aX-Injected:%20pwned')
+            ->response()->getHeaderLine('Link');
+
+        // No raw CR/LF may reach the header value — that is the response-splitting vector.
+        $this->assertStringNotContainsString("\r", $link);
+        $this->assertStringNotContainsString("\n", $link);
+        // The malicious value is reflected only in encoded form (CRLF → %0D%0A), never as
+        // a decoded `X-Injected: ` header break.
+        $this->assertStringContainsStringIgnoringCase('%0d%0a', $link);
+        $this->assertStringNotContainsString('X-Injected: pwned', $link);
+        // Still a valid Link header.
+        $this->assertStringContainsString('rel="first"', $link);
+    }
 }
