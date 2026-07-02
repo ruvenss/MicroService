@@ -55,4 +55,39 @@ final class ApacheStealthTest extends CIUnitTestCase
         $this->assertMatchesRegularExpression('/Header\s+always\s+set\s+Cache-Control\s+"no-store"/i', $block);
         $this->assertMatchesRegularExpression('/Header\s+always\s+set\s+X-Robots-Tag\s+"noindex/i', $block);
     }
+
+    public function testApacheServedErrorCarriesEveryAppSecurityHeader(): void
+    {
+        // The Apache-served static error bypasses PHP entirely, so it must re-assert the
+        // *full* security-header set the Stealth filter adds to every app response — not a
+        // subset. Missing headers (nosniff, X-Frame-Options, CSP, …) would both weaken the
+        // error response and make it distinguishable from an app response. Derive the
+        // required set straight from Stealth::harden so a new header there can't silently
+        // drift out of the Apache error path.
+        if (! preg_match('/<Files "error\.json">(.*?)<\/Files>/s', $this->vhost, $m)) {
+            $this->fail('vhost is missing the <Files "error.json"> hardening block');
+        }
+        $block = $m[1];
+
+        $stealth = (string) file_get_contents(dirname(__DIR__, 2) . '/app/Filters/Stealth.php');
+        // Every `$response->setHeader('Name', 'Value')` with a literal value. The Server
+        // header uses a class constant (no literal), so it is naturally excluded — Apache
+        // sets that at the server layer via mod_security's SecServerSignature.
+        preg_match_all('/setHeader\(\s*\'([^\']+)\'\s*,\s*([\'"])(.*?)\2\s*\)/', $stealth, $mm, PREG_SET_ORDER);
+
+        $required = [];
+        foreach ($mm as $pair) {
+            $required[$pair[1]] = $pair[3];
+        }
+        $this->assertArrayHasKey('X-Content-Type-Options', $required, 'sanity: Stealth sets nosniff');
+        $this->assertArrayHasKey('Content-Security-Policy', $required, 'sanity: Stealth sets a CSP');
+
+        foreach ($required as $name => $value) {
+            $this->assertStringContainsString(
+                "set {$name} \"{$value}\"",
+                $block,
+                "the Apache error block must re-assert the app's {$name} header verbatim",
+            );
+        }
+    }
 }

@@ -1020,11 +1020,16 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   static-file *headers* the app never emits — a recognisable Apache-default `ETag`
   (`size-mtime` shape; historically an inode leak, CVE-2003-1418), a `Last-Modified` disclosing the
   image build time, and `Accept-Ranges: bytes`. `FileETag None` drops ETags globally, and the
-  `<Files "error.json">` block unsets `Last-Modified`/`Accept-Ranges` and re-adds the app's
-  `Cache-Control: no-store` + `X-Robots-Tag`, so an Apache-served error is byte-for-byte
-  indistinguishable (headers included) from an app-served one — no header tell that a request fell
-  through to the web server. `ApacheStealthTest` guards the vhost directives; verified live on
-  `403`/`405`.
+  `<Files "error.json">` block unsets `Last-Modified`/`Accept-Ranges` and re-adds the **full**
+  security-header set the `Stealth` filter puts on every app response — `Cache-Control: no-store`,
+  `X-Robots-Tag`, **`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+  `Content-Security-Policy`, and `Permissions-Policy`** — so an Apache-served error is byte-for-byte
+  indistinguishable (headers included) from an app-served one, and is equally hardened rather than a
+  weaker response the proxy leaks. (Earlier this block re-added only `Cache-Control`/`X-Robots-Tag`,
+  so a `TRACE`/dotfile error was both less hardened *and* a fingerprint — now closed.)
+  `ApacheStealthTest` guards the vhost directives and **derives the required set straight from
+  `Stealth::harden`**, so a new app security header can't silently drift out of the error path;
+  verified live on `403`/`405` (full header set present, neutral compact body).
 
 > **Payload-size limits (DoS guard, "in case exposed"):** the vhost sets `LimitRequestBody 8388608`
 > (8 MiB) to refuse abusive bodies at the edge before PHP buffers them (answered by the neutral
