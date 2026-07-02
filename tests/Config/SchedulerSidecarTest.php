@@ -27,6 +27,13 @@ final class SchedulerSidecarTest extends CIUnitTestCase
         // Dead-letter replay must NOT be automated (would hammer a still-down n8n) — the
         // command is never invoked (a comment may explain why).
         $this->assertStringNotContainsString('php spark webhooks:retry', $script);
+
+        // It must RECUR, not run once and exit — a `while` loop that sleeps for the
+        // configurable interval each tick. Without this the sidecar would deliver once
+        // and die, and the whole outbound push channel would silently stop. (Verified
+        // live: the sidecar auto-delivers a create within one DISPATCH_INTERVAL.)
+        $this->assertMatchesRegularExpression('/\bwhile\b/', $script, 'the sidecar must loop, not run once');
+        $this->assertMatchesRegularExpression('/sleep\s+"?\$\{?DISPATCH_INTERVAL/', $script, 'each tick must sleep DISPATCH_INTERVAL');
     }
 
     public function testComposeRunsTheSchedulerAsASidecar(): void
