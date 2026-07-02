@@ -202,4 +202,37 @@ final class QueryParserTest extends CIUnitTestCase
         $this->assertTrue($spec->isValid());
         $this->assertSame('2026-07', $spec->filters[0]['value']);
     }
+
+    public function testSparseFieldsetCannotSelectAHiddenColumn(): void
+    {
+        // Security: ?fields is allow-listed against outputColumns(), which excludes
+        // `hidden`. So a client can NEVER use ?fields to exfiltrate a hidden/sensitive
+        // column (e.g. a token or internal note) — the field is rejected, not silently
+        // returned. The sample `products` has no hidden columns, so exercise a resource
+        // that does.
+        $def = ResourceDefinition::fromArray('widgets', [
+            'table'      => 'widgets',
+            'primaryKey' => 'id',
+            'fillable'   => ['name', 'secret'],
+            'hidden'     => ['secret'],
+            'filterable' => ['name'],
+            'sortable'   => ['name'],
+            'timestamps' => true,
+            'casts'      => ['id' => 'int'],
+        ]);
+
+        // The hidden column is not even in the exposable set.
+        $this->assertNotContains('secret', $def->outputColumns());
+
+        // Asking for it via ?fields fails loudly (400-worthy), like any unknown column.
+        $bad = QueryParser::parse(['fields' => 'id,secret'], $def);
+        $this->assertFalse($bad->isValid());
+        $this->assertStringContainsStringIgnoringCase('hidden', $bad->errors[0]);
+        $this->assertStringContainsString('secret', $bad->errors[0]);
+
+        // A visible column selects cleanly.
+        $ok = QueryParser::parse(['fields' => 'id,name'], $def);
+        $this->assertTrue($ok->isValid());
+        $this->assertSame(['id', 'name'], $ok->fields);
+    }
 }
