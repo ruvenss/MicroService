@@ -277,8 +277,9 @@
                                     "});",
                                     "if (pm.response.code === 200 && !pm.collectionVariables.get('archiveId')) {",
                                     "    const rows = (pm.response.json() || {}).data;",
-                                    "    if (Array.isArray(rows) && rows.length && rows[0].id !== undefined) {",
-                                    "        pm.collectionVariables.set('archiveId', rows[0].id);",
+                                    "    const pick = Array.isArray(rows) ? (rows.find(function (r) { return r.restored_at === null || r.restored_at === undefined; })) : undefined;",
+                                    "    if (pick && pick.id !== undefined) {",
+                                    "        pm.collectionVariables.set('archiveId', pick.id);",
                                     "    }",
                                     "}"
                                 ]
@@ -553,8 +554,9 @@
                                     "});",
                                     "if (pm.response.code === 200 && !pm.collectionVariables.get('productsId')) {",
                                     "    const rows = (pm.response.json() || {}).data;",
-                                    "    if (Array.isArray(rows) && rows.length && rows[0].id !== undefined) {",
-                                    "        pm.collectionVariables.set('productsId', rows[0].id);",
+                                    "    const pick = Array.isArray(rows) ? (rows[0]) : undefined;",
+                                    "    if (pick && pick.id !== undefined) {",
+                                    "        pm.collectionVariables.set('productsId', pick.id);",
                                     "    }",
                                     "}"
                                 ]

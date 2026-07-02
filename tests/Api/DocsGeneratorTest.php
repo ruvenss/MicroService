@@ -258,6 +258,11 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertNotNull($archive);
         $this->assertStringContainsString("pm.collectionVariables.set('archiveId'", $archive);
         $this->assertStringContainsString("!pm.collectionVariables.get('archiveId')", $archive); // seed only if empty
+        // Must seed a RESTORABLE row (restored_at null), not just the newest — else the
+        // restore step 409s when the newest archived row was already restored, breaking
+        // re-runnability. The products list has no such filter (any row works).
+        $this->assertStringContainsString('restored_at', $archive);
+        $this->assertStringNotContainsString('restored_at', $scripts['List products.'] ?? '');
 
         $products = $scripts['List products.'] ?? null;
         $this->assertNotNull($products);

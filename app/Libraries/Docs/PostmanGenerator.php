@@ -255,11 +255,20 @@ final class PostmanGenerator
         }
 
         if ($ep['method'] === 'GET' && $ep['successKind'] === 'collection' && ! $hasIdIn) {
+            // The recycle-bin list must seed a RESTORABLE row (restored_at === null) or
+            // the restore step 409s ("already restored") whenever the newest archived row
+            // was restored by a prior run — making the collection non-re-runnable. Other
+            // lists just take the first row.
+            $pick = $var === 'archiveId'
+                ? 'rows.find(function (r) { return r.restored_at === null || r.restored_at === undefined; })'
+                : 'rows[0]';
+
             return [
                 "if (pm.response.code === 200 && !pm.collectionVariables.get('{$var}')) {",
                 '    const rows = (pm.response.json() || {}).data;',
-                "    if (Array.isArray(rows) && rows.length && rows[0].{$pk} !== undefined) {",
-                "        pm.collectionVariables.set('{$var}', rows[0].{$pk});",
+                "    const pick = Array.isArray(rows) ? ({$pick}) : undefined;",
+                "    if (pick && pick.{$pk} !== undefined) {",
+                "        pm.collectionVariables.set('{$var}', pick.{$pk});",
                 '    }',
                 '}',
             ];
