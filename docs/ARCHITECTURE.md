@@ -1006,8 +1006,10 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   with `MicroService` via mod_security `SecServerSignature`. Two non-obvious requirements, both set in
   `docker/apache/stealth.conf`: `SecRuleEngine On` (with `DetectionOnly` it does not rewrite the
   header) **and** `ServerTokens Full` (mod_security overwrites the signature in place, so the full
-  string must exist — with `Prod` it is pre-truncated to `Apache` and cannot be replaced). No rule
-  sets are loaded, so nothing is inspected/blocked. Verified: real container emits `Server: MicroService`.
+  string must exist — with `Prod` it is pre-truncated to `Apache` and cannot be replaced). No attack
+  rule sets (e.g. OWASP CRS) are loaded, so request *content* is never inspected for patterns; the
+  engine is used only to mask the signature and to enforce the request-body size ceiling (see the
+  Payload-size limits note below). Verified: real container emits `Server: MicroService`.
 - **Neutral server-level errors:** the vhost maps `ErrorDocument 400/403/404/405/406/413/500/501/502/503`
   to a static `public/error.json` (`application/problem+json`), so **any** failure Apache handles
   *itself* — a denied dotfile (`403`), a disabled method like `TRACE` (`405`), an oversized body
@@ -1031,12 +1033,20 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   `Stealth::harden`**, so a new app security header can't silently drift out of the error path;
   verified live on `403`/`405` (full header set present, neutral compact body).
 
-> **Payload-size limits (DoS guard, "in case exposed"):** the vhost sets `LimitRequestBody 8388608`
-> (8 MiB) to refuse abusive bodies at the edge before PHP buffers them (answered by the neutral
-> `ErrorDocument 413`). Behind it, the `ContentGuard` filter enforces a tighter **1 MiB** contract limit
-> on write bodies (checking `Content-Length` first, then actual length) and returns a clean
-> `413 Content Too Large` problem+json — comfortably fitting a 100-item bulk batch. Covered by
-> `tests/Api/ContentGuardTest.php`.
+> **Payload-size limits (DoS guard, "in case exposed"):** two tiers.
+> **Edge (2 MiB, web server):** enforced by **mod_security** (`SecRequestBodyNoFilesLimit 2097152` +
+> `SecRequestBodyLimitAction Reject`), whose request-body phase runs *before* `mod_proxy_fcgi` forwards
+> the body — so an oversized POST is rejected (neutral `ErrorDocument 413`) before PHP-FPM ever buffers
+> it. This deliberately does **not** rely on Apache's core `LimitRequestBody`: that directive is **not
+> consulted on the `SetHandler proxy:fcgi://` path** the whole API uses (a 10 MB POST would stream
+> straight to FPM), so it is kept only as belt-and-suspenders for non-proxied/static paths, aligned to
+> the same 2 MiB. For a JSON (non-upload) body the limit that applies is the *NoFiles* one, hence both
+> are set. **Contract (1 MiB, app):** behind the edge, the `ContentGuard` filter enforces the precise
+> **1 MiB** limit on write bodies (checking `Content-Length` first, then actual length) and returns a
+> clean `413 Content Too Large` problem+json — comfortably fitting a 100-item bulk batch. The edge sits
+> *above* the contract so `ContentGuard` stays the exact gate; `ApacheStealthTest` asserts that ordering
+> and the mod_security directives, and the app contract is covered by `tests/Api/ContentGuardTest.php`.
+> Verified live: 3 MB → edge `413` (before FPM), 1.5 MB → contract `413`, ≤1 MiB write → `201`.
 
 ### 18.3 Runtime layer — PHP / container
 

@@ -13,9 +13,10 @@ use CodeIgniter\HTTP\ResponseInterface;
  * Guards write requests: a body-carrying POST/PUT/PATCH must stay within the size
  * limit, declare a JSON content type, and contain well-formed JSON. Failures
  * short-circuit with a neutral problem+json (413/415/400) before any controller
- * runs. The size cap is defence-in-depth behind Apache's LimitRequestBody (which
- * rejects abusive bodies at the edge) — this layer returns a clean, engine-neutral
- * 413 for requests that clear the edge but exceed the API contract.
+ * runs. The size cap is the precise API contract behind the web server's coarse edge
+ * ceiling (mod_security's SecRequestBodyNoFilesLimit — NOT LimitRequestBody, which
+ * Apache does not enforce on the mod_proxy_fcgi path) — this layer returns a clean,
+ * engine-neutral 413 for requests that clear the edge but exceed the API contract.
  */
 class ContentGuard implements FilterInterface
 {

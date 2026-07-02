@@ -15,11 +15,13 @@ use CodeIgniter\Test\CIUnitTestCase;
 final class ApacheStealthTest extends CIUnitTestCase
 {
     private string $vhost;
+    private string $stealth;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->vhost = (string) file_get_contents(dirname(__DIR__, 2) . '/docker/apache/microservice.conf');
+        $this->vhost   = (string) file_get_contents(dirname(__DIR__, 2) . '/docker/apache/microservice.conf');
+        $this->stealth = (string) file_get_contents(dirname(__DIR__, 2) . '/docker/apache/stealth.conf');
     }
 
     public function testDefaultApacheETagIsDisabled(): void
@@ -89,5 +91,34 @@ final class ApacheStealthTest extends CIUnitTestCase
                 "the Apache error block must re-assert the app's {$name} header verbatim",
             );
         }
+    }
+
+    public function testEdgeBodyLimitIsEnforcedByModSecurityNotLimitRequestBody(): void
+    {
+        // Apache's core LimitRequestBody is NOT enforced on the mod_proxy_fcgi path that
+        // serves the API (a huge POST would stream to FPM), so the edge DoS ceiling must
+        // be enforced by mod_security, which runs before the FastCGI handler forwards the
+        // body. For a JSON (non-upload) body the *NoFiles* limit is the one that applies,
+        // so it must be set — and rejection must be hard (Reject), not ProcessPartial.
+        $this->assertMatchesRegularExpression('/^\s*SecRequestBodyAccess\s+On\s*$/mi', $this->stealth, 'body inspection must be On to enforce a limit');
+        $this->assertMatchesRegularExpression('/^\s*SecRequestBodyLimitAction\s+Reject\s*$/mi', $this->stealth, 'over-limit bodies must be rejected, not truncated');
+
+        if (! preg_match('/SecRequestBodyNoFilesLimit\s+(\d+)/i', $this->stealth, $m)) {
+            $this->fail('stealth.conf must set SecRequestBodyNoFilesLimit (the limit that applies to JSON bodies)');
+        }
+        $edge = (int) $m[1];
+
+        // The edge ceiling must sit *above* the app's precise ContentGuard contract, so
+        // ContentGuard stays the exact gate and the edge only catches gross abuse.
+        $ref      = new \ReflectionClassConstant(\App\Filters\ContentGuard::class, 'MAX_BODY_BYTES');
+        $contract = (int) $ref->getValue();
+        $this->assertGreaterThan($contract, $edge, 'the mod_security edge limit must exceed the ContentGuard contract');
+
+        // And LimitRequestBody, kept only as belt-and-suspenders for non-proxied paths,
+        // must be aligned to the same ceiling (not left at a stale, larger value).
+        if (! preg_match('/^\s*LimitRequestBody\s+(\d+)/mi', $this->vhost, $lm)) {
+            $this->fail('vhost must still declare LimitRequestBody for non-proxied paths');
+        }
+        $this->assertSame($edge, (int) $lm[1], 'LimitRequestBody should match the mod_security edge ceiling');
     }
 }
