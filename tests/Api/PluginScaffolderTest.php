@@ -39,4 +39,18 @@ final class PluginScaffolderTest extends CIUnitTestCase
         $this->assertStringContainsString("registerResource('widgets'", $files['Acme/Widgets/Plugin.php']);
         $this->assertStringContainsString("createTable('widgets'", implode('', $files));
     }
+
+    public function testScaffoldedResourceDeclaresTypeCastsSoOutputMatchesTheContract(): void
+    {
+        // MySQLi returns every column as a string. Without output casts a new resource
+        // emits `id` as "1" and timestamps in naive `Y-m-d H:i:s` — diverging from every
+        // other resource and breaking the "parse every response/webhook with one rule"
+        // promise for n8n. The scaffold must ship casts for id + the managed timestamps.
+        $plugin = PluginScaffolder::files('Acme/Widgets')['Acme/Widgets/Plugin.php'];
+
+        $this->assertStringContainsString("'casts'", $plugin);
+        $this->assertStringContainsString("'id' => 'int'", $plugin);
+        $this->assertStringContainsString("'created_at' => 'datetime'", $plugin);
+        $this->assertStringContainsString("'updated_at' => 'datetime'", $plugin);
+    }
 }

@@ -713,7 +713,10 @@ to confirm indexing/retention; very high delete-volume resources may warrant a d
 > models, and views — not just the resource definition. **`php spark make:plugin Vendor/Name`**
 > scaffolds a working plugin (manifest, `Plugin` class registering a starter resource, an owned
 > migration, README); verified end-to-end (scaffold → migrate → `POST /api/v1/<slug>` 201, zero core
-> edits). **Lifecycle management (implemented):** `php spark plugin:list` shows every plugin
+> edits). The scaffold ships output **`casts`** (`id => int`, `created_at`/`updated_at => datetime`) so a
+> new resource is typed like every other one out of the box — integer id, ISO-8601 `Z` timestamps —
+> rather than emitting `id` as `"1"` and naive `Y-m-d H:i:s` timestamps (MySQLi returns all columns as
+> strings); an n8n workflow parses a new resource with the same one rule. `PluginScaffolderTest` pins it. **Lifecycle management (implemented):** `php spark plugin:list` shows every plugin
 > (enabled **and** disabled) with a status column; `php spark plugin:enable|disable <Vendor/Name>`
 > flips the manifest's `enabled` flag (case-insensitive match, idempotent pretty-printed rewrite) so an
 > operator never hand-edits JSON. Disabling drops the plugin's resources from the registry and from

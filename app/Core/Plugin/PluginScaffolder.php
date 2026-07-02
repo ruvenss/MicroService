@@ -93,6 +93,13 @@ final class PluginScaffolder
                         'defaultSort' => '-created_at',
                         'perPage'     => ['default' => 25, 'max' => 100],
                         'timestamps'  => true,
+                        // Output casts: MySQLi returns every column as a string, so declare
+                        // types here or the API/webhooks emit `id` as "1" and timestamps in
+                        // naive `Y-m-d H:i:s`. With these, a new resource matches the framework
+                        // contract out of the box — integer id, ISO-8601 `Z` timestamps — so an
+                        // n8n workflow parses it with the same rule as every other resource.
+                        // Add 'price' => 'float' etc. as you add typed columns.
+                        'casts'       => ['id' => 'int', 'created_at' => 'datetime', 'updated_at' => 'datetime'],
                     ]);
                 }
 
