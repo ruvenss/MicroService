@@ -183,6 +183,35 @@ final class QueryFilterTest extends FeatureTestCase
         $this->withHeaders($this->auth)->get('api/v1/products?filter[bogus]=x')->assertStatus(400);
     }
 
+    public function testBareColumnParamIsRejectedNotSilentlyReturningEverything(): void
+    {
+        // A caller who writes `?status=active` (instead of `?filter[status]=active`)
+        // must get a loud 400 with a fix-it hint — never the whole unfiltered table.
+        // Silently ignoring it would hand an n8n workflow BOTH the active and the
+        // archived row while it believed it had filtered to just the active one.
+        $result = $this->withHeaders($this->auth)->get('api/v1/products?status=active');
+        $result->assertStatus(400);
+        $this->assertStringContainsString('filter[status]', (string) $result->response()->getBody());
+
+        // Sanity: the correct namespaced form still filters to exactly the active row.
+        $this->assertCount(1, $this->list('filter[status]=active')['data']);
+    }
+
+    public function testBarePrimaryKeyParamIsAlsoRejected(): void
+    {
+        // The primary key is filterable via filter[id]=…; a bare ?id=… is the same
+        // mistake and must fail loudly rather than return the full set.
+        $this->withHeaders($this->auth)->get('api/v1/products?id=1')->assertStatus(400);
+    }
+
+    public function testUnrelatedQueryParamStillPasses(): void
+    {
+        // The guard is narrow: only params that collide with a resource column are
+        // flagged. An unrelated key (a cache-buster, a client tag) is not a filter
+        // mistake and must not break the request (forward-compatible).
+        $this->withHeaders($this->auth)->get('api/v1/products?_cacheBust=123&perPage=1')->assertStatus(200);
+    }
+
     public function testInvalidFieldReturns400(): void
     {
         $this->withHeaders($this->auth)->get('api/v1/products?fields=secret')->assertStatus(400);

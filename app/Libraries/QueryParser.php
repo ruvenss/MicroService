@@ -20,17 +20,55 @@ final class QueryParser
     public const OPERATORS = ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'like', 'in', 'nin'];
 
     /**
-     * @param array<string, mixed> $get the full query-string array
+     * Query-string keys the engine interprets itself (pagination, ordering, sparse
+     * fieldsets, and the `filter[...]` map). Everything else is a caller param.
+     *
+     * @var list<string>
      */
-    public static function parse(array $get, ResourceDefinition $definition): QuerySpec
+    public const RESERVED = ['filter', 'fields', 'sort', 'page', 'perPage', 'cursor'];
+
+    /**
+     * @param array<string, mixed> $get               the full query-string array
+     * @param bool                 $rejectBareColumns  on a collection, flag a bare
+     *                                                 `?column=` that should be `filter[column]=`
+     */
+    public static function parse(array $get, ResourceDefinition $definition, bool $rejectBareColumns = false): QuerySpec
     {
         $errors = [];
 
         $filters = self::parseFilters($get['filter'] ?? null, $definition, $errors);
         $fields  = self::parseFields($get['fields'] ?? null, $definition, $errors);
         self::validateSort($get['sort'] ?? null, $definition, $errors);
+        if ($rejectBareColumns) {
+            self::rejectBareFilterKeys($get, $definition, $errors);
+        }
 
         return new QuerySpec($filters, $fields, $errors);
+    }
+
+    /**
+     * Catch the common mistake of filtering with a bare `?column=value` instead of the
+     * `?filter[column]=value` the engine expects. A top-level param whose key is itself
+     * a filterable column (or the primary key) is almost certainly a mis-written filter;
+     * silently dropping it would return the whole unfiltered set — the exact "silently
+     * returns a different result than the caller expects" this parser exists to prevent
+     * (an n8n workflow would then process every row instead of the intended subset). Fail
+     * loudly with a fix-it hint. Params that are not resource columns are left untouched,
+     * so unrelated/forward-compatible query keys still pass.
+     *
+     * @param array<string, mixed> $get
+     * @param list<string>         $errors
+     */
+    private static function rejectBareFilterKeys(array $get, ResourceDefinition $definition, array &$errors): void
+    {
+        foreach (array_keys($get) as $key) {
+            if (in_array($key, self::RESERVED, true)) {
+                continue;
+            }
+            if (in_array($key, $definition->filterable, true) || $key === $definition->primaryKey) {
+                $errors[] = "Filter with filter[{$key}]=value, not a bare {$key}=value (which is ignored).";
+            }
+        }
     }
 
     /**

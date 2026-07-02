@@ -58,7 +58,7 @@ class ResourceController extends BaseController
             return $this->notFound();
         }
 
-        $spec = QueryParser::parse($this->request->getGet() ?? [], $definition);
+        $spec = QueryParser::parse($this->request->getGet() ?? [], $definition, rejectBareColumns: true);
         if (! $spec->isValid()) {
             return $this->problem(400, 'Invalid query parameters.', ['errors' => $spec->errors]);
         }
