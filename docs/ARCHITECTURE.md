@@ -208,7 +208,12 @@ authorized). Covered by `HeadRequestTest`.
     `first`/`last` for offset, `rel="next"` for cursor — so a client (e.g. n8n's HTTP node "next URL from
     header" pagination) can auto-follow pages without rebuilding the query. URLs are **relative** and
     preserve every other param (filter/sort/fields); the front controller (`index.php`) is stripped so it
-    neither leaks PHP nor breaks clean URLs. No `next` on the last page, so a follower stops cleanly.
+    neither leaks PHP nor breaks clean URLs. No `next` on the last page, so a follower stops cleanly. The
+    header is **dropped above ~6 KiB** (`MAX_LINK_HEADER_BYTES`): a pathological query (hundreds of
+    `filter[col][in][]` values, echoed into every rel) would otherwise blow past the web server's
+    response-header limit and crash the response with an empty `500` — so it degrades to "no Link header"
+    (the client still has the query to page manually) rather than fail. Only reproducible behind Apache,
+    not the test client.
 - **Sorting:** `?sort=-created_at,name` — one or more comma-separated columns applied in order (`-` =
   descending). Only `sortable` columns are honoured (each is allow-listed, never interpolated). A column
   that is not sortable is **rejected with `400`** — validated in `QueryParser` alongside `filter`/`fields`

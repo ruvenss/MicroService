@@ -109,6 +109,30 @@ final class CursorPaginationTest extends FeatureTestCase
         $this->assertArrayNotHasKey('nextCursor', $json['meta']['pagination']);
     }
 
+    public function testHugeFilterDoesNotProduceAnOversizedLinkHeader(): void
+    {
+        // The Link header echoes the whole query in every rel. A pathological query — e.g.
+        // hundreds of filter[status][in][] values — would push it past the web server's
+        // ~8 KiB response-header limit and crash the response with an empty 500 (only
+        // visible behind Apache). The header is dropped above a safe size instead.
+        $this->seedProducts(1);
+
+        $in = [];
+        for ($i = 0; $i < 300; $i++) {
+            $in['filter']['status']['in'][] = 'x' . $i;
+        }
+        $result = $this->withHeaders($this->auth)->get('api/v1/products?' . http_build_query($in));
+
+        $result->assertStatus(200);
+        // No Link header, or a small one — never one that would blow the server limit.
+        $this->assertLessThan(6001, strlen($result->response()->getHeaderLine('Link')));
+
+        // A normal request still carries the Link header (the cap only trips on huge
+        // queries) — rel="first" is always present on an offset list.
+        $normal = $this->withHeaders($this->auth)->get('api/v1/products?perPage=1');
+        $this->assertStringContainsString('rel="first"', $normal->response()->getHeaderLine('Link'));
+    }
+
     public function testDeepOffsetIsRefusedAndSteeredToCursor(): void
     {
         // An unbounded OFFSET makes the DB walk+discard that many rows per request, so

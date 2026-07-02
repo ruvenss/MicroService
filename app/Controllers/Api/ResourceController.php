@@ -33,6 +33,16 @@ class ResourceController extends BaseController
     public const BULK_MAX = 100;
 
     /**
+     * Cap on the generated `Link` (pagination) header. It echoes the request's query in
+     * every rel, so a pathological query — e.g. hundreds of `filter[col][in][]` values —
+     * balloons it past the web server's response-header size limit (~8 KiB), which makes
+     * Apache/mod_proxy_fcgi discard the response and return an empty 500. The header is
+     * only a convenience (the client can page with the query it already holds), so it is
+     * dropped above this size rather than crash the request.
+     */
+    private const MAX_LINK_HEADER_BYTES = 6000;
+
+    /**
      * JSON flags for the manually-encoded GET bodies (respondCacheable) and the
      * ETag hash, matching what CI4's setJSON uses for writes via Config\Format:
      * raw UTF-8 and unescaped slashes. Without this, reads escaped `café` → `café`
@@ -99,7 +109,9 @@ class ResourceController extends BaseController
         }
         $rels['first'] = ['page' => 1];
         $rels['last']  = ['page' => max(1, $totalPages)];
-        $this->response->setHeader('Link', $this->linkHeader($rels));
+        if (($link = $this->linkHeader($rels)) !== '') {
+            $this->response->setHeader('Link', $link);
+        }
 
         return $this->respondCacheable(ResponseEnvelope::collection($rows, $page, $perPage, $total));
     }
@@ -164,8 +176,8 @@ class ResourceController extends BaseController
             return $out;
         }, $rows);
 
-        if ($nextCursor !== null) {
-            $this->response->setHeader('Link', $this->linkHeader(['next' => ['cursor' => $nextCursor]]));
+        if ($nextCursor !== null && ($link = $this->linkHeader(['next' => ['cursor' => $nextCursor]])) !== '') {
+            $this->response->setHeader('Link', $link);
         }
 
         return $this->respondCacheable(ResponseEnvelope::cursorCollection($rows, $perPage, $nextCursor));
@@ -958,7 +970,11 @@ class ResourceController extends BaseController
             $parts[] = '<' . $path . ($qs !== '' ? '?' . $qs : '') . '>; rel="' . $rel . '"';
         }
 
-        return implode(', ', $parts);
+        $header = implode(', ', $parts);
+
+        // Never let the Link header exceed the server's response-header limit — an
+        // oversized one crashes the whole response (see MAX_LINK_HEADER_BYTES). Drop it.
+        return strlen($header) > self::MAX_LINK_HEADER_BYTES ? '' : $header;
     }
 
     /**
