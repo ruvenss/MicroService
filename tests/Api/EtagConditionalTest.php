@@ -58,6 +58,25 @@ final class EtagConditionalTest extends FeatureTestCase
         $this->withHeaders($this->auth + ['If-None-Match' => $etag])->get('api/v1/products')->assertStatus(304);
     }
 
+    public function testListEtagChangesAfterACreateSoAPollSeesNewRows(): void
+    {
+        // n8n polls a list with If-None-Match. When a row is added the list's content
+        // hash must change, so the poll gets a fresh 200 with the new row — never a stale
+        // 304 that would silently hide it (a data-freshness bug for an incremental sync).
+        $this->createProduct();
+        $etag = $this->withHeaders($this->auth)->get('api/v1/products')->response()->getHeaderLine('ETag');
+        $this->assertNotSame('', $etag);
+
+        // Add a row; the same validator must now MISS → full 200 with a different ETag.
+        $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'ET-2', 'name' => 'Fresh', 'price' => '2.00']);
+
+        $after = $this->withHeaders($this->auth + ['If-None-Match' => $etag])->get('api/v1/products');
+        $after->assertStatus(200);
+        $this->assertNotSame($etag, $after->response()->getHeaderLine('ETag'));
+        $this->assertStringContainsString('ET-2', (string) $after->response()->getBody());
+    }
+
     public function testEtagChangesAfterMutationSoPollGetsFreshData(): void
     {
         $id   = $this->createProduct();
