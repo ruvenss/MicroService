@@ -358,6 +358,15 @@ All errors flow through one handler so the shape is guaranteed.
   (`write` covers create+update; `delete` separate). Wildcards allowed: `products:*`, `*:read`, `*`.
 - Each request resolves the required scope from the resource definition (§5.1 `permissions`) and
   the `RequirePermission` filter checks the authenticated key holds it → 403 otherwise.
+- **Least-privilege caveat:** the **meta endpoints are scoped resources too** — `_audit` needs
+  `audit:read`, `_archive` needs `archive:read`/`archive:write`. So a wildcard-**read** scope
+  (`*:read`) — which is the **`key:create` default when `--scopes` is omitted** — grants read of the
+  **entire audit trail (who/when/before/after for every mutation) and the recycle bin**, not just
+  business data; `*` grants restore/delete there too. A leaked `*:read` key is therefore a
+  forensic-history disclosure. Mint keys with **explicit resource scopes** (e.g.
+  `products:read,products:write`) unless audit/recycle-bin access is intended, and reserve `audit:read`
+  / `archive:*` for keys that genuinely need them. The full scope matrix and the meta-endpoint
+  requirements are pinned by `AuthorizationTest` / `AuthTest`.
 
 ### 7.3 Data model (auth)
 

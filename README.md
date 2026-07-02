@@ -30,6 +30,11 @@ make key NAME="local" SCOPES="products:*,audit:read,archive:read,archive:write"
 # → prefix.secret   — use it as:  Authorization: Bearer <prefix.secret>
 ```
 
+Scopes are `{resource}:{action}` (`read`/`write`/`delete`) with wildcards. Prefer **explicit** scopes:
+the default `*:read` (used when `--scopes` is omitted) also grants read of the **audit trail** (`_audit`)
+and **recycle bin** (`_archive`), so a leaked default key exposes the full change history — mint only
+what a workflow needs.
+
 Try it:
 
 ```sh

@@ -20,7 +20,9 @@ class KeyCreate extends BaseCommand
     protected $usage       = 'key:create [--name <name>] [--scopes <a:b,c:d>] [--expires <YYYY-MM-DD>]';
     protected $options     = [
         '--name'       => 'Human label for the key.',
-        '--scopes'     => 'Comma-separated scopes, e.g. products:read,products:write (default *:read).',
+        '--scopes'     => 'Comma-separated scopes, e.g. products:read,products:write. Default *:read '
+            . 'grants read of ALL resources incl. the _audit trail and _archive recycle bin — pass '
+            . 'explicit scopes for least privilege.',
         '--expires'    => 'Optional expiry date (YYYY-MM-DD).',
         '--rate-limit' => 'Optional per-minute request limit (overrides the global default).',
     ];
