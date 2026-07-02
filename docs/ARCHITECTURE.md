@@ -996,7 +996,13 @@ Makefile / spark command     # `make build` / `make up` — the "auto-docker" en
 - Healthchecks hit `GET /api/v1/health`, which distinguishes **readiness** (default — pings the
   external MySQL **and** the cache/Redis backend; `200` when all up, `503 degraded` with per-check
   status **and a `Retry-After` equal to the readiness cache TTL** — RFC 7231, so a monitor / n8n
-  health-gate / load balancer backs off instead of hammering a degraded service) from **liveness**
+  health-gate / load balancer backs off instead of hammering a degraded service). The readiness
+  result is cached only briefly (5 s) and **keyed per replica** (`health_readiness_<hostname>`): the
+  result store is the shared cache (Redis in prod), so an un-scoped key would let one instance's probe
+  answer for the whole fleet — a replica that lost its DB link riding a sibling's cached `up`, or one
+  blip pulling every replica out of rotation. The **cache** check pings the *active* handler, which is
+  the file fallback if Redis is down, so a Redis outage degrades (per-replica, non-atomic rate limits)
+  but never fails readiness. This is distinct from **liveness**
   (`?probe=live` — dependency-free, always `200`, so an
   orchestrator never restarts the container over a transient DB/cache blip). The image ships a Docker
   `HEALTHCHECK` (a dependency-free PHP probe — no curl/wget added) that hits **`?probe=live`**, so the
