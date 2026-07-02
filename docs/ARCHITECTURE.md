@@ -1106,6 +1106,13 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   request is one independent mutation, controllers run **non-strict** managed transactions
   (`transStrict(false)` in `BaseController`) — otherwise a single rolled-back write would leave the pooled
   connection's `transStatus` false and silently cascade into failing every later request that reuses it.
+  **And a query that *throws* mid-mutation** (e.g. updating a unique column to a value another row already
+  has) unwinds without reaching `transComplete()`, leaving the transaction **open** and holding row locks;
+  on a pooled connection the next request touching those rows would block until the lock times out
+  (30 s+ → `503`). `ApiExceptionHandler` therefore rolls back any still-open transaction as its first act,
+  so the connection is always returned to the pool clean. (Verified: a unique-collision update now 500s in
+  ~8 ms and a follow-up delete of the same row returns in ~6 ms instead of a 30 s hang; the full Postman
+  collection runs in ~0.4 s via newman, down from 32 s.)
   Enqueue is DB-only on the request thread; delivery is out-of-band with retries (`maxAttempts`), so a
   slow/unavailable n8n never affects the API response. Subscriptions filter by
   `{resource}.{afterCreate|afterUpdate|afterDelete|afterRestore}` / wildcards. This is the service→n8n

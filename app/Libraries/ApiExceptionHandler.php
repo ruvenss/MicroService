@@ -28,7 +28,31 @@ final class ApiExceptionHandler extends BaseExceptionHandler implements Exceptio
         int $statusCode,
         int $exitCode
     ): void {
+        self::rollBackOpenTransaction();
         $this->prepare($exception, $response, $statusCode)->send();
+    }
+
+    /**
+     * Roll back any transaction still open on the (persistent, pConnect) connection.
+     *
+     * A mutation whose query throws mid-transaction (e.g. updating a unique column to a
+     * value that already exists on another row) unwinds without reaching
+     * `transComplete()`, leaving the transaction OPEN and holding row locks. Because the
+     * connection is pooled, the next request touching those rows blocks until the lock
+     * times out (30 s+ → 503). The exception is terminal, so close the transaction here
+     * — best-effort — so the connection is always returned to the pool clean.
+     */
+    private static function rollBackOpenTransaction(): void
+    {
+        try {
+            $db = db_connect();
+            // transRollback() unwinds one level and returns false once none remain.
+            while ($db->transRollback()) {
+                // keep unwinding nested levels
+            }
+        } catch (Throwable) {
+            // never let cleanup mask the original error
+        }
     }
 
     /**
