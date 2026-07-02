@@ -380,6 +380,34 @@ final class WebhookTest extends FeatureTestCase
         }
     }
 
+    public function testLongStringPrimaryKeyIsRecordedNotDroppedByRecordIdWidth(): void
+    {
+        // A resource keyed on a string PK (natural key: a code, slug, or email) can carry
+        // a value longer than record_id's column. Under STRICT_TRANS_TABLES an over-length
+        // insert is rejected — so the webhook is silently lost (fail-open enqueue) and a
+        // real create/delete 500s (transactional audit/archive). record_id must be wide
+        // enough to hold the primary key it references.
+        db_connect()->query("SET SESSION sql_mode = 'STRICT_TRANS_TABLES'");
+
+        config('Resources')->resources['widgets'] = [
+            'table' => 'widgets', 'primaryKey' => 'code', 'fillable' => ['code', 'name'],
+            'rules' => ['create' => [], 'update' => []],
+            'sortable' => [], 'filterable' => [], 'perPage' => ['default' => 25, 'max' => 100],
+            'timestamps' => false,
+        ];
+        $longCode = str_repeat('c', 100); // > 64
+
+        try {
+            WebhookDispatcher::enqueue(new ResourceEvent('widgets', 'afterCreate', row: ['code' => $longCode, 'name' => 'X']));
+
+            $row = (new WebhookOutboxModel())->where('resource', 'widgets')->first();
+            $this->assertNotNull($row, 'a long string-PK record must still enqueue a webhook, not be dropped on overflow');
+            $this->assertSame($longCode, $row['record_id'], 'the full primary key is preserved (record_id wide enough)');
+        } finally {
+            unset(config('Resources')->resources['widgets']);
+        }
+    }
+
     public function testDeadLetteredRowIsSkippedUntilReplayed(): void
     {
         $this->createProduct('WH-DL');

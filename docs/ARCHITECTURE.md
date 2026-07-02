@@ -611,7 +611,7 @@ audit_log
   api_key_id    BIGINT FK NULL           -- actor (NULL for system/CLI)
   action        ENUM('create','update','delete','restore','key.create','key.revoke', ...)
   resource      VARCHAR NULL             -- registry slug, when applicable
-  record_id     VARCHAR NULL             -- affected row PK
+  record_id     VARCHAR(255) NULL        -- affected row PK (wide enough for a natural string key)
   before_json   JSON NULL                -- full prior state (NULL on create)
   after_json    JSON NULL                -- full new state (NULL on delete)
   changed       JSON NULL                -- list of changed fields (updates)
@@ -650,7 +650,7 @@ archived_records
   id            BIGINT PK
   resource      VARCHAR                  -- registry slug
   source_table  VARCHAR                  -- physical table the row came from
-  record_id     VARCHAR                  -- original PK value
+  record_id     VARCHAR(255)             -- original PK value (fits a natural string key)
   payload_json  JSON                     -- complete original row
   deleted_by    BIGINT FK NULL           -- api_key_id
   request_id    CHAR(26)
