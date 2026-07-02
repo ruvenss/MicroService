@@ -192,7 +192,7 @@
                                 {
                                     "key": "page",
                                     "value": "",
-                                    "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 switch to cursor pagination for deep result sets.",
+                                    "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.",
                                     "disabled": true
                                 },
                                 {
@@ -336,7 +336,7 @@
                                 {
                                     "key": "page",
                                     "value": "",
-                                    "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 switch to cursor pagination for deep result sets.",
+                                    "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.",
                                     "disabled": true
                                 },
                                 {
@@ -386,7 +386,7 @@
                                 {
                                     "key": "page",
                                     "value": "",
-                                    "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 switch to cursor pagination for deep result sets.",
+                                    "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.",
                                     "disabled": true
                                 },
                                 {

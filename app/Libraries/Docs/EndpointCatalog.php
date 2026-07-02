@@ -323,7 +323,7 @@ final class EndpointCatalog
      */
     private static function pageParam(): array
     {
-        return ['name' => 'page', 'description' => 'Page number (1-based). Very deep offsets are rejected with 400 — switch to cursor pagination for deep result sets.'];
+        return ['name' => 'page', 'description' => 'Page number (1-based). Very deep offsets are rejected with 400 — use the endpoint\'s keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.'];
     }
 
     /**

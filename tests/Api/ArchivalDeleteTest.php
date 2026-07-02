@@ -69,6 +69,16 @@ final class ArchivalDeleteTest extends FeatureTestCase
         $this->withHeaders($this->authHeaders(['products:read']))->get('api/v1/_archive')->assertStatus(403);
     }
 
+    public function testArchiveDeepOffsetIsRefused(): void
+    {
+        // Same amplification-DoS cap as the resource + audit lists: a deep OFFSET is
+        // refused with a 400; normal browsing is unaffected.
+        $headers = $this->authHeaders(['archive:read']);
+
+        $this->withHeaders($headers)->get('api/v1/_archive?perPage=100&page=1002')->assertStatus(400); // offset 100100
+        $this->withHeaders($headers)->get('api/v1/_archive?perPage=100&page=2')->assertStatus(200);
+    }
+
     private function archiveRecordIds(array $headers, string $query): array
     {
         $data = json_decode((string) $this->withHeaders($headers)->get('api/v1/_archive?' . $query)->response()->getBody(), true)['data'];

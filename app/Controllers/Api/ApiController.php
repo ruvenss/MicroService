@@ -33,4 +33,18 @@ abstract class ApiController extends BaseController
 
         return $this->problem(403, 'The API key lacks the required scope for this operation.');
     }
+
+    /**
+     * Refuse a pathologically deep offset (`(page-1) * perPage > MAX_OFFSET`) with a 400
+     * *before* the COUNT/scan — see BaseController::MAX_OFFSET. `$steer` names the
+     * cheaper keyset alternative for this endpoint (e.g. `?sinceId=`).
+     */
+    protected function guardDeepOffset(int $page, int $perPage, string $steer): ?ResponseInterface
+    {
+        if (($page - 1) * $perPage > self::MAX_OFFSET) {
+            return $this->problem(400, 'Result window is too deep for offset pagination. ' . $steer);
+        }
+
+        return null;
+    }
 }

@@ -21,6 +21,16 @@ use Psr\Log\LoggerInterface;
 abstract class BaseController extends Controller
 {
     /**
+     * Deepest `OFFSET` any list endpoint (resources, `_audit`, `_archive`) allows for
+     * classic page/perPage pagination. Past this the request is refused with a 400 —
+     * an unbounded `OFFSET n` makes the database walk and discard `n` rows per request,
+     * so a `?page=<huge>` against a large table (the audit log especially) is an
+     * amplification DoS if the service is exposed. Keyset alternatives (`?cursor=` for
+     * resources, `?sinceId=` for the audit trail) have no such cost.
+     */
+    public const MAX_OFFSET = 100000;
+
+    /**
      * Be sure to declare properties for any property fetch you initialized.
      * The creation of dynamic property is deprecated in PHP 8.2.
      */

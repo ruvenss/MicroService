@@ -33,16 +33,6 @@ class ResourceController extends BaseController
     public const BULK_MAX = 100;
 
     /**
-     * Deepest OFFSET allowed for classic page/perPage pagination. Past this the
-     * request is refused with a 400 that points at cursor pagination — an unbounded
-     * `OFFSET n` makes the database walk and discard `n` rows per request, so a
-     * `?page=<huge>` against a large table is an amplification DoS if the service is
-     * exposed. Keyset (`?cursor=`) has no such cost and is the intended path for deep
-     * result sets, so normal browsing is unaffected while the pathology is capped.
-     */
-    public const MAX_OFFSET = 100000;
-
-    /**
      * JSON flags for the manually-encoded GET bodies (respondCacheable) and the
      * ETag hash, matching what CI4's setJSON uses for writes via Config\Format:
      * raw UTF-8 and unescaped slashes. Without this, reads escaped `café` → `café`

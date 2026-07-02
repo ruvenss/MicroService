@@ -46,6 +46,11 @@ class Archive extends ApiController
             $isRestored ? $model->where('restored_at !=', null) : $model->where('restored_at', null);
         }
 
+        // Deep offsets scan-and-discard — steer to narrowing the window with filters.
+        if (($deep = $this->guardDeepOffset($page, $perPage, 'Narrow the window with ?resource= / ?restored= filters.')) !== null) {
+            return $deep;
+        }
+
         $total = $model->countAllResults(false);
         $rows  = $model->orderBy('deleted_at', 'DESC')->findAll($perPage, ($page - 1) * $perPage);
 

@@ -42,7 +42,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Query params:**
   - `resource` — Optional resource filter.
   - `restored` — Filter by restoration state: false = still-deleted (restorable), true = already restored. Omit for all.
-  - `page` — Page number (1-based). Very deep offsets are rejected with 400 — switch to cursor pagination for deep result sets.
+  - `page` — Page number (1-based). Very deep offsets are rejected with 400 — use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.
   - `perPage` — Items per page (capped per resource).
 - **Success:** `200` (`collection` envelope)
 - **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
@@ -73,7 +73,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
   - `resource` — Optional resource filter.
   - `record_id` — Optional record id filter.
   - `sinceId` — Incremental polling: return only entries after this audit id, oldest-first — poll with the last id you saw (n8n change-data-capture).
-  - `page` — Page number (1-based). Very deep offsets are rejected with 400 — switch to cursor pagination for deep result sets.
+  - `page` — Page number (1-based). Very deep offsets are rejected with 400 — use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.
   - `perPage` — Items per page (capped per resource).
 - **Success:** `200` (`collection` envelope)
 - **Conditional:** returns an `ETag`; resend it as `If-None-Match` for `304 Not Modified`.
@@ -86,7 +86,7 @@ All `/api/v1/*` endpoints require `Authorization: Bearer <prefix>.<secret>` exce
 - **Auth:** bearer
 - **Scope:** products:read
 - **Query params:**
-  - `page` — Page number (1-based). Very deep offsets are rejected with 400 — switch to cursor pagination for deep result sets.
+  - `page` — Page number (1-based). Very deep offsets are rejected with 400 — use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.
   - `perPage` — Items per page (capped per resource).
   - `cursor` — Opt into keyset pagination (stable, index-fast, ideal for n8n). Send the param empty to start, then follow meta.pagination.nextCursor until it is null. Iterates by id; combine only with sort=id / -id.
   - `sort` — Sort by one or more columns, comma-separated (e.g. -price,name); prefix "-" for descending. Allowed: sku, name, price, created_at, updated_at (and id). Any other column is rejected with 400 (not silently ignored).

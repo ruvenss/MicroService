@@ -44,6 +44,25 @@ final class AuditTrailTest extends FeatureTestCase
         $this->withHeaders($this->authHeaders(['products:read']))->get('api/v1/_audit')->assertStatus(403);
     }
 
+    public function testDeepOffsetIsRefusedAndSteersToSinceId(): void
+    {
+        // The audit log only grows, so an uncapped deep OFFSET is an amplification DoS.
+        // Past MAX_OFFSET (100000) the request is refused with a 400 pointing at sinceId;
+        // sinceId itself (keyset) is never capped.
+        $headers = $this->authHeaders(['audit:read']);
+
+        $result = $this->withHeaders($headers)->get('api/v1/_audit?perPage=100&page=1002'); // offset 100100
+        $result->assertStatus(400);
+        $this->assertStringContainsStringIgnoringCase('sinceId', json_decode((string) $result->response()->getBody(), true)['detail']);
+
+        // A normal page and the intended sinceId usage (small page) are unaffected.
+        $this->withHeaders($headers)->get('api/v1/_audit?perPage=100&page=2')->assertStatus(200);
+        $this->withHeaders($headers)->get('api/v1/_audit?sinceId=0&perPage=100&page=1')->assertStatus(200);
+
+        // The cap applies even with sinceId — a deep OFFSET still scans regardless.
+        $this->withHeaders($headers)->get('api/v1/_audit?sinceId=0&perPage=100&page=1002')->assertStatus(400);
+    }
+
     public function testAuditEndpointListsEntries(): void
     {
         $headers = $this->authHeaders(['products:*', 'audit:read']);

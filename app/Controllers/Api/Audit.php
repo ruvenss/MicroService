@@ -45,6 +45,13 @@ class Audit extends ApiController
             $model->where('id >', (int) $sinceId);
         }
 
+        // A deep OFFSET scans-and-discards on a table that only grows, regardless of any
+        // sinceId WHERE — so cap it always and steer to sinceId (advance it, keep the page
+        // small) for deep traversal.
+        if (($deep = $this->guardDeepOffset($page, $perPage, 'For deep audit history advance ?sinceId=<last id you saw> and keep the page small (oldest-first, index-fast).')) !== null) {
+            return $deep;
+        }
+
         $total = $model->countAllResults(false);
         $rows  = $model->orderBy('id', $incremental ? 'ASC' : 'DESC')->findAll($perPage, ($page - 1) * $perPage);
 
