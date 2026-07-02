@@ -134,6 +134,12 @@ final class PluginScaffolder
                         'updated_at' => ['type' => 'DATETIME', 'null' => true],
                     ]);
                     \$this->forge->addPrimaryKey('id');
+                    // Index the default-sort column with the id tiebreaker so every list is
+                    // index-backed (keyset/cursor) instead of a filesort as the table grows,
+                    // and index the exposed filter/sort column. Mirrors the sample `products`
+                    // table. Add keys for any further sortable/filterable columns you declare.
+                    \$this->forge->addKey(['created_at', 'id'], false, false, '{$table}_created_at_id');
+                    \$this->forge->addKey('name', false, false, '{$table}_name');
                     \$this->forge->createTable('{$table}', true);
                 }
 

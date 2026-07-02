@@ -716,7 +716,11 @@ to confirm indexing/retention; very high delete-volume resources may warrant a d
 > edits). The scaffold ships output **`casts`** (`id => int`, `created_at`/`updated_at => datetime`) so a
 > new resource is typed like every other one out of the box — integer id, ISO-8601 `Z` timestamps —
 > rather than emitting `id` as `"1"` and naive `Y-m-d H:i:s` timestamps (MySQLi returns all columns as
-> strings); an n8n workflow parses a new resource with the same one rule. `PluginScaffolderTest` pins it. **Lifecycle management (implemented):** `php spark plugin:list` shows every plugin
+> strings); an n8n workflow parses a new resource with the same one rule. The scaffolded migration also
+> ships the matching **indexes** — `(created_at, id)` for the default `-created_at` keyset sort plus one on
+> the exposed `name` column — so a new resource's lists are index-backed (no filesort / no deep-offset
+> table scan) as it grows, the same strategy as the sample `products` table. `PluginScaffolderTest` pins
+> both the casts and the indexes. **Lifecycle management (implemented):** `php spark plugin:list` shows every plugin
 > (enabled **and** disabled) with a status column; `php spark plugin:enable|disable <Vendor/Name>`
 > flips the manifest's `enabled` flag (case-insensitive match, idempotent pretty-printed rewrite) so an
 > operator never hand-edits JSON. Disabling drops the plugin's resources from the registry and from

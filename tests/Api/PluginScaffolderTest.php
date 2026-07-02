@@ -53,4 +53,22 @@ final class PluginScaffolderTest extends CIUnitTestCase
         $this->assertStringContainsString("'created_at' => 'datetime'", $plugin);
         $this->assertStringContainsString("'updated_at' => 'datetime'", $plugin);
     }
+
+    public function testScaffoldedMigrationIndexesTheDefaultSortAndFilterColumns(): void
+    {
+        // The scaffold declares defaultSort '-created_at' and name as sortable/filterable.
+        // Without matching indexes every list filesorts and deep pagination scans as the
+        // table grows — contradicting the framework's index-backed pagination design. The
+        // generated migration must index (created_at, id) for the keyset sort and `name`.
+        $migration = '';
+        foreach (PluginScaffolder::files('Acme/Widgets') as $path => $contents) {
+            if (str_contains($path, 'Migrations')) {
+                $migration = $contents;
+            }
+        }
+
+        $this->assertNotSame('', $migration);
+        $this->assertStringContainsString("addKey(['created_at', 'id']", $migration);
+        $this->assertStringContainsString("addKey('name'", $migration);
+    }
 }
