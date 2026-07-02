@@ -79,7 +79,11 @@ Two directions:
   **scheduler sidecar** delivers it automatically (within `DISPATCH_INTERVAL`, default 30 s) — no cron
   to wire up. Each POST carries `X-Event: {resource}.{action}`, a stable `X-Webhook-Id` (dedupe), and,
   when `WEBHOOK_SECRET` is set, `X-Signature: sha256=<hex>` = `HMAC-SHA256(rawBody, secret)` — strip the
-  `sha256=` prefix and compare in a Function node to verify authenticity.
+  `sha256=` prefix and compare in a Function node to verify authenticity. **Verify over the RAW body
+  bytes** exactly as received: enable the n8n Webhook node's *raw body* option and HMAC that string — do
+  **not** re-`JSON.stringify()` the parsed object, whose bytes (key order, spacing, and `\u`-escaping of
+  UTF-8) won't match what was signed. The service emits raw UTF-8 with unescaped slashes and signs those
+  exact bytes, so `hmac_sha256(rawBody, secret)` reproduces the digit-for-digit hex.
 
 ## API keys
 

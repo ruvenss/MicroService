@@ -1180,7 +1180,14 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   raw body keyed with the subscription secret — algorithm-tagged in the GitHub/Stripe/Svix style so a
   receiver knows the scheme without out-of-band knowledge and the header stays forward-compatible if the
   digest ever changes. To verify in n8n: strip the `sha256=` prefix and compare (constant-time) against
-  `HMAC-SHA256(rawBody, secret)` in hex. Sent **only when the subscription is signed** — a secret-less
+  `HMAC-SHA256(rawBody, secret)` in hex. **Verify over the RAW request-body bytes** — enable the n8n
+  Webhook node's *raw body* option and HMAC that string; do **not** re-serialise the parsed JSON, whose
+  bytes (key order, whitespace, `\u`-escaping) differ from what was signed. The payload is stored in a
+  `TEXT` column (not MySQL `JSON`, which would re-normalise it) and delivered verbatim, so the signed and
+  delivered bytes are identical — `WebhookTest::testDispatchDeliversAndSignsTheRequest` asserts
+  `X-Signature == sha256=HMAC(deliveredBody)` through the DB round-trip, and a **live** container delivery
+  to a real catcher confirmed n8n's `hmac_sha256(rawBody, secret)` reproduces the hex digit-for-digit
+  (incl. raw UTF-8 `Café ☕`). Sent **only when the subscription is signed** — a secret-less
   subscription omits the header entirely rather than sending an empty one. `X-Event` (`{resource}.{action}`),
   **`X-Webhook-Id`** (the outbox row id — *stable across retries*, so n8n can dedupe a redelivered
   event), `X-Webhook-Attempt` (delivery attempt number), and a neutral `User-Agent`
