@@ -430,7 +430,12 @@ and busts the Redis cache. No key secret is ever logged or retrievable after cre
 > single-process concurrency and observably identical. **Verified** in the container: a 25-way parallel
 > burst against a `--rate-limit 15` key lets **exactly 15** through and `429`s the rest (a racy counter
 > leaks extra `200`s). `CacheConfigTest` guards the alias. Each request is also logged to `api_request_log` by the `UsageTracker`
-> after-filter (one append-only row per request — no contention). It also stamps the key's
+> after-filter (one append-only row per request — no contention). String fields are **truncated to their
+> column widths** (`path`→255, `method`→8, `resource`→64) before insert: a >255-char URL still reaches
+> PHP (under Apache's request-line limit), and with MySQL `STRICT_TRANS_TABLES` an over-length insert is
+> *rejected* — so without truncation the fail-open catch would silently drop the row, a hole in "every
+> request is logged" exactly for the long-path probes an exposed service most wants recorded (verified
+> live; `UsageTrackingTest`). It also stamps the key's
 > `last_used_at`, but **throttled to at most once per 60 s per key** via a short cache marker: an
 > unthrottled UPDATE of the same `api_keys` row on every request is write amplification and row-lock
 > contention for a busy (e.g. n8n) key, and `last_used_at` is only a coarse "key is active" signal

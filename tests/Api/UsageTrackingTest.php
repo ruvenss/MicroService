@@ -24,6 +24,26 @@ final class UsageTrackingTest extends FeatureTestCase
         $this->assertNotNull($rows[0]['api_key_id']);
     }
 
+    public function testLongPathRequestIsStillLoggedTruncatedNotDropped(): void
+    {
+        // A >255-char URL still reaches PHP (under Apache's request-line limit). `path`
+        // is VARCHAR(255); under MySQL's STRICT_TRANS_TABLES an over-length insert is
+        // REJECTED, and the fail-open catch would then drop the access-audit row — a hole
+        // in "every request is logged", exactly for the long-path probes an exposed
+        // service most wants recorded. Force strict mode (production uses it) so the test
+        // reflects reality, then assert the row survives (path truncated to fit).
+        db_connect()->query("SET SESSION sql_mode = 'STRICT_TRANS_TABLES'");
+
+        $token = $this->makeKey(['products:read']);
+        $this->withHeaders(['Authorization' => "Bearer {$token}"])
+            ->get('api/v1/products/' . str_repeat('a', 300)); // ~316-char path → 404, but must log
+
+        $rows = (new ApiRequestLogModel())->like('path', '/api/v1/products/aaaaaaaaaa', 'after')->findAll();
+
+        $this->assertNotEmpty($rows, 'a long-path request must still produce an access-audit row');
+        $this->assertLessThanOrEqual(255, mb_strlen((string) $rows[0]['path']), 'path is truncated to the column width');
+    }
+
     public function testLastUsedAtIsStamped(): void
     {
         $token  = $this->makeKey(['products:read']);

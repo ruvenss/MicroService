@@ -46,12 +46,19 @@ class UsageTracker implements FilterInterface
             $keyId    = AuthContext::keyId();
             $now      = date('Y-m-d H:i:s');
 
+            // Truncate to each column's width. The path (and, from adversarial input, the
+            // method/resource segment) can exceed the column — a >255-char URL still
+            // reaches PHP (under Apache's ~8 KiB request-line limit), and with MySQL's
+            // STRICT_TRANS_TABLES an over-length insert is REJECTED, so without this the
+            // access-audit row is silently lost (fail-open catch below) — a hole in the
+            // "every request is logged" guarantee, exactly for the long-path probes an
+            // exposed service most wants recorded.
             (new ApiRequestLogModel())->insert([
                 'api_key_id' => $keyId,
                 'request_id' => RequestContext::id(),
-                'method'     => $method,
-                'path'       => '/' . ltrim($request->getUri()->getPath(), '/'),
-                'resource'   => $segments[2] ?? null,
+                'method'     => mb_substr($method, 0, 8),
+                'path'       => mb_substr('/' . ltrim($request->getUri()->getPath(), '/'), 0, 255),
+                'resource'   => isset($segments[2]) ? mb_substr((string) $segments[2], 0, 64) : null,
                 'action'     => Authorization::actionForMethod($method),
                 'status'     => $response->getStatusCode(),
                 'latency_ms' => (int) max(0, round((microtime(true) - $start) * 1000)),
