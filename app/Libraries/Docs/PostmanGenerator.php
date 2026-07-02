@@ -120,7 +120,10 @@ final class PostmanGenerator
             ];
         }
 
-        $bodyExample = $ep['bodyExample'] ?? null;
+        // A Postman-specific body (e.g. bulk update targeting {{slugId}}) overrides the
+        // shared readable example so the request runs against the captured row; OpenAPI
+        // and Markdown keep the plain `bodyExample`.
+        $bodyExample = $ep['postmanBodyExample'] ?? $ep['bodyExample'] ?? null;
         if (is_array($ep['body'])) {
             $request['header'][] = ['key' => 'Content-Type', 'value' => 'application/json'];
             $request['body']     = ['mode' => 'raw', 'raw' => self::exampleBody($ep['body'])];

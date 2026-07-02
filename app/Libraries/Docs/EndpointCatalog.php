@@ -131,6 +131,7 @@ final class EndpointCatalog
                     . ' plus fields to change (all-or-nothing, max ' . ResourceController::BULK_MAX . ').',
                 'auth' => true, 'scope' => $def->slug . ':write', 'pathParams' => [], 'query' => [],
                 'body' => null, 'bodyExample' => self::bulkUpdateExample($def),
+                'postmanBodyExample' => self::bulkUpdatePostmanExample($def),
                 'success' => 200, 'successKind' => 'collection', 'captureId' => false,
             ],
             [
@@ -285,6 +286,24 @@ final class EndpointCatalog
         $object = [$def->primaryKey => '1'];
         foreach (self::body($def) as $field => $meta) {
             $object[$field] = $meta['example'];
+        }
+
+        return (string) json_encode([$object], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * The Postman-only bulk-update body: targets the id captured by the create request
+     * ({{slugId}}) and uses {{$randomUUID}} for unique columns, so the request runs
+     * against the just-created row and re-runs cleanly. (OpenAPI/Markdown keep the
+     * readable `bulkUpdateExample` with a plain id/sku — no {{...}} in the spec.)
+     */
+    private static function bulkUpdatePostmanExample(ResourceDefinition $def): string
+    {
+        $object = [$def->primaryKey => '{{' . $def->slug . 'Id}}'];
+        foreach (self::body($def) as $field => $meta) {
+            $object[$field] = $meta['unique'] === true && $meta['type'] === 'string'
+                ? '{{$randomUUID}}'
+                : $meta['example'];
         }
 
         return (string) json_encode([$object], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

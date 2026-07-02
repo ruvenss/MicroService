@@ -181,6 +181,30 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertStringContainsString("pm.collectionVariables.set('productsId'", $products);
     }
 
+    public function testBulkUpdatePostmanBodyTargetsTheCapturedId(): void
+    {
+        // The bulk-update example must operate on the just-created row so it runs (200)
+        // instead of 422 on a hardcoded id — Postman targets {{productsId}} with a fresh
+        // unique value, while OpenAPI/Markdown keep a plain readable id/sku.
+        $postman = PostmanGenerator::generate();
+
+        $raw = null;
+        foreach ($postman['item'] as $folder) {
+            foreach ($folder['item'] as $req) {
+                if (str_starts_with($req['name'], 'Bulk update')) {
+                    $raw = $req['request']['body']['raw'];
+                }
+            }
+        }
+        $this->assertNotNull($raw);
+        $this->assertStringContainsString('{{productsId}}', $raw);
+        $this->assertStringContainsString('{{$randomUUID}}', $raw);
+
+        // OpenAPI's example for the same endpoint carries no Postman {{...}} syntax.
+        $openapi = json_encode(OpenApiGenerator::generate());
+        $this->assertStringNotContainsString('{{', (string) $openapi);
+    }
+
     public function testMarkdownReferenceContainsResources(): void
     {
         $md = MarkdownGenerator::generate();

@@ -529,7 +529,7 @@
                         "description": "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100). Scope: products:write.",
                         "body": {
                             "mode": "raw",
-                            "raw": "[\n    {\n        \"id\": \"1\",\n        \"sku\": \"sku\",\n        \"name\": \"name\",\n        \"price\": 9.99,\n        \"status\": \"active\"\n    }\n]"
+                            "raw": "[\n    {\n        \"id\": \"{{productsId}}\",\n        \"sku\": \"{{$randomUUID}}\",\n        \"name\": \"name\",\n        \"price\": 9.99,\n        \"status\": \"active\"\n    }\n]"
                         }
                     },
                     "response": []
