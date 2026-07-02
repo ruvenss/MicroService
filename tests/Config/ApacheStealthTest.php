@@ -93,6 +93,24 @@ final class ApacheStealthTest extends CIUnitTestCase
         }
     }
 
+    public function testEveryApacheCoreErrorStatusMapsToTheNeutralBody(): void
+    {
+        // ErrorDocument has no wildcard, so each status Apache can emit at the core
+        // level (before PHP) must be mapped to /error.json — otherwise that one status
+        // leaks Apache's branded default HTML (e.g. the "414 Request-URI Too Long"
+        // page) even with the Server header masked. Regression: 414/431/417/408/411/505
+        // were unmapped and 414 leaked the default page.
+        $required = [400, 403, 404, 405, 406, 408, 411, 413, 414, 417, 431, 500, 501, 502, 503, 505];
+
+        foreach ($required as $code) {
+            $this->assertMatchesRegularExpression(
+                '/^\s*ErrorDocument\s+' . $code . '\s+\/error\.json\s*$/mi',
+                $this->vhost,
+                "status {$code} must map to the neutral /error.json (else it leaks Apache's default page)",
+            );
+        }
+    }
+
     public function testEdgeBodyLimitIsEnforcedByModSecurityNotLimitRequestBody(): void
     {
         // Apache's core LimitRequestBody is NOT enforced on the mod_proxy_fcgi path that

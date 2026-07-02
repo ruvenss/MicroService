@@ -1029,14 +1029,20 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   rule sets (e.g. OWASP CRS) are loaded, so request *content* is never inspected for patterns; the
   engine is used only to mask the signature and to enforce the request-body size ceiling (see the
   Payload-size limits note below). Verified: real container emits `Server: MicroService`.
-- **Neutral server-level errors:** the vhost maps `ErrorDocument 400/403/404/405/406/413/500/501/502/503`
-  to a static `public/error.json` (`application/problem+json`), so **any** failure Apache handles
-  *itself* — a denied dotfile (`403`), a disabled method like `TRACE` (`405`), an oversized body
-  (`413`), a malformed request line (`400`), the backend being down (`5xx`) — never returns Apache's
-  branded default HTML. The engine stays hidden even when the app isn't reached. App-level 4xx/5xx
-  already return problem+json from the front controller. **Audited** by probing the live container:
-  `/index.php`, `/phpinfo.php`, `/.env`, `TRACE`, `OPTIONS`, unknown paths — all return neutral
-  problem+json with `Server: MicroService` and zero Apache/PHP/CodeIgniter markers in the body.
+- **Neutral server-level errors:** the vhost maps `ErrorDocument` for **every** status Apache can emit
+  at the core level (before the request reaches PHP) —
+  `400/403/404/405/406/408/411/413/414/417/431/500/501/502/503/505` — to a static `public/error.json`
+  (`application/problem+json`), so **any** failure Apache handles *itself* — a denied dotfile (`403`), a
+  disabled method like `TRACE` (`405`), an oversized body (`413`), an **over-long request URI (`414`)**,
+  oversized request headers (`400`/`431`), a malformed request line (`400`), the backend being down
+  (`5xx`) — never returns Apache's branded default HTML. `ErrorDocument` has **no wildcard**, so the list
+  must be exhaustive: an unmapped code leaks its default page — e.g. a >8 KiB request line previously
+  returned Apache's recognisable *"414 Request-URI Too Long"* HTML (a fingerprint even with the `Server`
+  header masked); now closed and guarded by `ApacheStealthTest`. The engine stays hidden even when the
+  app isn't reached. App-level 4xx/5xx already return problem+json from the front controller. **Audited**
+  by probing the live container: `/index.php`, `/phpinfo.php`, `/.env`, `TRACE`, `OPTIONS`, a 9 KB URI
+  (`414`), unknown paths — all return neutral problem+json with `Server: MicroService` and zero
+  Apache/PHP/CodeIgniter markers in the body.
   Because that body is a **static file** served by Apache (not PHP), it would otherwise carry
   static-file *headers* the app never emits — a recognisable Apache-default `ETag`
   (`size-mtime` shape; historically an inode leak, CVE-2003-1418), a `Last-Modified` disclosing the
