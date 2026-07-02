@@ -94,4 +94,21 @@ final class BulkCreateTest extends FeatureTestCase
             ->post('api/v1/products', ['sku' => 'SINGLE-1', 'name' => 'N', 'price' => '1.00'])
             ->assertStatus(201);
     }
+
+    public function testListOfNonObjectsIsRejectedPerItemNotAsOneObject(): void
+    {
+        // A malformed batch of scalars (e.g. an n8n mapping that sent ids instead of
+        // objects) must be reported as a bulk request whose items aren't objects —
+        // not validated as a single object (which produced a confusing "sku required").
+        $result = $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->post('api/v1/products', [1, 2, 3]);
+
+        $result->assertStatus(422);
+        $body = json_decode((string) $result->response()->getBody(), true);
+        $this->assertSame('One or more items are invalid.', $body['detail']);
+        // Per-item error keyed by index, with the "must be a JSON object" reason.
+        $this->assertArrayHasKey('0', $body['errors']);
+        $this->assertStringContainsStringIgnoringCase('must be a JSON object', json_encode($body['errors']));
+        $this->assertSame(0, $this->total());
+    }
 }

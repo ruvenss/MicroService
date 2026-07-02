@@ -235,8 +235,14 @@ class ResourceController extends BaseController
             return $this->problem(400, 'Request body must be a JSON object.');
         }
 
-        // A JSON array of objects means bulk-create (all-or-nothing).
-        if ($data !== [] && array_is_list($data) && is_array($data[0] ?? null)) {
+        // A non-empty JSON array means bulk-create (all-or-nothing). Any list is routed
+        // here — even one whose items aren't objects (e.g. [1,2,3]) — so createBulk
+        // reports an accurate per-item "must be a JSON object" 422 rather than the
+        // single-item path validating the whole list as one object (a confusing
+        // "sku required"). This matches how upsert() detects bulk (array_is_list). An
+        // empty [] is indistinguishable from {} after json_decode, so it stays on the
+        // single path, where {} correctly reports the required fields.
+        if ($data !== [] && array_is_list($data)) {
             return $this->createBulk($definition, $data);
         }
 
