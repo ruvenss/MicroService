@@ -93,6 +93,22 @@ final class ApacheStealthTest extends CIUnitTestCase
         }
     }
 
+    public function testGeneratedDocsAreNeverWebServedByTheContainer(): void
+    {
+        // The generated API docs (public/docs — OpenAPI + ReDoc viewer) map the whole
+        // API surface and are dev-only. They are kept out of the production image
+        // (.dockerignore), but the container must ALSO refuse to serve them at the web
+        // layer if they are ever present (e.g. someone runs docs:generate inside it),
+        // so an exposed instance never hands out the map. The block must produce a plain
+        // 404 (served by ErrorDocument as the neutral body) — not a 403, which would tell
+        // a scanner something is there.
+        $this->assertMatchesRegularExpression(
+            '/^\s*RedirectMatch\s+404\s+"?\^\/docs/mi',
+            $this->vhost,
+            'vhost must force /docs to a neutral 404 regardless of whether public/docs exists',
+        );
+    }
+
     public function testEveryApacheCoreErrorStatusMapsToTheNeutralBody(): void
     {
         // ErrorDocument has no wildcard, so each status Apache can emit at the core

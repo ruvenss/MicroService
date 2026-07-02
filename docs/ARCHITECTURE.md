@@ -840,6 +840,15 @@ Each generated `.md` entry follows a fixed shape so it's diff-friendly and LLM-p
      `PUT` route being routable but undocumented.
 - Generated directories (`public/docs/`, `docs/api/`, `openapi.json`) are **build artifacts** —
   never hand-edited; edit the code/docblocks/manifest and regenerate.
+- **Docs are never web-served by the production container.** `public/docs/` (the OpenAPI spec + ReDoc
+  viewer) maps the whole API surface, so it is dev-only (viewed via `php spark serve`) and excluded from
+  the image (`.dockerignore`). Belt-and-suspenders at the web layer: the vhost `RedirectMatch 404 ^/docs`
+  forces `/docs*` to the same **neutral 404** as any unknown path — so even if the directory is ever
+  present in the container (someone runs `docs:generate` inside it, a volume mount, a build change), an
+  exposed instance never hands out the map, and a scanner can't even tell docs exist (a `404`, not a
+  `403`). The committed OpenAPI is itself engine-neutral (no CodeIgniter/PHP markers). Guarded by
+  `ApacheStealthTest`; verified live (docs present in container → `/docs/openapi.json` returns the
+  neutral problem+json `404`).
 
 ## 17. Containerization & runtime performance
 

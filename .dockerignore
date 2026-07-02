@@ -19,7 +19,9 @@ node_modules
 /docs
 # The generated API docs describe the whole surface — never bake them into a
 # production image (would be exposed if the service is). Dev serves them via
-# `php spark serve`; they stay in the repo for humans/LLMs.
+# `php spark serve`; they stay in the repo for humans/LLMs. Belt-and-suspenders:
+# the vhost also `RedirectMatch 404 ^/docs`, so even if these are ever present in
+# the container they are never web-served (see docker/apache/microservice.conf).
 /public/docs
 tests
 phpunit.dist.xml
