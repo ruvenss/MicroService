@@ -541,7 +541,7 @@
                         }
                     },
                     "409": {
-                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1672,7 +1672,7 @@
                         }
                     },
                     "409": {
-                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1909,7 +1909,7 @@
                         }
                     },
                     "409": {
-                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2105,7 +2105,7 @@
                         }
                     },
                     "409": {
-                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2354,7 +2354,7 @@
                         }
                     },
                     "409": {
-                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2813,7 +2813,7 @@
                         }
                     },
                     "409": {
-                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -3089,7 +3089,7 @@
                         }
                     },
                     "409": {
-                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -3284,7 +3284,7 @@
                         }
                     },
                     "409": {
-                        "description": "Conflict \u2014 an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {

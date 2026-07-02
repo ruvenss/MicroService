@@ -269,7 +269,7 @@ final class OpenApiGenerator
 
     /** Human-readable descriptions for the error codes with specific semantics. */
     private const ERROR_DESCRIPTIONS = [
-        409 => 'Conflict — an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.',
+        409 => 'Conflict — a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.',
         412 => 'Precondition Failed — the If-Match ETag did not match the current resource.',
         413 => 'Payload Too Large.',
         422 => 'Unprocessable Entity — validation failed (see the errors member).',
