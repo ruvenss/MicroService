@@ -141,6 +141,11 @@ final class EndpointCatalog
                     . ResourceController::BULK_MAX . ', restorable via the recycle bin).',
                 'auth' => true, 'scope' => $def->slug . ':delete', 'pathParams' => [], 'query' => [],
                 'body' => null, 'bodyExample' => "{\n    \"ids\": [\"1\", \"2\"]\n}",
+                // Postman: a pre-request script creates a throwaway row and deletes THAT,
+                // so the destructive demo runs (200) without removing the chain's row.
+                'postmanBodyExample' => "{\n    \"ids\": [\"{{" . $def->slug . "DelId}}\"]\n}",
+                'postmanPrerequest'  => self::bulkDeletePrerequest($def),
+                'postmanVar'         => $def->slug . 'DelId',
                 'success' => 200, 'successKind' => 'meta', 'captureId' => false,
             ],
             [
@@ -307,6 +312,46 @@ final class EndpointCatalog
         }
 
         return (string) json_encode([$object], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * A Postman pre-request script (as exec lines) for the bulk-delete request: create a
+     * throwaway record and stash its id in {{slugDelId}}, so bulk delete removes THAT row
+     * rather than the one the single-item chain (show/update/delete) depends on — letting
+     * the whole collection run clean top-to-bottom. If the create fails, the body falls
+     * back to an empty id and bulk delete just 422s (never crashes).
+     *
+     * @return list<string>
+     */
+    private static function bulkDeletePrerequest(ResourceDefinition $def): array
+    {
+        $lines = [];
+        foreach (self::body($def) as $field => $meta) {
+            $value = match (true) {
+                $meta['unique'] === true && $meta['type'] === 'string' => "'del-' + Date.now() + '-' + Math.floor(Math.random() * 1e6)",
+                $meta['type'] === 'number'                             => '1',
+                $meta['enum'] !== []                                   => "'" . $meta['enum'][0] . "'",
+                default                                                => "'x'",
+            };
+            $lines[] = "    {$field}: {$value},";
+        }
+        $body = "{\n" . implode("\n", $lines) . "\n  }";
+
+        return [
+            "// Create a throwaway {$def->slug} to delete, so this destructive demo never",
+            "// removes the row the single-item requests use. Its id goes into {{{$def->slug}DelId}}.",
+            'pm.sendRequest({',
+            "  url: pm.variables.replaceIn('{{baseUrl}}') + '/api/v1/{$def->slug}',",
+            "  method: 'POST',",
+            "  header: {",
+            "    'Authorization': 'Bearer ' + pm.variables.replaceIn('{{apiKey}}'),",
+            "    'Content-Type': 'application/json'",
+            '  },',
+            "  body: { mode: 'raw', raw: JSON.stringify({$body}) }",
+            '}, function (err, res) {',
+            "  if (!err && res.code === 201) { pm.collectionVariables.set('{$def->slug}DelId', res.json().data.{$def->primaryKey}); }",
+            '});',
+        ];
     }
 
     private static function inferType(string $rule): string

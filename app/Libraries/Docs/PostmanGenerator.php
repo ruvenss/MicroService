@@ -33,6 +33,11 @@ final class PostmanGenerator
                 $seenVars[$idVar] = true;
                 $variables[]      = ['key' => $idVar, 'value' => '', 'type' => 'string'];
             }
+            // A pre-request script may populate its own throwaway-id variable ({slug}DelId).
+            if (isset($ep['postmanVar']) && ! isset($seenVars[$ep['postmanVar']])) {
+                $seenVars[$ep['postmanVar']] = true;
+                $variables[]                 = ['key' => $ep['postmanVar'], 'value' => '', 'type' => 'string'];
+            }
             $folders[$ep['tag']][] = self::request($ep, $idVar);
         }
 
@@ -134,9 +139,17 @@ final class PostmanGenerator
 
         $item = ['name' => $ep['summary'], 'request' => $request, 'response' => []];
 
-        $script = self::captureScript($ep);
-        if ($script !== null) {
-            $item['event'] = [['listen' => 'test', 'script' => ['type' => 'text/javascript', 'exec' => $script]]];
+        $events = [];
+        if (($script = self::captureScript($ep)) !== null) {
+            $events[] = ['listen' => 'test', 'script' => ['type' => 'text/javascript', 'exec' => $script]];
+        }
+        // A pre-request script (e.g. bulk delete creates a throwaway row to delete, so it
+        // never removes the row the single-item chain uses).
+        if (is_array($ep['postmanPrerequest'] ?? null)) {
+            $events[] = ['listen' => 'prerequest', 'script' => ['type' => 'text/javascript', 'exec' => $ep['postmanPrerequest']]];
+        }
+        if ($events !== []) {
+            $item['event'] = $events;
         }
 
         return $item;

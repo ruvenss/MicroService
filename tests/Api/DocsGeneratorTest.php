@@ -122,6 +122,35 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertStringNotContainsString('{{', json_encode($props));
     }
 
+    public function testBulkDeleteIsSelfContainedViaAPrerequestThrowaway(): void
+    {
+        // Bulk delete is destructive, so it can't target the chain's row ({{productsId}})
+        // — it would 404 the single-item requests. Instead a pre-request script creates a
+        // throwaway row and the body deletes THAT, so the whole collection runs clean.
+        $collection = PostmanGenerator::generate();
+
+        $del = null;
+        foreach ($collection['item'] as $folder) {
+            foreach ($folder['item'] as $req) {
+                if ($req['request']['method'] === 'DELETE' && str_starts_with($req['name'], 'Bulk')) {
+                    $del = $req;
+                }
+            }
+        }
+        $this->assertNotNull($del);
+        $this->assertStringContainsString('{{productsDelId}}', $del['request']['body']['raw']);
+
+        $listens = array_column($del['event'] ?? [], 'listen');
+        $this->assertContains('prerequest', $listens);
+        $prereq = implode("\n", $del['event'][array_search('prerequest', $listens, true)]['script']['exec']);
+        $this->assertStringContainsString('pm.sendRequest', $prereq);
+        $this->assertStringContainsString("pm.collectionVariables.set('productsDelId'", $prereq);
+
+        // The throwaway-id variable is declared, and OpenAPI keeps the plain example.
+        $this->assertContains('productsDelId', array_column($collection['variable'], 'key'));
+        $this->assertStringNotContainsString('{{', json_encode(OpenApiGenerator::generate()));
+    }
+
     public function testCreateRequestCapturesIdForTheChain(): void
     {
         // The README promises the create → show/update/delete chain "just runs":

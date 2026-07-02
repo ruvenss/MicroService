@@ -32,6 +32,11 @@
             "type": "string"
         },
         {
+            "key": "productsDelId",
+            "value": "",
+            "type": "string"
+        },
+        {
             "key": "productsId",
             "value": "",
             "type": "string"
@@ -568,10 +573,33 @@
                         "description": "Bulk archival delete products: send {\"ids\": [...]} (all-or-nothing, max 100, restorable via the recycle bin). Scope: products:delete.",
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"ids\": [\"1\", \"2\"]\n}"
+                            "raw": "{\n    \"ids\": [\"{{productsDelId}}\"]\n}"
                         }
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "// Create a throwaway products to delete, so this destructive demo never",
+                                    "// removes the row the single-item requests use. Its id goes into {{productsDelId}}.",
+                                    "pm.sendRequest({",
+                                    "  url: pm.variables.replaceIn('{{baseUrl}}') + '/api/v1/products',",
+                                    "  method: 'POST',",
+                                    "  header: {",
+                                    "    'Authorization': 'Bearer ' + pm.variables.replaceIn('{{apiKey}}'),",
+                                    "    'Content-Type': 'application/json'",
+                                    "  },",
+                                    "  body: { mode: 'raw', raw: JSON.stringify({\n    sku: 'del-' + Date.now() + '-' + Math.floor(Math.random() * 1e6),\n    name: 'x',\n    price: 1,\n    status: 'active',\n  }) }",
+                                    "}, function (err, res) {",
+                                    "  if (!err && res.code === 201) { pm.collectionVariables.set('productsDelId', res.json().data.id); }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Fetch one products by id.",
