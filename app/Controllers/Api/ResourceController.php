@@ -264,8 +264,21 @@ class ResourceController extends BaseController
         $db    = db_connect();
 
         $db->transStart();
-        $id       = $model->insert($clean, true);
-        $row      = (array) $model->find($id);
+        try {
+            $id = $model->insert($clean, true);
+        } catch (\Throwable) {
+            $id = false; // a failed insert throws (DBDebug on) or returns false (off) — unify
+        }
+        if ($id === false) {
+            // Insert failed after validation — under concurrency a unique value that
+            // passed is_unique can still collide at the index (TOCTOU). Map a duplicate
+            // to 409, else fall through to the neutral 500.
+            $conflict = $this->duplicateKeyConflict($db);
+            $db->transComplete();
+
+            return $conflict ?? $this->problem(500, 'The change could not be committed; please retry.');
+        }
+        $row       = (array) $model->find($id);
         $presented = $this->present($row, $definition);
         AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
         $this->enqueueWebhook('afterCreate', $definition, $presented);
@@ -488,8 +501,21 @@ class ResourceController extends BaseController
         $updated = 0;
         foreach ($plan as [$op, $before, $clean]) {
             if ($op === 'create') {
-                $id  = $model->insert($clean, true);
-                $row = (array) $model->find($id);
+                try {
+                    $id = $model->insert($clean, true);
+                } catch (\Throwable) {
+                    $id = false;
+                }
+                if ($id === false) {
+                    // Concurrent upsert raced another create of the same key — the loser's
+                    // insert hits the unique index after its plan said "create". A clean
+                    // 409, not a neutral 500 (see duplicateKeyConflict).
+                    $conflict = $this->duplicateKeyConflict($db);
+                    $db->transComplete();
+
+                    return $conflict ?? $this->problem(500, 'The change could not be committed; please retry.');
+                }
+                $row       = (array) $model->find($id);
                 $presented = $this->present($row, $definition);
                 AuditWriter::record('create', $definition->slug, (string) $id, null, $this->hide($row, $definition));
                 $this->enqueueWebhook('afterCreate', $definition, $presented);
@@ -1182,6 +1208,27 @@ class ResourceController extends BaseController
         return $db->transComplete()
             ? null
             : $this->problem(500, 'The change could not be committed; please retry.');
+    }
+
+    /**
+     * Map a just-failed insert to a clean 409 when it was a UNIQUE-index collision.
+     * `is_unique` validation catches sequential duplicates, but under concurrency two
+     * requests can both pass the check and then race at the DB — the loser's insert
+     * hits the index. That is a client-resolvable **conflict** (the value is taken),
+     * not the neutral 500 a rolled-back transaction would otherwise yield, and n8n
+     * treats the two very differently (retry-blindly vs. don't). Read `error()` here,
+     * BEFORE any further query resets it. Returns null for a non-duplicate failure
+     * (the caller still returns 500 via finishTransaction).
+     */
+    private function duplicateKeyConflict(\CodeIgniter\Database\BaseConnection $db): ?ResponseInterface
+    {
+        $error = $db->error();
+        $isDup = ((int) ($error['code'] ?? 0)) === 1062 // MySQL ER_DUP_ENTRY
+            || str_contains(strtolower((string) ($error['message'] ?? '')), 'duplicate');
+
+        return $isDup
+            ? $this->problem(409, 'A record with a conflicting unique value already exists.')
+            : null;
     }
 
     /**
