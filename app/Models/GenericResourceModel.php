@@ -28,6 +28,15 @@ class GenericResourceModel extends Model
         $this->allowedFields = $definition->fillable;
         $this->useTimestamps = $definition->timestamps;
 
+        // A primary key the client writes (it's fillable — a natural string key like a
+        // code/slug/email) is NOT auto-increment. Without this, insert(returnID:true)
+        // returns getInsertID() = 0, and the controller's find(0) then resolves the WRONG
+        // row (MySQL coerces a non-numeric string PK to 0 in `WHERE pk = 0`) — so create
+        // echoes an arbitrary record and audits/links it under id 0. With it off,
+        // insert() returns the real key value from the data, so create resolves the row
+        // it just wrote. Auto-increment int keys (not fillable, e.g. `id`) are unchanged.
+        $this->useAutoIncrement = ! in_array($definition->primaryKey, $definition->fillable, true);
+
         return $this;
     }
 }

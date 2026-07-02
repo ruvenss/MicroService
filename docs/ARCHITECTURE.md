@@ -98,7 +98,7 @@ Resources are declared in a registry (`app/Config/Resources.php`). Each entry is
 // Illustrative shape — not final code.
 'products' => [
     'table'        => 'products',
-    'primaryKey'   => 'id',
+    'primaryKey'   => 'id',             // may be a natural string key (code/slug/email), not just an int
     'softDelete'   => true,            // use deleted_at instead of hard delete
     'timestamps'   => true,            // created_at / updated_at managed automatically
     'fields' => [
@@ -1231,7 +1231,11 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   `record_id`) is the resource's **declared `primaryKey` value**, resolved from the registry — not a
   hardcoded `id` — so notifications carry the real key even for resources keyed on something else (the
   engine is generic over `primaryKey`; the Postman collection's create→reuse-id script is likewise keyed
-  off the resource's primary key). The payload's **`data`** (and, on update, **`previous`**) is typed
+  off the resource's primary key). A resource keyed on a **client-provided natural string key** (a
+  `code`/`slug`/`email` that is `fillable`) is fully CRUD-able: `GenericResourceModel` turns off
+  `useAutoIncrement` for such a key, so create resolves the row it just wrote by its real key rather than
+  by `getInsertID()` = 0 (which `find(0)` would mis-resolve to an arbitrary row via MySQL string→int
+  coercion). Full HTTP CRUD on a string PK is covered by `StringPrimaryKeyTest`. The payload's **`data`** (and, on update, **`previous`**) is typed
   through the resource's casts at the single enqueue choke point, so **every** event — create, update
   *and delete* — reaches n8n in the same int/float/bool + ISO-8601-`Z` shape as a live `GET` (delete
   `data` and update `previous` were previously raw MySQLi strings). The payload is encoded with the same
