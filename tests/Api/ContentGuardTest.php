@@ -42,6 +42,22 @@ final class ContentGuardTest extends FeatureTestCase
         $this->assertSame('Bad Request', $json['title']);
     }
 
+    public function testRejectsDeeplyNestedJsonAsADosGuard(): void
+    {
+        // A pathologically nested body (past PHP's json_decode depth of 512) is a
+        // resource-exhaustion vector on an exposed service — it must be refused with a
+        // clean 400 (JSON_ERROR_DEPTH), never parsed into an app-crashing structure or
+        // a 500. Verified live too: the container stays healthy after such a request.
+        $deep = str_repeat('{"a":', 600) . '1' . str_repeat('}', 600);
+
+        $result = $this->withHeaders($this->auth + ['Content-Type' => 'application/json'])
+            ->withBody($deep)
+            ->post('api/v1/products');
+
+        $result->assertStatus(400);
+        $this->assertSame('Bad Request', json_decode((string) $result->response()->getBody(), true)['title']);
+    }
+
     public function testRejectsOversizedBodyByActualLength(): void
     {
         // ~1.1 MiB of valid JSON — over the 1 MiB cap. Rejected before any parsing,
