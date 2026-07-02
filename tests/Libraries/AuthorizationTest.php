@@ -30,6 +30,22 @@ final class AuthorizationTest extends CIUnitTestCase
         $this->assertFalse(Authorization::satisfies(['products:read'], 'products:write'));
     }
 
+    public function testActionsAreFullySeparated(): void
+    {
+        // Each single-action scope grants ONLY that action — no cross-action escalation.
+        // The write→delete boundary is the most sensitive (a write key must not delete).
+        foreach (['read', 'write', 'delete'] as $held) {
+            foreach (['read', 'write', 'delete'] as $required) {
+                $ok = Authorization::satisfies(["products:{$held}"], "products:{$required}");
+                $this->assertSame(
+                    $held === $required,
+                    $ok,
+                    "products:{$held} " . ($held === $required ? 'must' : 'must NOT') . " satisfy products:{$required}",
+                );
+            }
+        }
+    }
+
     public function testResourceWildcard(): void
     {
         $this->assertTrue(Authorization::satisfies(['products:*'], 'products:write'));
