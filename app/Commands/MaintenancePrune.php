@@ -20,11 +20,12 @@ class MaintenancePrune extends BaseCommand
     protected $group       = 'Maintenance';
     protected $name        = 'maintenance:prune';
     protected $description = 'Purge expired/old rows from the transient operational tables (retention).';
-    protected $usage       = 'maintenance:prune [--dry-run] [--access-log-days N] [--webhook-days N]';
+    protected $usage       = 'maintenance:prune [--dry-run] [--access-log-days N] [--webhook-days N] [--deadlettered-webhook-days N]';
     protected $options     = [
-        '--dry-run'          => 'Report what would be deleted; change nothing.',
-        '--access-log-days'  => 'Override api_request_log retention (days).',
-        '--webhook-days'     => 'Override delivered webhook retention (days).',
+        '--dry-run'                   => 'Report what would be deleted; change nothing.',
+        '--access-log-days'           => 'Override api_request_log retention (days).',
+        '--webhook-days'              => 'Override delivered webhook retention (days).',
+        '--deadlettered-webhook-days' => 'Override dead-lettered (exhausted) webhook retention (days).',
     ];
 
     public function run(array $params)
@@ -41,6 +42,10 @@ class MaintenancePrune extends BaseCommand
         $webhookDays = $params['webhook-days'] ?? CLI::getOption('webhook-days');
         if ($webhookDays !== null) {
             $config->deliveredWebhookDays = (int) $webhookDays;
+        }
+        $deadLetteredDays = $params['deadlettered-webhook-days'] ?? CLI::getOption('deadlettered-webhook-days');
+        if ($deadLetteredDays !== null) {
+            $config->deadLetteredWebhookDays = (int) $deadLetteredDays;
         }
 
         $counts = Pruner::run($config, $isDryRun);

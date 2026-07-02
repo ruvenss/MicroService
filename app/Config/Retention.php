@@ -23,6 +23,14 @@ class Retention extends BaseConfig
     /** Days to keep already-delivered webhook rows (`webhook_outbox` status=delivered). */
     public int $deliveredWebhookDays = 7;
 
+    /**
+     * Days to keep **dead-lettered** webhook rows (status=failed, attempts exhausted).
+     * These are kept longer than delivered ones so `webhooks:retry` can replay them
+     * after an n8n outage — but not forever, or they grow unbounded. A month-old
+     * undelivered notification is stale; pruning it bounds the table.
+     */
+    public int $deadLetteredWebhookDays = 30;
+
     public function __construct()
     {
         parent::__construct();
@@ -36,6 +44,11 @@ class Retention extends BaseConfig
         $webhook = env('RETENTION_DELIVERED_WEBHOOK_DAYS');
         if ($webhook !== null && $webhook !== '') {
             $this->deliveredWebhookDays = (int) $webhook;
+        }
+
+        $deadLettered = env('RETENTION_DEADLETTERED_WEBHOOK_DAYS');
+        if ($deadLettered !== null && $deadLettered !== '') {
+            $this->deadLetteredWebhookDays = (int) $deadLettered;
         }
     }
 }

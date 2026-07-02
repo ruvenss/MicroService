@@ -524,8 +524,12 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
    both accept an `Idempotency-Key` so n8n retries replay the first response.
 5. **Retention/purge — implemented for the transient tables.** `php spark maintenance:prune`
    (`--dry-run` to preview; run on a schedule) purges **expired `idempotency_keys`**, **`api_request_log`**
-   older than `RETENTION_ACCESS_LOG_DAYS` (default 30), and **delivered `webhook_outbox`** rows older
-   than `RETENTION_DELIVERED_WEBHOOK_DAYS` (default 7) — see `Config\Retention` and
+   older than `RETENTION_ACCESS_LOG_DAYS` (default 30), **delivered `webhook_outbox`** rows older
+   than `RETENTION_DELIVERED_WEBHOOK_DAYS` (default 7), and **dead-lettered `webhook_outbox`** rows
+   (status=failed, attempts exhausted) older than `RETENTION_DEADLETTERED_WEBHOOK_DAYS` (default 30) —
+   the longer window keeps them replayable by `webhooks:retry` after an n8n outage while still bounding
+   the table (previously dead-letters accumulated forever). Rows still *inside* the retry pipeline
+   (attempts &lt; maxAttempts) are never dropped mid-retry. See `Config\Retention` and
    `App\Libraries\Maintenance\Pruner`, covered by `MaintenancePruneTest`. `audit_log` (compliance trail)
    and `archived_records` (restorable recycle bin) are **deliberately never auto-pruned**; their
    long-term retention/rollup remains an ops policy decision.

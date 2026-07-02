@@ -79,6 +79,33 @@ final class MaintenancePruneTest extends CIUnitTestCase
         $this->assertSame(2, $db->table('webhook_outbox')->countAllResults());
     }
 
+    public function testPrunesOldDeadLetteredWebhooksButKeepsRetriableAndRecent(): void
+    {
+        $db   = $this->db();
+        $base = ['event' => 'products.afterCreate', 'resource' => 'products', 'target_url' => 'https://x', 'payload_json' => '{}', 'signature' => '', 'delivered_at' => null];
+        // Exhausted (attempts >= maxAttempts 5) and stale → pruned.
+        $db->table('webhook_outbox')->insert($base + ['status' => 'failed', 'attempts' => 5, 'created_at' => $this->daysAgo(40)]);
+        // Exhausted but recent → kept (still within the replay window).
+        $db->table('webhook_outbox')->insert($base + ['status' => 'failed', 'attempts' => 5, 'created_at' => $this->daysAgo(2)]);
+        // Old but still in the retry pipeline (attempts < 5) → kept, never dropped mid-retry.
+        $db->table('webhook_outbox')->insert($base + ['status' => 'failed', 'attempts' => 2, 'created_at' => $this->daysAgo(40)]);
+
+        $this->assertSame(1, Pruner::pruneDeadLetteredWebhooks(30, 5));
+        $this->assertSame(2, $db->table('webhook_outbox')->countAllResults());
+    }
+
+    public function testRunReportsDeadLetterPruneSeparately(): void
+    {
+        $db   = $this->db();
+        $base = ['event' => 'products.afterCreate', 'resource' => 'products', 'target_url' => 'https://x', 'payload_json' => '{}', 'signature' => '', 'delivered_at' => null];
+        $db->table('webhook_outbox')->insert($base + ['status' => 'failed', 'attempts' => 5, 'created_at' => $this->daysAgo(60)]);
+
+        $counts = Pruner::run(new Retention());
+        $this->assertArrayHasKey('webhook_outbox_deadletter', $counts);
+        $this->assertSame(1, $counts['webhook_outbox_deadletter']);
+        $this->assertSame(0, $db->table('webhook_outbox')->countAllResults());
+    }
+
     public function testDryRunReportsButChangesNothing(): void
     {
         $this->idempotency(['created_at' => $this->daysAgo(2), 'expires_at' => $this->daysAgo(1)]);
