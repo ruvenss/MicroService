@@ -67,6 +67,13 @@ final class DiscoveryTest extends FeatureTestCase
             }
         }
 
+        // The primary key (for /{id} operations + cursor pagination) is advertised —
+        // n8n must not assume "id" since the engine is generic over the key.
+        $this->assertSame('id', $products['primaryKey']);
+
+        // The default ordering when no sort is sent, so n8n knows how a page is ordered.
+        $this->assertSame('-created_at', $products['defaultSort']);
+
         // n8n can discover that PUT upsert is available and by which key.
         $this->assertSame('sku', $products['upsertKey']);
 

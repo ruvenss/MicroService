@@ -42,6 +42,10 @@ class Discovery extends BaseController
             $data[] = [
                 'resource'   => $slug,
                 'endpoint'   => "/api/v1/{$slug}",
+                // The id field for GET/PATCH/PUT/DELETE `/{id}` and for cursor pagination
+                // (which iterates by it). Not always `id` — the engine is generic over
+                // the primary key — so n8n must read it here rather than assume.
+                'primaryKey' => $definition->primaryKey,
                 'fields'     => $definition->outputColumns(),
                 'writable'   => $definition->fillable,
                 // Per-field input schema (type + required) so a client — e.g. an n8n
@@ -53,6 +57,9 @@ class Discovery extends BaseController
                 'sortable'   => $this->withPrimaryKey($definition->sortable, $definition->primaryKey),
                 'filterable' => $this->withPrimaryKey($definition->filterable, $definition->primaryKey),
                 'operators'  => QueryParser::OPERATORS,
+                // Default ordering when the client sends no `sort`, so n8n knows how an
+                // unsorted page is ordered (e.g. `-created_at` = newest first).
+                'defaultSort' => $definition->defaultSort,
                 // Natural key for PUT upsert (null = upsert not supported here).
                 'upsertKey'  => $definition->upsertKey,
                 'perPage'    => ['default' => $definition->perPageDefault, 'max' => $definition->perPageMax],
