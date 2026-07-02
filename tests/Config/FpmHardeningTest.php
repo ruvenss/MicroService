@@ -18,14 +18,23 @@ final class FpmHardeningTest extends CIUnitTestCase
         return dirname(__DIR__, 2);
     }
 
-    public function testFpmPoolDisablesShellAndProcessFunctions(): void
+    public function testFpmPoolDoesNotSetDisableFunctions(): void
     {
+        // `php_admin_value[disable_functions]` is deliberately NOT set: on this PHP 8.5
+        // build it corrupted the internal function table, making CodeIgniter's
+        // render_backtrace run `var_export()` as `memory_reset_peak_usage()` and throw
+        // ArgumentCountError while rendering ANY exception with arguments — masking every
+        // real 500 in the logs and once leaking an open transaction (a 30s lock hang).
+        // Re-adding it would reintroduce that, so guard the removal. (Equivalent shell/
+        // process-exec hardening belongs at the container seccomp layer — see
+        // ARCHITECTURE §18.3.) Only *active* (uncommented) directives count.
         $conf = (string) file_get_contents($this->root() . '/docker/php/www.conf');
 
-        $this->assertMatchesRegularExpression('/^\s*php_admin_value\[disable_functions\]\s*=/m', $conf);
-        foreach (['exec', 'passthru', 'shell_exec', 'system', 'proc_open', 'popen'] as $fn) {
-            $this->assertMatchesRegularExpression('/disable_functions\][^\n]*\b' . $fn . '\b/', $conf, "{$fn} must be disabled for FPM");
-        }
+        $this->assertDoesNotMatchRegularExpression(
+            '/^\s*php_admin_value\[disable_functions\]\s*=/m',
+            $conf,
+            'disable_functions must stay unset — it corrupts render_backtrace on PHP 8.5 and masks all error logs.',
+        );
     }
 
     public function testErrorsAreNeverDisplayed(): void

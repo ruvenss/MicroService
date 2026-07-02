@@ -1023,14 +1023,17 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   place); production `CI_ENVIRONMENT=production` disables verbose CI error pages.
 - `display_errors = Off` **and** `display_startup_errors = Off` — no PHP error (runtime or worker
   startup) can ever reach a response; errors are logged, never shown.
-- **Shell/process functions disabled for the web workers:** the FPM pool sets
-  `php_admin_value[disable_functions] = exec,passthru,shell_exec,system,proc_open,popen,pcntl_exec`
-  (enforced — `ini_set` cannot undo `php_admin_value`). The generic engine is pure DB/cache/HTTP (Predis
-  uses stream sockets), so this costs nothing, but if a vulnerability ever reached code execution it
-  still could not spawn a shell — the "in case it is exposed" blast-radius limiter. It applies **only to
-  FPM**; spark/CLI (a separate `php` invocation) keeps full function access for migrations/tooling.
-  Verified in-container: `system()` is a fatal in a web request, `proc_open` still works under CLI.
-  `FpmHardeningTest` guards the config against regression.
+- **Shell/process functions — hardening intentionally NOT done via `disable_functions`.** It was
+  originally set (`exec,passthru,shell_exec,system,proc_open,popen,pcntl_exec`), but on this PHP 8.5
+  build `disable_functions` **corrupts the internal function table**: CodeIgniter's `render_backtrace`
+  ran `var_export($arg, true)` as `memory_reset_peak_usage($arg, true)` and threw `ArgumentCountError`
+  while rendering **any** exception carrying arguments. The blast radius was app-wide — every 500 was
+  logged as that bogus error instead of the real cause (a total error-log blind spot), and the aborted
+  exception path once leaked an open transaction (a 30s lock-wait hang, §17). Since the generic engine
+  never shells out, the block was only thin defence-in-depth and not worth breaking all error handling,
+  so it was **removed** (`FpmHardeningTest` now guards that it stays unset). The equivalent
+  "cannot spawn a shell if compromised" guarantee should be provided the non-corrupting way — a
+  **container seccomp profile** denying `execve`/`fork` (Docker `security_opt`) — a clean follow-up.
 - Error responses are JSON/problem+json — no stack traces or framework branding leak in production.
 
 > **Tested:** `tests/Api/StealthHeadersTest.php` and `NotFoundTest.php` assert no PHP/CodeIgniter/
