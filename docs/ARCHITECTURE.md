@@ -1101,8 +1101,13 @@ The service is consumed by **n8n** workflows (HTTP Request nodes), which shapes 
   Covered by `DocsGeneratorTest`.
 - **Outbound webhooks (implemented):** on a resource mutation the framework enqueues a signed event to
   a **transactional outbox** (`webhook_outbox`) for each matching subscription (`Config\Webhooks`
-  / `WEBHOOK_URL`), and `php spark webhooks:dispatch` (run on a schedule) POSTs them to the n8n webhook
-  node. **Delivery headers (n8n contract):** `X-Signature` = **`sha256=<hex>`**, the HMAC-SHA256 of the
+  / `WEBHOOK_URL`), and `php spark webhooks:dispatch` POSTs them to the n8n webhook
+  node. **The stack runs that automatically:** a **scheduler sidecar** (`docker/scheduler.sh`, a
+  compose service on the same image running the spark CLI instead of Apache) loops `webhooks:dispatch`
+  every `DISPATCH_INTERVAL` seconds (default 30) and runs `maintenance:prune` daily — so the app
+  container stays single-purpose (HTTP only) while delivery + retention happen out of band. Without it,
+  enqueued webhooks would never leave the outbox. (Dead-letter replay, `webhooks:retry`, is deliberately
+  *not* automated — it's a manual step after an n8n outage so a still-down endpoint isn't hammered.) **Delivery headers (n8n contract):** `X-Signature` = **`sha256=<hex>`**, the HMAC-SHA256 of the
   raw body keyed with the subscription secret — algorithm-tagged in the GitHub/Stripe/Svix style so a
   receiver knows the scheme without out-of-band knowledge and the header stays forward-compatible if the
   digest ever changes. To verify in n8n: strip the `sha256=` prefix and compare (constant-time) against

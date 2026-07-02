@@ -16,6 +16,7 @@ services:
       dockerfile: docker/Dockerfile
       args:
         PHP_VERSION: ${PHP_VERSION:-8.5}
+    image: microservice/app:latest
     container_name: microservice-app
     restart: unless-stopped
     ports:
@@ -23,7 +24,7 @@ services:
     # Config via UNDERSCORE-named env vars — dotted CI keys (database.default.*)
     # do not propagate through Apache/mod_php; the app maps these in Config\App /
     # Config\Database. The external DB never lives in this stack.
-    environment:
+    environment: &app-env
       CI_ENVIRONMENT: production
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080/}
       DB_HOST: ${DB_HOST:-host.docker.internal}
@@ -55,3 +56,26 @@ services:
     container_name: microservice-app-redis
     restart: unless-stopped
     command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+
+  # Scheduler sidecar — same image, runs the spark CLI instead of Apache. Delivers
+  # queued webhooks to n8n (webhooks:dispatch) on a short interval and prunes the
+  # transient tables daily (maintenance:prune). Without it, enqueued webhooks would
+  # never leave the outbox. Shares the app's env via the &app-env anchor so it reaches
+  # the same DB / Redis / webhook config.
+  scheduler:
+    image: microservice/app:latest
+    container_name: microservice-app-scheduler
+    restart: unless-stopped
+    command: ["/usr/local/bin/scheduler.sh"]
+    # The image HEALTHCHECK probes Apache, which this service doesn't run — disable it so
+    # the worker isn't falsely marked unhealthy.
+    healthcheck:
+      disable: true
+    environment:
+      <<: *app-env
+      DISPATCH_INTERVAL: "${DISPATCH_INTERVAL:-30}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - app
+      - redis

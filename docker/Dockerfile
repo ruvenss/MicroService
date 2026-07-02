@@ -39,7 +39,10 @@ COPY docker/apache/microservice.conf /etc/apache2/sites-available/000-default.co
 COPY docker/apache/stealth.conf /etc/apache2/conf-enabled/zz-stealth.conf
 COPY docker/apache/compression.conf /etc/apache2/conf-enabled/zz-compression.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# Scheduler-sidecar worker (webhooks:dispatch + daily maintenance:prune). Same image,
+# run as a separate compose service with `command: scheduler.sh` instead of Apache.
+COPY docker/scheduler.sh /usr/local/bin/scheduler.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/scheduler.sh
 
 # --- Application ------------------------------------------------------------
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
