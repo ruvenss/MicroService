@@ -38,7 +38,10 @@ final class OpenApiGenerator
                     . "Reads carry an ETag — pass it back as If-None-Match for a 304 Not Modified. "
                     . "Every GET endpoint also answers HEAD (same status/headers, no body).",
             ],
-            'servers'    => [['url' => $serverUrl]],
+            // Templated server so a human can point Swagger UI / an OpenAPI client at
+            // their own deployment (host + scheme) without editing the spec — the
+            // committed default stays deterministic (localhost) so docs:check never drifts.
+            'servers'    => [self::server($serverUrl)],
             'security'   => [['bearerAuth' => []]],
             'components' => [
                 'securitySchemes' => [
@@ -60,6 +63,29 @@ final class OpenApiGenerator
                 ],
             ],
             'paths' => $paths,
+        ];
+    }
+
+    /**
+     * An OpenAPI server with overridable `scheme` + `host` variables, defaulted from
+     * `$serverUrl`. Swagger UI (and OpenAPI-aware clients) render these as editable
+     * fields, so a human tests their own deployment without touching the spec.
+     *
+     * @return array<string, mixed>
+     */
+    private static function server(string $serverUrl): array
+    {
+        $parts  = parse_url($serverUrl);
+        $scheme = $parts['scheme'] ?? 'http';
+        $host   = ($parts['host'] ?? 'localhost') . (isset($parts['port']) ? ':' . $parts['port'] : '');
+
+        return [
+            'url'         => '{scheme}://{host}',
+            'description' => 'Set host (and scheme) to your deployment; defaults to the local dev server.',
+            'variables'   => [
+                'scheme' => ['default' => $scheme, 'enum' => ['http', 'https']],
+                'host'   => ['default' => $host],
+            ],
         ];
     }
 

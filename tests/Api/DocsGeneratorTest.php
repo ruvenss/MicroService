@@ -205,6 +205,19 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertStringNotContainsString('{{', (string) $openapi);
     }
 
+    public function testOpenApiServerIsOverridable(): void
+    {
+        // A human testing a real deployment via Swagger UI shouldn't have to edit the
+        // spec: the server is templated with overridable host/scheme variables, defaulted
+        // to the local dev server so the committed spec stays deterministic.
+        $server = OpenApiGenerator::generate()['servers'][0];
+
+        $this->assertSame('{scheme}://{host}', $server['url']);
+        $this->assertSame('localhost:8080', $server['variables']['host']['default']);
+        $this->assertSame('http', $server['variables']['scheme']['default']);
+        $this->assertContains('https', $server['variables']['scheme']['enum']);
+    }
+
     public function testMarkdownReferenceContainsResources(): void
     {
         $md = MarkdownGenerator::generate();

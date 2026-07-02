@@ -7,7 +7,20 @@
     },
     "servers": [
         {
-            "url": "http://localhost:8080"
+            "url": "{scheme}://{host}",
+            "description": "Set host (and scheme) to your deployment; defaults to the local dev server.",
+            "variables": {
+                "scheme": {
+                    "default": "http",
+                    "enum": [
+                        "http",
+                        "https"
+                    ]
+                },
+                "host": {
+                    "default": "localhost:8080"
+                }
+            }
         }
     ],
     "security": [

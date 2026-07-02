@@ -54,7 +54,9 @@ curl -s "http://localhost:8080/api/v1/products?filter[status]=active&sort=-creat
   collection repeatedly** without hitting duplicate-value errors.
 - **OpenAPI / Swagger UI:** the spec is `public/docs/openapi.json` (served via `php spark serve`
   in dev; excluded from the production image on purpose). It documents request **and** response
-  schemas, error codes, and the `X-RateLimit-*` / `ETag` / `Link` headers.
+  schemas, error codes, and the `X-RateLimit-*` / `ETag` / `Link` headers. The server URL is a
+  templated `{scheme}://{host}` — in Swagger UI set **host** (and **scheme**) to your deployment to
+  try endpoints against it without editing the spec.
 - **Discovery:** `GET /api/v1/_resources` returns, per resource the key can access, its writable
   schema (types + enums), filter/sort columns, `upsertKey`, `perPage`, and `bulkMax` — enough for
   an n8n node to auto-build requests. `GET /api/v1/_me` introspects the key itself.
