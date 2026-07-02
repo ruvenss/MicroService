@@ -160,4 +160,46 @@ final class QueryParserTest extends CIUnitTestCase
         $this->assertFalse($spec->isValid());
         $this->assertStringContainsString('bogus', $spec->errors[0]);
     }
+
+    public function testDatetimeFilterIsNormalisedToNaiveUtc(): void
+    {
+        // A datetime value is normalised to naive UTC `Y-m-d H:i:s`, so the DB
+        // comparison is correct on any MySQL 8 regardless of the server's session
+        // time_zone or version — not delegated to MySQL's offset parsing (8.0.19+).
+        // This is the n8n incremental-sync path: filter[updated_at][gte]=<prior ISO>.
+        $cases = [
+            '2026-07-02T04:16:17.000Z'  => '2026-07-02 04:16:17', // Zulu + fractional seconds
+            '2026-07-02T04:16:17Z'      => '2026-07-02 04:16:17', // Zulu
+            '2026-07-02T06:16:17+02:00' => '2026-07-02 04:16:17', // numeric offset → converted to UTC
+            '2026-07-02 04:16:17'       => '2026-07-02 04:16:17', // already naive → read as UTC
+            '2026-07-02'                => '2026-07-02 00:00:00', // bare date
+        ];
+
+        foreach ($cases as $input => $expected) {
+            $spec = QueryParser::parse(['filter' => ['created_at' => ['gte' => $input]]], $this->definition());
+            $this->assertTrue($spec->isValid(), "should accept {$input}");
+            $this->assertSame($expected, $spec->filters[0]['value'], "normalise {$input}");
+        }
+    }
+
+    public function testDatetimeInOperatorNormalisesEachValue(): void
+    {
+        $spec = QueryParser::parse(
+            ['filter' => ['created_at' => ['in' => '2026-07-02T00:00:00Z,2026-07-03T02:00:00+02:00']]],
+            $this->definition(),
+        );
+
+        $this->assertTrue($spec->isValid());
+        $this->assertSame(['2026-07-02 00:00:00', '2026-07-03 00:00:00'], $spec->filters[0]['value']);
+    }
+
+    public function testDatetimeLikeKeepsTheRawLiteral(): void
+    {
+        // `like` is a substring match on the textual form (e.g. group a day/month),
+        // so it must NOT be normalised into a full timestamp.
+        $spec = QueryParser::parse(['filter' => ['created_at' => ['like' => '2026-07']]], $this->definition());
+
+        $this->assertTrue($spec->isValid());
+        $this->assertSame('2026-07', $spec->filters[0]['value']);
+    }
 }

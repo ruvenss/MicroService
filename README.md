@@ -68,7 +68,9 @@ Two directions:
 
 - **n8n → API (pull):** an n8n **HTTP Request** node calls `/api/v1/{resource}` with
   `Authorization: Bearer <key>`; use `_resources` (above) to auto-build the request, cursor pagination
-  (`?cursor=`) or the `Link` header to page, and `filter[updated_at][gte]=<ISO>` for incremental sync.
+  (`?cursor=`) or the `Link` header to page, and `filter[updated_at][gte]=<ISO>` for incremental sync
+  (any ISO-8601 form n8n emits — `Z`, a `+02:00` offset, fractional seconds — is normalised to UTC
+  server-side, so the comparison is correct regardless of your MySQL server's time zone).
 - **API → n8n (push):** set `WEBHOOK_URL` in `.env` to your n8n **Webhook** node's URL. On every
   create/update/delete the service enqueues a signed event to a transactional outbox, and the
   **scheduler sidecar** delivers it automatically (within `DISPATCH_INTERVAL`, default 30 s) — no cron

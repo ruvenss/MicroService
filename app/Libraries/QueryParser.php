@@ -76,7 +76,7 @@ final class QueryParser
 
                         continue;
                     }
-                    $filters[] = self::buildFilter((string) $column, $operator, $value);
+                    $filters[] = self::buildFilter((string) $column, $operator, $value, $definition->casts[$column] ?? null);
                 }
 
                 continue;
@@ -87,7 +87,7 @@ final class QueryParser
 
                 continue;
             }
-            $filters[] = self::buildFilter((string) $column, 'eq', $spec);
+            $filters[] = self::buildFilter((string) $column, 'eq', $spec, $definition->casts[$column] ?? null);
         }
 
         return $filters;
@@ -160,15 +160,52 @@ final class QueryParser
      *
      * @return array{column: string, operator: string, value: mixed}
      */
-    private static function buildFilter(string $column, string $operator, $value): array
+    private static function buildFilter(string $column, string $operator, $value, ?string $cast = null): array
     {
+        // A datetime column's value is normalised to naive UTC (see normalizeDate),
+        // except for `like`, which is a substring match on the textual form (e.g.
+        // filter[created_at][like]=2026-07) and must keep the caller's literal.
+        $normalizeDates = $cast === 'datetime' && $operator !== 'like';
+
         if ($operator === 'in' || $operator === 'nin') {
             $value = is_array($value) ? array_values($value) : explode(',', (string) $value);
+            if ($normalizeDates) {
+                $value = array_map(static fn ($v): string => self::normalizeDate((string) $v), $value);
+            }
         } else {
             $value = is_array($value) ? implode(',', $value) : (string) $value;
+            if ($normalizeDates) {
+                $value = self::normalizeDate($value);
+            }
         }
 
         return ['column' => $column, 'operator' => $operator, 'value' => $value];
+    }
+
+    /**
+     * Normalise any accepted ISO-8601 form — a trailing `Z`, a numeric offset
+     * (`+02:00`), fractional seconds, a bare date, or an already-naive `Y-m-d H:i:s`
+     * — to a naive **UTC** `Y-m-d H:i:s` literal.
+     *
+     * Stored timestamps are naive UTC (appTimezone = UTC), so comparing against a
+     * naive-UTC literal is correct on ANY MySQL 8, regardless of the (external,
+     * operator-controlled) server's session `time_zone` or exact version. Passing the
+     * raw literal instead would delegate correctness to MySQL parsing offsets (only
+     * since 8.0.19) and converting them via a session TZ that may not be UTC — an
+     * off-by-hours incremental-sync bug for an n8n workflow whose timestamps carry an
+     * offset. A naive input is read as UTC (the API's timezone); an offset-bearing
+     * input is honoured and converted to UTC. Value is pre-validated by
+     * isParseableDate; if parsing somehow throws, fall back to the caller's literal.
+     */
+    private static function normalizeDate(string $value): string
+    {
+        try {
+            return (new \DateTimeImmutable($value, new \DateTimeZone('UTC')))
+                ->setTimezone(new \DateTimeZone('UTC'))
+                ->format('Y-m-d H:i:s');
+        } catch (\Exception) {
+            return $value;
+        }
     }
 
     /**
