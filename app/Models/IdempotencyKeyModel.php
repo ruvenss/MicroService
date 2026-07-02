@@ -58,11 +58,18 @@ class IdempotencyKeyModel extends Model
         $now = date('Y-m-d H:i:s');
 
         try {
+            // Truncate the stored metadata to its column widths (method→8, path→255). The
+            // path can exceed 255 on a write to a long URL, and under STRICT_TRANS_TABLES
+            // that insert is REJECTED — which the catch below would misread as a
+            // duplicate-key (concurrent claim) and answer a permanent 409 "in progress".
+            // These are observability columns only; the replay/conflict decision uses
+            // `request_hash` (computed over the FULL method+path+body), so truncating them
+            // changes nothing but keeps the insert from failing on length.
             $this->insert([
                 'api_key_id'      => $apiKeyId,
                 'idem_key'        => $idemKey,
-                'method'          => $method,
-                'path'            => $path,
+                'method'          => mb_substr($method, 0, 8),
+                'path'            => mb_substr($path, 0, 255),
                 'request_hash'    => $hash,
                 'response_status' => self::PENDING_STATUS,
                 'response_type'   => '',

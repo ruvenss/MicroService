@@ -61,6 +61,26 @@ final class IdempotencyTest extends FeatureTestCase
         $this->withHeaders($this->auth)->delete("api/v1/products/{$id}")->assertStatus(404);
     }
 
+    public function testLongPathWriteWithKeyIsNotMisclassifiedAsA409Conflict(): void
+    {
+        // A write to a >255-char path with an Idempotency-Key: the claim row's `path`
+        // column is VARCHAR(255), so under STRICT_TRANS_TABLES an untruncated insert is
+        // rejected — and claim()'s catch (which assumes any failure is a concurrent
+        // duplicate-key) would answer 409 "in progress" AND stay stuck there on every
+        // retry, so the request could NEVER succeed. It must resolve normally instead.
+        db_connect()->query("SET SESSION sql_mode = 'STRICT_TRANS_TABLES'");
+
+        $headers  = $this->auth + ['Idempotency-Key' => 'longpath-1'];
+        $longPath = 'api/v1/products/' . str_repeat('a', 300); // ~316 chars, no such row
+
+        $first = $this->withHeaders($headers)->delete($longPath);
+        $this->assertSame(404, $first->response()->getStatusCode(), 'a missing row is 404, not a 409 idempotency conflict');
+
+        // And a retry is not wedged at 409 either (replays the stored 404).
+        $retry = $this->withHeaders($headers)->delete($longPath);
+        $this->assertNotSame(409, $retry->response()->getStatusCode());
+    }
+
     public function testSameKeyDifferentRequestReturns422(): void
     {
         $headers = $this->auth + ['Idempotency-Key' => 'n8n-run-2'];
