@@ -21,8 +21,14 @@ use Throwable;
  *     dependency is touched, so an orchestrator never restarts the container just
  *     because the DB or cache blipped (that is a readiness concern). Always 200.
  *   - default / `?probe=ready` — **readiness**: can we actually serve traffic?
- *     Pings the external database and the cache backend (Redis in prod); returns
- *     200 when all are up, else 503 with per-check status.
+ *     Pings the external database and the active cache backend (Redis in prod,
+ *     transparently the file fallback if Redis is unreachable); returns 200 when
+ *     all are up, else 503 with per-check status. A Redis blip degrades to the file
+ *     cache but never fails readiness, since the app keeps serving.
+ *
+ * Readiness is per replica: each instance reports its OWN reachability, and the
+ * short result cache is keyed by hostname (see readinessCacheKey()) so a sibling's
+ * cached result is never served in its place.
  */
 class Health extends BaseController
 {
@@ -81,9 +87,10 @@ class Health extends BaseController
     private function readiness(): array
     {
         $store = service('cache');
+        $key   = $this->readinessCacheKey();
 
         try {
-            $cached = $store->get('health_readiness');
+            $cached = $store->get($key);
             if (is_array($cached) && isset($cached['database'], $cached['cache'])) {
                 return [(bool) $cached['database'], (bool) $cached['cache']];
             }
@@ -95,12 +102,27 @@ class Health extends BaseController
         $cache    = $this->checkCache();
 
         try {
-            $store->save('health_readiness', ['database' => $database, 'cache' => $cache], self::READINESS_TTL);
+            $store->save($key, ['database' => $database, 'cache' => $cache], self::READINESS_TTL);
         } catch (Throwable) {
             // Best effort — never fail the probe over caching bookkeeping.
         }
 
         return [$database, $cache];
+    }
+
+    /**
+     * Per-replica key for the short-lived readiness result.
+     *
+     * The result cache lives in the shared cache service (Redis in prod), so it MUST
+     * be scoped to this instance — otherwise a sibling replica's probe would be served
+     * here: a replica that has lost its DB/cache link would read a healthy sibling's
+     * cached "up" and keep taking traffic it can't serve, and one replica's transient
+     * "degraded" would pull every replica out of rotation. `gethostname()` is the
+     * container id, unique per replica (and per `--scale` instance).
+     */
+    private function readinessCacheKey(): string
+    {
+        return 'health_readiness_' . (gethostname() ?: 'local');
     }
 
     private function checkDatabase(): bool

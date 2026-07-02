@@ -53,12 +53,18 @@ final class ApiHealthTest extends CIUnitTestCase
         $this->get('api/v1/health')->assertStatus(200);
     }
 
+    private function readinessKey(): string
+    {
+        // Mirror Health::readinessCacheKey() — the readiness result is cached per replica.
+        return 'health_readiness_' . (gethostname() ?: 'local');
+    }
+
     public function testReadinessIsServedFromCacheWhenFresh(): void
     {
         // Seed a fresh readiness result marking the DB down. The endpoint must
         // report it straight from cache — without re-probing the (actually up) DB —
         // proving repeated probes don't hit the database each time.
-        cache()->save('health_readiness', ['database' => false, 'cache' => true], 5);
+        cache()->save($this->readinessKey(), ['database' => false, 'cache' => true], 5);
 
         $result = $this->get('api/v1/health');
         $result->assertStatus(503);
@@ -75,8 +81,26 @@ final class ApiHealthTest extends CIUnitTestCase
     public function testLivenessIgnoresTheReadinessCache(): void
     {
         // Even a "degraded" cached readiness must not affect liveness (process-up).
-        cache()->save('health_readiness', ['database' => false, 'cache' => false], 5);
+        cache()->save($this->readinessKey(), ['database' => false, 'cache' => false], 5);
 
         $this->get('api/v1/health?probe=live')->assertStatus(200);
+    }
+
+    public function testReadinessCacheIsPerReplicaNotShared(): void
+    {
+        // Readiness must reflect THIS replica only. Simulate a sibling replica having
+        // written a "DB down" result under the old, un-scoped shared key. In a shared
+        // Redis this would be visible to every instance; a per-replica key must ignore
+        // it and probe our own (healthy) dependencies instead — otherwise a single
+        // replica's DB loss would mark the whole fleet degraded, or (the other way)
+        // a broken replica would ride a healthy sibling's cached "up" and keep taking
+        // traffic it cannot serve.
+        cache()->save('health_readiness', ['database' => false, 'cache' => false], 5);
+
+        $result = $this->get('api/v1/health');
+        $result->assertStatus(200); // fails on the old bare-key code, which would read the sibling's "down"
+
+        $json = json_decode($result->getJSON() ?: '{}', true);
+        $this->assertSame('up', $json['data']['checks']['database']);
     }
 }
