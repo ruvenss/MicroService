@@ -27,7 +27,7 @@ class Archive extends ApiController
         }
 
         $model   = new ArchivedRecordModel();
-        $perPage = max(1, min((int) ($this->request->getGet('perPage') ?? 25), 100));
+        $perPage = $this->pageSize(25, 100);
         $page    = max((int) ($this->request->getGet('page') ?? 1), 1);
 
         if (($resource = $this->request->getGet('resource')) !== null) {

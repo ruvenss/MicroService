@@ -58,4 +58,24 @@ abstract class BaseController extends Controller
         // reuses the same pooled connection.
         db_connect()->transStrict(false);
     }
+
+    /**
+     * Offset-pagination page size from `?perPage`, shared by every list endpoint
+     * (resources, `_audit`, `_archive`) so they behave identically.
+     *
+     * A positive integer is clamped to `[1, $max]`. Anything else — absent, empty,
+     * zero, negative, or non-numeric (e.g. an n8n workflow whose perPage variable is
+     * unset, arriving as `perPage=` → 0) — falls back to `$default` rather than silently
+     * collapsing to 1-row pages (a ~25x round-trip amplification the caller never asked
+     * for). An explicit `perPage=1` is honoured.
+     */
+    protected function pageSize(int $default, int $max): int
+    {
+        $requested = (int) ($this->request->getGet('perPage') ?? 0);
+        if ($requested < 1) {
+            $requested = $default;
+        }
+
+        return min($requested, $max);
+    }
 }

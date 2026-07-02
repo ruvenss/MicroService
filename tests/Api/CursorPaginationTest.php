@@ -153,6 +153,26 @@ final class CursorPaginationTest extends FeatureTestCase
         $this->withHeaders($this->auth)->get('api/v1/products?perPage=100&page=2')->assertStatus(200);
     }
 
+    public function testInvalidPerPageFallsBackToTheDefaultNotOneRowPages(): void
+    {
+        $this->seedProducts(30); // more than the default page (25)
+
+        // A present-but-invalid perPage (empty/zero/negative/non-numeric — e.g. an n8n
+        // workflow with an unset perPage variable) must fall back to the resource default
+        // (25), NOT collapse to 1-row pages (a 25x round-trip amplification).
+        foreach (['perPage=0', 'perPage=-5', 'perPage=abc', 'perPage='] as $q) {
+            $json = json_decode((string) $this->withHeaders($this->auth)->get("api/v1/products?{$q}")->response()->getBody(), true);
+            $this->assertSame(25, $json['meta']['pagination']['perPage'], "{$q} should default to 25");
+            $this->assertCount(25, $json['data'], "{$q} should return a full default page");
+        }
+
+        // An explicit valid perPage is still honoured, and a huge one clamps to max.
+        $one = json_decode((string) $this->withHeaders($this->auth)->get('api/v1/products?perPage=1')->response()->getBody(), true);
+        $this->assertSame(1, $one['meta']['pagination']['perPage']);
+        $huge = json_decode((string) $this->withHeaders($this->auth)->get('api/v1/products?perPage=99999')->response()->getBody(), true);
+        $this->assertSame(100, $huge['meta']['pagination']['perPage']); // clamped to max
+    }
+
     public function testOffsetResponseCarriesRfc8288LinkHeader(): void
     {
         $this->seedProducts(5); // perPage 2 → 3 pages

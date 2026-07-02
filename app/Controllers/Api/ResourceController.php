@@ -948,9 +948,7 @@ class ResourceController extends BaseController
 
     private function perPage(ResourceDefinition $definition): int
     {
-        $requested = (int) ($this->request->getGet('perPage') ?? $definition->perPageDefault);
-
-        return max(1, min($requested, $definition->perPageMax));
+        return $this->pageSize($definition->perPageDefault, $definition->perPageMax);
     }
 
     /**
