@@ -319,6 +319,17 @@ All errors flow through one handler so the shape is guaranteed.
 > → `AtomicPredisHandler::incrementWindow`, one Lua `INCRBY`+`EXPIRE`), so a **concurrent** brute-force
 > burst can't race past the threshold — verified in-container: 30 parallel bad-auth requests yield exactly
 > 30×401 then 429s.
+>
+> **Client-IP trust model (spoofing resistance):** the throttle — and the audit/usage logs — key on
+> `$request->getIPAddress()`, which resolves to the real connection address (`REMOTE_ADDR`) because
+> `Config\App::$proxyIPs` is **empty**. A client-supplied `X-Forwarded-For` / `X-Real-IP` / `Forwarded`
+> header is therefore **ignored**, so an attacker cannot rotate it to mint a fresh throttle bucket per
+> request (bypassing the brute-force guard) or forge audit source IPs. Verified live: 35 bad-auth
+> requests each with a *different* `X-Forwarded-For` still 429'd after 30, and `tests/HTTP/ClientIpTrustTest.php`
+> pins it (with a contrast case proving the assertion isn't vacuous). When deploying behind a proxy/LB you
+> control and you want the *real* client IP recorded, add that proxy's **specific** address/subnet to
+> `proxyIPs` — never a broad range like `0.0.0.0/0`, which would trust the header from anyone and reopen
+> the bypass.
 
 ### 7.1 Key format & verification
 

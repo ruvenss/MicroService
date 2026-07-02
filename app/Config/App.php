@@ -194,6 +194,16 @@ class App extends BaseConfig
      *         '192.168.5.0/24' => 'X-Real-IP',
      *     ]
      *
+     * SECURITY (this microservice): the auth-failure brute-force throttle
+     * (App\Filters\ApiKeyAuth) and the audit/usage logs key on
+     * $request->getIPAddress(). Keeping this EMPTY means that address is always the
+     * real connection address (REMOTE_ADDR) and a client-supplied X-Forwarded-For is
+     * ignored — so an attacker cannot rotate the header to bypass the throttle or
+     * forge audit source IPs. Only add entries when deployed behind a proxy/LB you
+     * control, and scope them to that proxy's *specific* address/subnet. NEVER use a
+     * broad range like '0.0.0.0/0' (or '::/0'): that trusts the header from anyone and
+     * reopens the spoofing bypass. tests/HTTP/ClientIpTrustTest.php pins this.
+     *
      * @var array<string, string>
      */
     public array $proxyIPs = [];
