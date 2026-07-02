@@ -14,10 +14,15 @@ use CodeIgniter\Config\BaseConfig;
  * Deliberately NOT covered here: `audit_log` (the compliance mutation trail) and
  * `archived_records` (the restorable recycle bin) are never auto-pruned — losing
  * them would break auditing / restore guarantees.
+ *
+ * A window of **0 (or less) DISABLES pruning for that table — keep forever**. This is
+ * the safe reading of `RETENTION_*_DAYS=0`, a negative, or a non-numeric env like
+ * `never` (which `(int)` casts to 0): "keep everything", never "delete everything"
+ * (a 0-day cutoff is *now*, which without the guard would wipe the whole table).
  */
 class Retention extends BaseConfig
 {
-    /** Days to keep access-log rows (`api_request_log`). */
+    /** Days to keep access-log rows (`api_request_log`). 0 or less = keep forever. */
     public int $accessLogDays = 30;
 
     /** Days to keep already-delivered webhook rows (`webhook_outbox` status=delivered). */

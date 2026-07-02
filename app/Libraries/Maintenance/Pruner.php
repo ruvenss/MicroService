@@ -51,6 +51,9 @@ final class Pruner
 
     public static function pruneDeliveredWebhooks(int $days, bool $dryRun = false): int
     {
+        if ($days <= 0) {
+            return 0; // retention disabled — see note on cutoff()
+        }
         $cutoff = self::cutoff($days);
         $db     = db_connect();
 
@@ -76,6 +79,9 @@ final class Pruner
      */
     public static function pruneDeadLetteredWebhooks(int $days, int $maxAttempts, bool $dryRun = false): int
     {
+        if ($days <= 0) {
+            return 0; // retention disabled — see note on cutoff()
+        }
         $cutoff = self::cutoff($days);
         $db     = db_connect();
         $where  = static fn () => $db->table('webhook_outbox')
@@ -93,6 +99,9 @@ final class Pruner
 
     private static function pruneOlderThan(string $table, string $column, int $days, bool $dryRun): int
     {
+        if ($days <= 0) {
+            return 0; // retention disabled — see note on cutoff()
+        }
         $cutoff = self::cutoff($days);
         $db     = db_connect();
 
@@ -104,7 +113,16 @@ final class Pruner
         return $count;
     }
 
-    /** Cutoff timestamp: rows older than `now - $days` are eligible. */
+    /**
+     * Cutoff timestamp: rows older than `now - $days` are eligible.
+     *
+     * A retention of **0 or less DISABLES pruning** for that table (keep forever) — the
+     * day-based callers return early before reaching here. This is the safe reading of
+     * `RETENTION_*_DAYS=0` (or a non-numeric env like `never`, which `(int)` casts to 0,
+     * or a negative): "keep everything", NOT "delete everything". Without the guard,
+     * `cutoff(0)` is *now*, so `column < now` would match — and delete — the entire
+     * table. The `max(0, …)` here is belt-and-suspenders for that same reason.
+     */
     private static function cutoff(int $days): string
     {
         return date('Y-m-d H:i:s', time() - max(0, $days) * 86400);

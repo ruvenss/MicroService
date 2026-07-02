@@ -557,7 +557,11 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
    the longer window keeps them replayable by `webhooks:retry` after an n8n outage while still bounding
    the table (previously dead-letters accumulated forever). Rows still *inside* the retry pipeline
    (attempts &lt; maxAttempts) are never dropped mid-retry. See `Config\Retention` and
-   `App\Libraries\Maintenance\Pruner`, covered by `MaintenancePruneTest`. `audit_log` (compliance trail)
+   `App\Libraries\Maintenance\Pruner`, covered by `MaintenancePruneTest`. A retention window of **0 or
+   less disables pruning for that table (keep forever)** — the safe reading of `RETENTION_*_DAYS=0`, a
+   negative, or a non-numeric env like `never` (which `(int)` casts to 0); it is **never** taken as
+   "delete everything", which an unguarded `cutoff(0) = now` would do (the day-based pruners return early,
+   guarded by `MaintenancePruneTest`). `audit_log` (compliance trail)
    and `archived_records` (restorable recycle bin) are **deliberately never auto-pruned**; their
    long-term retention/rollup remains an ops policy decision.
 6. Whether audit/archive payloads need encryption-at-rest or field redaction for sensitive resources.
