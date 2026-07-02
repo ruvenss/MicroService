@@ -53,6 +53,9 @@ curl -s "http://localhost:8080/api/v1/products?filter[status]=active&sort=-creat
   Unique fields (e.g. `sku`) use Postman's `{{$randomUUID}}`, so you can **re-run the whole
   collection repeatedly** without hitting duplicate-value errors — every request, including the
   destructive bulk delete (which creates its own throwaway row to delete), runs green top-to-bottom.
+  Every request is **self-verifying**: it asserts its documented success status and `{data}`/`{meta}`
+  envelope, so the Postman runner (or `newman run`) shows a green check per endpoint — a lightweight
+  smoke/contract test you can point at any deployment, not just a list of status codes.
 - **OpenAPI / Swagger UI:** the spec is `public/docs/openapi.json` (served via `php spark serve`
   in dev; excluded from the production image on purpose). It documents request **and** response
   schemas, error codes, and the `X-RateLimit-*` / `ETag` / `Link` headers. The server URL is a

@@ -140,8 +140,12 @@ final class PostmanGenerator
         $item = ['name' => $ep['summary'], 'request' => $request, 'response' => []];
 
         $events = [];
-        if (($script = self::captureScript($ep)) !== null) {
-            $events[] = ['listen' => 'test', 'script' => ['type' => 'text/javascript', 'exec' => $script]];
+        // Self-verifying test script: assert the documented success status + response
+        // envelope first (so a human running the collection gets a green check per
+        // endpoint, not just a status code), then capture the created id for the chain.
+        $testLines = array_merge(self::assertionScript($ep), self::captureScript($ep) ?? []);
+        if ($testLines !== []) {
+            $events[] = ['listen' => 'test', 'script' => ['type' => 'text/javascript', 'exec' => $testLines]];
         }
         // A pre-request script (e.g. bulk delete creates a throwaway row to delete, so it
         // never removes the row the single-item chain uses).
@@ -153,6 +157,69 @@ final class PostmanGenerator
         }
 
         return $item;
+    }
+
+    /**
+     * A self-verifying test script: assert the response status is a documented success
+     * and the body carries the expected `{data}`/`{meta}` envelope. Turns the collection
+     * into a smoke test a human (or `newman run`) can run against any deployment —
+     * green/red per endpoint, not just a status code. Runs before the id-capture script.
+     *
+     * @param array<string, mixed> $ep
+     *
+     * @return list<string>
+     */
+    private static function assertionScript(array $ep): array
+    {
+        $codes = '[' . implode(', ', self::expectedCodes($ep)) . ']';
+
+        $lines = [
+            'pm.test(' . json_encode('status is a documented success', JSON_UNESCAPED_SLASHES) . ', function () {',
+            "    pm.expect(pm.response.code).to.be.oneOf({$codes});",
+            '});',
+        ];
+
+        // 204 No Content (delete) carries no body to shape-check.
+        if ($ep['successKind'] === 'none') {
+            return $lines;
+        }
+
+        // item → data object; collection → data array; meta varies (e.g. _me has a data
+        // object, _resources a data array, bulk delete only a meta object) so accept
+        // either envelope key.
+        $shape = match ($ep['successKind']) {
+            'collection' => "    pm.expect(body.data, 'data').to.be.an('array');",
+            'item'       => "    pm.expect(body.data, 'data').to.be.an('object');",
+            default      => "    pm.expect(body).to.have.any.keys('data', 'meta');",
+        };
+
+        return array_merge($lines, [
+            'pm.test(' . json_encode('returns the success envelope', JSON_UNESCAPED_SLASHES) . ', function () {',
+            '    var body = pm.response.json();',
+            $shape,
+            '});',
+        ]);
+    }
+
+    /**
+     * HTTP status codes that count as success for this endpoint's Postman example.
+     *
+     * @param array<string, mixed> $ep
+     *
+     * @return list<int>
+     */
+    private static function expectedCodes(array $ep): array
+    {
+        if ($ep['successKind'] === 'none') {
+            return [204];
+        }
+        // The collection-level PUT is the upsert: its example creates a fresh row (201),
+        // but the same endpoint returns 200 when the natural key already exists — both ok.
+        if ($ep['method'] === 'PUT' && ! in_array('id', $ep['pathParams'], true)) {
+            return [200, 201];
+        }
+
+        return [$ep['success']];
     }
 
     /**

@@ -86,7 +86,24 @@
                             "type": "noauth"
                         }
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Introspect the authenticated API key (name, scopes, limits) \u2014 no secret.",
@@ -117,7 +134,24 @@
                         },
                         "description": "Introspect the authenticated API key (name, scopes, limits) \u2014 no secret."
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Discover registered resources and how to query them.",
@@ -148,7 +182,24 @@
                         },
                         "description": "Discover registered resources and how to query them."
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 }
             ]
         },
@@ -217,6 +268,13 @@
                             "script": {
                                 "type": "text/javascript",
                                 "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});",
                                     "if (pm.response.code === 200 && !pm.collectionVariables.get('archiveId')) {",
                                     "    const rows = (pm.response.json() || {}).data;",
                                     "    if (Array.isArray(rows) && rows.length && rows[0].id !== undefined) {",
@@ -258,7 +316,24 @@
                         },
                         "description": "Inspect one archived record (full payload). Scope: archive:read."
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Restore an archived record to its original table.",
@@ -291,7 +366,24 @@
                         },
                         "description": "Restore an archived record to its original table. Scope: archive:write."
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Read the data-mutation audit trail.",
@@ -354,7 +446,24 @@
                         },
                         "description": "Read the data-mutation audit trail. Scope: audit:read."
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 }
             ]
         },
@@ -435,6 +544,13 @@
                             "script": {
                                 "type": "text/javascript",
                                 "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});",
                                     "if (pm.response.code === 200 && !pm.collectionVariables.get('productsId')) {",
                                     "    const rows = (pm.response.json() || {}).data;",
                                     "    if (Array.isArray(rows) && rows.length && rows[0].id !== undefined) {",
@@ -490,6 +606,13 @@
                             "script": {
                                 "type": "text/javascript",
                                 "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([201]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});",
                                     "const ct = pm.response.headers.get(\"Content-Type\") || \"\";",
                                     "if (pm.response.code === 201 && ct.indexOf('json') !== -1) {",
                                     "    const d = pm.response.json().data;",
@@ -537,7 +660,24 @@
                             "raw": "[\n    {\n        \"id\": \"{{productsId}}\",\n        \"sku\": \"{{$randomUUID}}\",\n        \"name\": \"name\",\n        \"price\": 9.99,\n        \"status\": \"active\"\n    }\n]"
                         }
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Bulk archival delete products: send {\"ids\": [...]} (all-or-nothing, max 100, restorable via the recycle bin).",
@@ -578,6 +718,21 @@
                     },
                     "response": [],
                     "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body).to.have.any.keys('data', 'meta');",
+                                    "});"
+                                ]
+                            }
+                        },
                         {
                             "listen": "prerequest",
                             "script": {
@@ -631,7 +786,24 @@
                         },
                         "description": "Fetch one products by id. Scope: products:read."
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Update a products (applies the fields sent).",
@@ -677,7 +849,24 @@
                             "raw": "{\n    \"sku\": \"{{$randomUUID}}\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
                         }
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Update a products (PUT alias of the update operation \u2014 applies the fields sent; clients that default to PUT can use it).",
@@ -723,7 +912,24 @@
                             "raw": "{\n    \"sku\": \"{{$randomUUID}}\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
                         }
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Archival delete (moves the row to the recycle bin).",
@@ -761,7 +967,20 @@
                         },
                         "description": "Archival delete (moves the row to the recycle bin). Scope: products:delete."
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([204]);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "name": "Upsert products by `sku` (create-or-update): send one object or a JSON array; each item matched on sku is updated, others created (all-or-nothing, max 100). meta: {upserted, created, updated}.",
@@ -800,7 +1019,24 @@
                             "raw": "{\n    \"sku\": \"{{$randomUUID}}\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
                         }
                     },
-                    "response": []
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
                 }
             ]
         }

@@ -151,6 +151,60 @@ final class DocsGeneratorTest extends CIUnitTestCase
         $this->assertStringNotContainsString('{{', json_encode(OpenApiGenerator::generate()));
     }
 
+    public function testEveryRequestSelfVerifiesStatusAndEnvelope(): void
+    {
+        // The collection is meant to be a smoke test a human can run: each request must
+        // assert its documented success status + response envelope, so the runner shows a
+        // green check per endpoint (not just a status code). Assertions run before the
+        // id-capture script, so both must coexist in the one test listener.
+        $collection = PostmanGenerator::generate();
+
+        $script = static function (array $req): string {
+            foreach ($req['event'] ?? [] as $e) {
+                if ($e['listen'] === 'test') {
+                    return implode("\n", $e['script']['exec']);
+                }
+            }
+
+            return '';
+        };
+        $find = static function (string $prefix) use ($collection, $script): string {
+            foreach ($collection['item'] as $folder) {
+                foreach ($folder['item'] as $req) {
+                    if (str_starts_with($req['name'], $prefix)) {
+                        return $script($req);
+                    }
+                }
+            }
+
+            return '';
+        };
+
+        // A create asserts 201 + a data object, and still captures the id.
+        $create = $find('Create a products');
+        $this->assertStringContainsString('pm.expect(pm.response.code).to.be.oneOf([201])', $create);
+        $this->assertStringContainsString("to.be.an('object')", $create);
+        $this->assertStringContainsString("pm.collectionVariables.set('productsId'", $create); // capture still present
+
+        // A list asserts 200 + a data array.
+        $list = $find('List products');
+        $this->assertStringContainsString('oneOf([200])', $list);
+        $this->assertStringContainsString("to.be.an('array')", $list);
+
+        // Upsert (collection PUT) may create OR update, so it accepts 200 or 201.
+        $upsert = $find('Upsert products');
+        $this->assertStringContainsString('oneOf([200, 201])', $upsert);
+
+        // Bulk delete returns only a {meta} envelope (no data), so it accepts either key.
+        $bulkDelete = $find('Bulk archival delete');
+        $this->assertStringContainsString("to.have.any.keys('data', 'meta')", $bulkDelete);
+
+        // A 204 delete asserts the status but has no body to shape-check.
+        $delete = $find('Archival delete (moves');
+        $this->assertStringContainsString('oneOf([204])', $delete);
+        $this->assertStringNotContainsString('pm.response.json()', $delete);
+    }
+
     public function testCreateRequestCapturesIdForTheChain(): void
     {
         // The README promises the create → show/update/delete chain "just runs":
