@@ -1070,6 +1070,14 @@ Other fingerprints removed: the session cookie is renamed `ci_session` → `sid`
   same neutral problem+json `404` as any unknown path. `StealthAuditTest` fails if the stock favicon is
   ever re-added (hash compared against the framework default).
 - Dotfiles are denied; directory listing is off; `ServerSignature Off`.
+- **No host-header poisoning of absolute URLs.** The only absolute URL the app emits — the create
+  `Location` header (`site_url()`) — is built from the **fixed `Config\App::$baseURL`** (default
+  `http://localhost:8080/`, set per deployment via `APP_BASE_URL`), never the request `Host`. So a
+  spoofed `Host` / `X-Forwarded-Host` cannot redirect a client or poison a shared cache (verified live:
+  a create with `Host: evil.example.com` still returns `Location: <configured host>/api/v1/…`). An empty
+  `baseURL` would make CI4 auto-detect the host from the request (poisonable), so it is kept fixed;
+  `indexPage` is empty so the URL also carries no `index.php` (§18.1). Pagination `Link` URLs are
+  **relative**, so they are host-independent by construction.
 - **Server-token masking (implemented in the container):** the `Server` header is replaced entirely
   with `MicroService` via mod_security `SecServerSignature`. Two non-obvious requirements, both set in
   `docker/apache/stealth.conf`: `SecRuleEngine On` (with `DetectionOnly` it does not rewrite the
