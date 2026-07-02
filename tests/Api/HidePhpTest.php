@@ -25,6 +25,12 @@ final class HidePhpTest extends CIUnitTestCase
             'bare index.php'             => ['/index.php', true],
             'probe file'                 => ['/phpinfo.php', true],
             'nested php'                 => ['/a/b/config.php', true],
+            // Case-insensitive: `/index.PHP` must not slip past the guard (Apache would
+            // still hand a `.PHP` request to the FPM handler). Pins the regex `i` flag —
+            // dropping it would reopen the bypass while the lowercase cases stayed green.
+            'uppercase .PHP'             => ['/index.PHP', true],
+            'mixed-case .pHp'            => ['/index.pHp', true],
+            'uppercase .PHP path info'   => ['/index.PHP/api/v1/health', true],
             'clean route'                => ['/api/v1/health', false],
             'clean nested'               => ['/api/v1/products/5', false],
             'php only in query'          => ['/api/v1/products?note=evil.php', false],
