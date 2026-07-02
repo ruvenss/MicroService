@@ -567,7 +567,11 @@ Makefile                    # `make build` / `make up` — the auto-docker entry
 > fields are redacted. Read the trail at `GET /api/v1/_audit` (scope `audit:read`), filterable by
 > `?resource=` / `?record_id=`. **Change-data-capture polling:** `?sinceId=N` returns only entries
 > after audit id `N`, **oldest-first**, so an n8n schedule can pull changes in order and resume from the
-> last id it saw — a pull-based complement to the push webhooks (§18). The **per-resource** poll
+> last id it saw — a pull-based complement to the push webhooks (§18). `sinceId` **forces ascending id
+> order and overrides any client `sort`** (e.g. `sort=-id` is ignored): a CDC client advances its cursor
+> to the largest id on the page, so a newest-first page would make it silently skip the older unfetched
+> rows whenever more than one page accrues between polls (pinned by `AuditTrailTest`, verified by
+> mutation). The **per-resource** poll
 > (`?resource=X&sinceId=N` → `WHERE resource=? AND id>? ORDER BY id`) is served by a `(resource, id)`
 > index (`AddAuditResourceIdIndex`; guarded by `AuditLogIndexTest`) so it range-scans instead of
 > filesorting as the trail grows; the all-resources poll rides the primary key. Covered by `AuditTrailTest`.

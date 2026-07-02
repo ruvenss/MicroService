@@ -100,6 +100,38 @@ final class AuditTrailTest extends FeatureTestCase
         $this->assertSame($sorted, $ids);
     }
 
+    public function testSinceIdForcesAscendingEvenWithAConflictingSort(): void
+    {
+        // CDC safety: a client polling `?sinceId=<max id I've seen>` advances the
+        // cursor to the largest id on the page, so it MUST receive rows oldest-first
+        // — otherwise, whenever more than one page of changes accrues between polls,
+        // it takes the newest page's max id and silently skips the older unfetched
+        // rows (lost n8n events). sinceId therefore pins ascending id order and must
+        // ignore a conflicting descending `sort`. Regression guard for that override.
+        $headers = $this->authHeaders(['products:*', 'audit:read']);
+
+        $this->createProduct($headers);
+        $this->createProduct($headers);
+        $this->createProduct($headers);
+        $this->createProduct($headers);
+
+        $all = json_decode((string) $this->withHeaders($headers)->get('api/v1/_audit')->response()->getBody(), true)['data'];
+        $this->assertGreaterThanOrEqual(4, count($all));
+        $cursor = (int) $all[2]['id']; // entries remain on both sides of this
+
+        // Deliberately request a DESCENDING sort alongside sinceId; it must be overridden.
+        $inc = json_decode((string) $this->withHeaders($headers)->get("api/v1/_audit?sinceId={$cursor}&sort=-id")->response()->getBody(), true)['data'];
+        $ids = array_column($inc, 'id');
+
+        $this->assertNotEmpty($ids);
+        foreach ($ids as $id) {
+            $this->assertGreaterThan($cursor, $id);
+        }
+        $sorted = $ids;
+        sort($sorted);
+        $this->assertSame($sorted, $ids, 'sinceId must force ascending id order even when sort=-id is passed (CDC completeness)');
+    }
+
     public function testSinceIdBeyondTheLatestReturnsEmpty(): void
     {
         $headers = $this->authHeaders(['products:*', 'audit:read']);
