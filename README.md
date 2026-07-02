@@ -11,7 +11,9 @@ roadmap in **[docs/PLAN.md](docs/PLAN.md)**.
 
 ## Quickstart
 
-Runs as a Docker image (PHP 8.5 + Apache + Redis); **the database is external**.
+Runs as a Docker image (PHP 8.5 + Apache + Redis); **the database is external**. For the full
+runbook — split into an **infrastructure/deploy** track and a **developer / get-a-bearer-key**
+track — see **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
 ```sh
 cp .env.example .env            # then set MYSQL_* (and WEBHOOK_URL for n8n, optional)
