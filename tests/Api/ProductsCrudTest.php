@@ -124,23 +124,24 @@ final class ProductsCrudTest extends FeatureTestCase
         $this->assertSame('Before', json_decode((string) $this->withHeaders($this->auth)->get("api/v1/products/{$id}")->response()->getBody(), true)['data']['name']);
     }
 
-    public function testFailedMutationDoesNotWedgeSubsequentRequests(): void
+    public function testUpdateToACollidingUniqueValueIsAClean422(): void
     {
-        // A DB error mid-mutation (updating a unique column to a value another row already
-        // has) unwinds without reaching transComplete(), leaving the transaction OPEN on
-        // the pooled pConnect connection holding row locks — the next request on that row
-        // then hangs until the lock times out. The exception handler rolls back any open
-        // transaction, so the connection is returned clean and the next write still works.
+        // Updating a unique column to a value ANOTHER row already has is a validation
+        // conflict, not a server error: the engine derives self-excluding is_unique for
+        // the update from the create rules, so the collision is a clean 422 up front —
+        // instead of slipping past validation and blowing up at the DB unique index (a
+        // misleading 500, and — before the txn-rollback fix — a lock-wait hang).
         $a = $this->create(['sku' => 'LK-A', 'name' => 'A', 'price' => '1.00'])['data']['id'];
         $this->create(['sku' => 'LK-B', 'name' => 'B', 'price' => '1.00']);
 
-        // Collision: set A's sku to the existing 'LK-B' → unique violation.
-        $this->withHeaders($this->auth)->withBodyFormat('json')
-            ->patch("api/v1/products/{$a}", ['sku' => 'LK-B'])->assertStatus(500);
+        $result = $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->patch("api/v1/products/{$a}", ['sku' => 'LK-B']);
+        $result->assertStatus(422);
+        $this->assertArrayHasKey('sku', json_decode((string) $result->response()->getBody(), true)['errors']);
 
-        // The connection is clean: a normal update on the same row still succeeds.
+        // Keeping the row's OWN sku is fine (self is excluded), and a normal update works.
         $this->withHeaders($this->auth)->withBodyFormat('json')
-            ->patch("api/v1/products/{$a}", ['name' => 'Recovered'])->assertStatus(200);
+            ->patch("api/v1/products/{$a}", ['sku' => 'LK-A', 'name' => 'Recovered'])->assertStatus(200);
         $this->assertSame('Recovered', json_decode((string) $this->withHeaders($this->auth)->get("api/v1/products/{$a}")->response()->getBody(), true)['data']['name']);
     }
 

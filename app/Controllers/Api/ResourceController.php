@@ -586,7 +586,7 @@ class ResourceController extends BaseController
                 continue;
             }
             $data      = $this->fireBeforeSave($definition, 'update', $item);
-            $itemError = $this->validateAgainst($data, $definition->updateRules);
+            $itemError = $this->validateAgainst($data, $this->updateRulesWithUniqueness($definition, $idKey));
             if ($itemError !== []) {
                 $errors[$index] = $itemError;
 
@@ -721,7 +721,7 @@ class ResourceController extends BaseController
         }
 
         $data   = $this->fireBeforeSave($definition, 'update', $data);
-        $errors = $this->validateAgainst($data, $definition->updateRules);
+        $errors = $this->validateAgainst($data, $this->updateRulesWithUniqueness($definition, (string) $id));
         if ($errors !== []) {
             return $this->validationProblem($errors);
         }
@@ -1142,6 +1142,29 @@ class ResourceController extends BaseController
         }
 
         return $columns;
+    }
+
+    /**
+     * The update rules with **self-excluding** uniqueness added for every column the
+     * create rules mark `is_unique`. Create validates `is_unique` up front; update
+     * normally can't (a plain `is_unique` would flag the row against its own value), so
+     * a collision with *another* row slipped past validation and blew up at the DB
+     * (unique-index violation → 500). Adding `is_unique[table.col,pk,pkValue]` — unique
+     * except for this row — makes an update collision a clean **422**, matching create,
+     * for any resource, with no per-plugin rule changes.
+     *
+     * @return array<string, string>
+     */
+    private function updateRulesWithUniqueness(ResourceDefinition $definition, string $pkValue): array
+    {
+        $rules = $definition->updateRules;
+        foreach (self::uniqueColumns($definition->createRules) as $column) {
+            $rule       = "is_unique[{$definition->table}.{$column},{$definition->primaryKey},{$pkValue}]";
+            $existing   = $rules[$column] ?? '';
+            $rules[$column] = $existing === '' ? 'permit_empty|' . $rule : $existing . '|' . $rule;
+        }
+
+        return $rules;
     }
 
     private function finishTransaction(\CodeIgniter\Database\BaseConnection $db): ?ResponseInterface

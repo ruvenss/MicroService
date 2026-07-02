@@ -139,6 +139,11 @@ with a default, and writing `NULL` into the latter would 500; treating `null` as
 n8n emits an unmapped optional field) lets the column default apply on create and leaves the value
 unchanged on update. A write that ends up with **no writable fields** (empty body, or only
 unknown/null keys) returns a clean **422**, not the 500 CI4 throws on an empty insert/update.
+**Uniqueness holds on update too:** create validates `is_unique` up front, and the engine derives a
+**self-excluding** `is_unique[table.col,pk,pkValue]` for each such column on update — so changing a
+unique field to a value **another** row already has is a clean `422` (with `pk` excluded, keeping a
+row's own value is fine), instead of slipping past validation and colliding at the DB unique index (a
+misleading `500`). Applies to single and bulk update, for any resource, with no per-plugin rule changes.
 
 ### 5.2 Generic model & controller
 
