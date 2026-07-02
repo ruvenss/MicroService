@@ -3,9 +3,9 @@
 
 help:
 	@echo "build   - build the production app image"
-	@echo "up      - start app + redis (external DB via .env)"
+	@echo "up      - start app + redis + scheduler (external DB via .env)"
 	@echo "down    - stop the app stack"
-	@echo "logs    - tail app logs"
+	@echo "logs    - tail all service logs (app + scheduler = webhook delivery)"
 	@echo "shell   - shell into the app container"
 	@echo "key     - mint an API key inside the container (SCOPES=... NAME=...)"
 	@echo "dev-db  - start the dev MySQL + Redis (docker-compose.dev.yml)"
@@ -21,7 +21,7 @@ down:
 	docker compose down
 
 logs:
-	docker compose logs -f app
+	docker compose logs -f
 
 shell:
 	docker compose exec app bash

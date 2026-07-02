@@ -17,7 +17,7 @@ Runs as a Docker image (PHP 8.5 + Apache + Redis); **the database is external**.
 cp .env.example .env            # then set MYSQL_* (and WEBHOOK_URL for n8n, optional)
 
 make dev-db                     # optional: a local MySQL + Redis to develop against
-make up                         # build + start the app (+ Redis sidecar) on :8080
+make up                         # build + start app + Redis + scheduler sidecar on :8080
 docker compose exec app php spark migrate --all   # create the sample `products` table
 
 curl -s http://localhost:8080/api/v1/health        # {"data":{"status":"ok",...}}
@@ -57,9 +57,23 @@ curl -s "http://localhost:8080/api/v1/products?filter[status]=active&sort=-creat
   schemas, error codes, and the `X-RateLimit-*` / `ETag` / `Link` headers. The server URL is a
   templated `{scheme}://{host}` — in Swagger UI set **host** (and **scheme**) to your deployment to
   try endpoints against it without editing the spec.
-- **Discovery:** `GET /api/v1/_resources` returns, per resource the key can access, its writable
-  schema (types + enums), filter/sort columns, `upsertKey`, `perPage`, and `bulkMax` — enough for
-  an n8n node to auto-build requests. `GET /api/v1/_me` introspects the key itself.
+- **Discovery:** `GET /api/v1/_resources` returns, per resource the key can access, its `primaryKey`,
+  writable schema (types + enums), filter/sort columns, `defaultSort`, `upsertKey`, `perPage`, and
+  `bulkMax` — enough for an n8n node to auto-build requests. `GET /api/v1/_me` introspects the key itself.
+
+## Connect to n8n
+
+Two directions:
+
+- **n8n → API (pull):** an n8n **HTTP Request** node calls `/api/v1/{resource}` with
+  `Authorization: Bearer <key>`; use `_resources` (above) to auto-build the request, cursor pagination
+  (`?cursor=`) or the `Link` header to page, and `filter[updated_at][gte]=<ISO>` for incremental sync.
+- **API → n8n (push):** set `WEBHOOK_URL` in `.env` to your n8n **Webhook** node's URL. On every
+  create/update/delete the service enqueues a signed event to a transactional outbox, and the
+  **scheduler sidecar** delivers it automatically (within `DISPATCH_INTERVAL`, default 30 s) — no cron
+  to wire up. Each POST carries `X-Event: {resource}.{action}`, a stable `X-Webhook-Id` (dedupe), and,
+  when `WEBHOOK_SECRET` is set, `X-Signature: sha256=<hex>` = `HMAC-SHA256(rawBody, secret)` — strip the
+  `sha256=` prefix and compare in a Function node to verify authenticity.
 
 ## API keys
 
