@@ -37,6 +37,30 @@ final class IdempotencyTest extends FeatureTestCase
         $this->assertSame(1, $list['meta']['pagination']['total']);
     }
 
+    public function testRetryReplaysADeleteInsteadOfReExecuting(): void
+    {
+        // n8n commonly retries a DELETE after a network blip. With the same
+        // Idempotency-Key the retry must REPLAY the first 204 — not re-run the delete
+        // and 404 on the now-archived row. (The existing replay test only covers POST;
+        // DELETE is where re-execution would visibly diverge: 204 replay vs 404 redo.)
+        $id = json_decode((string) $this->withHeaders($this->auth)->withBodyFormat('json')
+            ->post('api/v1/products', ['sku' => 'IDEM-DEL', 'name' => 'X', 'price' => '1.00'])
+            ->response()->getBody(), true)['data']['id'];
+
+        $delHeaders = $this->auth + ['Idempotency-Key' => 'del-run-1'];
+
+        $this->withHeaders($delHeaders)->delete("api/v1/products/{$id}")->assertStatus(204);
+
+        $retry = $this->withHeaders($delHeaders)->delete("api/v1/products/{$id}");
+        $retry->assertStatus(204); // replayed, NOT 404
+        $this->assertSame('true', $retry->response()->getHeaderLine('Idempotency-Replayed'));
+
+        // The contrast: without the key the retry re-executes and correctly 404s — the
+        // row is already archived — proving the keyed retry above genuinely replayed
+        // rather than re-running the delete.
+        $this->withHeaders($this->auth)->delete("api/v1/products/{$id}")->assertStatus(404);
+    }
+
     public function testSameKeyDifferentRequestReturns422(): void
     {
         $headers = $this->auth + ['Idempotency-Key' => 'n8n-run-2'];
