@@ -1,0 +1,37 @@
+# ── Editor / tooling ─────────────────────────────────────────────────────
+.vscode
+/.vscode/*
+/.qodo/*
+.qodo
+
+# ── Secrets / environment ────────────────────────────────────────────────
+# Real local credentials live here and must never be committed.
+.env
+.env.local
+*.env.local
+
+# ── Composer / PHP deps ──────────────────────────────────────────────────
+/vendor/
+
+# ── CodeIgniter 4 writable + runtime (created from Phase 0) ──────────────
+/writable/cache/*
+/writable/debugbar/*
+/writable/logs/*
+/writable/session/*
+/writable/uploads/*
+!**/.gitkeep
+
+# ── Tests / build artifacts ──────────────────────────────────────────────
+/phpunit.xml
+.phpunit.cache/
+.phpunit.result.cache
+/build/
+/coverage/
+
+# ── IDE / OS ─────────────────────────────────────────────────────────────
+.DS_Store
+*.swp
+*~
+
+# NOTE: generated API docs (public/docs/, docs/api/) are intentionally NOT
+# ignored — they are committed and CI verifies they are in sync (§16).

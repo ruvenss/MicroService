@@ -1,0 +1,78 @@
+# Disable directory browsing
+Options -Indexes
+
+# ----------------------------------------------------------------------
+# Rewrite engine
+# ----------------------------------------------------------------------
+
+# Turning on the rewrite engine is necessary for the following rules and features.
+# FollowSymLinks must be enabled for this to work.
+<IfModule mod_rewrite.c>
+	Options +FollowSymlinks
+	RewriteEngine On
+
+	# If you installed CodeIgniter in a subfolder, you will need to
+	# change the following line to match the subfolder you need.
+	# http://httpd.apache.org/docs/current/mod/mod_rewrite.html#rewritebase
+	# RewriteBase /
+
+	# Hide the engine: .php requests are answered by the app's HidePhp filter with
+	# a neutral problem+json 404 (same as any unknown path). We do NOT block them
+	# here with `[R=404]` — mod_rewrite's R=404 bypasses ErrorDocument and leaks
+	# Apache's default 404 HTML. Letting the request reach the front controller
+	# keeps the response neutral and engine-agnostic.
+
+	# Normalize trailing slashes transparently (engine-hiding). An external redirect
+	# here would emit Apache's built-in 301 "Moved Permanently" page
+	# (Content-Type: text/html; charset=iso-8859-1) — an unmistakable Apache
+	# fingerprint that also bypasses our problem+json format and security headers.
+	# Instead we hand the request to the front controller, which serves the canonical
+	# path, so `/x/` and `/x` return the identical neutral response. No R=301.
+	RewriteCond %{REQUEST_FILENAME} !-d
+	RewriteRule ^(.+?)/+$ index.php/$1 [L,QSA]
+
+	# NB: the stock CI4 ".htaccess" also ships a "www.example.com -> example.com"
+	# `[R=301]` rule. It is deliberately removed: it emits the same engine-revealing
+	# Apache redirect page, and host canonicalization is meaningless for a machine
+	# API sitting behind n8n. A `www.` host just gets the normal neutral response.
+
+	# Checks to see if the user is attempting to access a valid file,
+	# such as an image or css document, if this isn't true it sends the
+	# request to the front controller, index.php
+	RewriteCond %{REQUEST_FILENAME} !-f
+	RewriteCond %{REQUEST_FILENAME} !-d
+	RewriteRule ^([\s\S]*)$ index.php/$1 [L,NC,QSA]
+
+	# Ensure Authorization header is passed along
+	RewriteCond %{HTTP:Authorization} .
+	RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+	# If we don't have mod_rewrite installed, all 404's
+	# can be sent to index.php, and everything works as normal.
+	ErrorDocument 404 index.php
+</IfModule>
+
+# Disable server signature start
+ServerSignature Off
+# Disable server signature end
+
+# ----------------------------------------------------------------------
+# Anti-fingerprinting + security headers (defense in depth)
+# The Stealth application filter sets these too; doing it here also covers
+# static files served directly by Apache. Full Server-token masking lives in
+# the vhost (ServerTokens Prod) — see docs/ARCHITECTURE.md §18.
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+	Header always unset X-Powered-By
+	Header unset X-Powered-By
+	Header always set X-Content-Type-Options "nosniff"
+	Header always set X-Frame-Options "DENY"
+	Header always set Referrer-Policy "no-referrer"
+</IfModule>
+
+# Deny access to hidden/dotfiles (e.g. anything starting with a dot).
+<FilesMatch "^\.">
+	Require all denied
+</FilesMatch>

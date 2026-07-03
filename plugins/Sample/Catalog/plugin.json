@@ -1,0 +1,15 @@
+{
+    "name": "Sample/Catalog",
+    "version": "1.0.0",
+    "namespace": "Plugins\\Sample\\Catalog",
+    "description": "Sample plugin proving the sealed-core model: contributes the products resource to the generic CRUD engine without touching app/.",
+    "provides": {
+        "resources": [
+            "products"
+        ]
+    },
+    "requires": {
+        "core": "^1.0"
+    },
+    "enabled": true
+}

@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+jobs:
+  quality:
+    name: Static analysis, style & docs drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, mysqli, mbstring
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      - name: Static analysis (PHPStan)
+        run: composer stan
+
+      - name: Coding standard (PHPCS)
+        run: composer cs
+
+      - name: Docs drift gate
+        run: php spark docs:check
+
+      - name: Sealed-core guard
+        run: php spark guard:seal
+
+  tests:
+    name: PHPUnit (external MySQL)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: microservice_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, mysqli, mbstring
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      - name: Point the test database at the MySQL service
+        run: |
+          {
+            echo "database.tests.hostname = 127.0.0.1"
+            echo "database.tests.port = 3306"
+            echo "database.tests.database = microservice_test"
+            echo "database.tests.username = root"
+            echo "database.tests.password = root"
+            echo "database.tests.DBDriver = MySQLi"
+            echo "database.tests.charset = utf8mb4"
+          } > .env
+
+      - name: PHPUnit
+        run: composer test

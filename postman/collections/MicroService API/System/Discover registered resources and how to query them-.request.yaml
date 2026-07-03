@@ -1,0 +1,13 @@
+$kind: http-request
+name: Discover registered resources and how to query them.
+description: Discover registered resources and how to query them.
+url: "{{baseUrl}}/api/v1/_resources"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+  - key: If-None-Match
+    value: ""
+    disabled: true
+    description: Optional. Paste a prior ETag to get 304 Not Modified when unchanged.
+order: 3000

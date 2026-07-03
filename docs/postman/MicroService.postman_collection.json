@@ -1,0 +1,1046 @@
+{
+    "info": {
+        "_postman_id": "b1f6e2a0-0000-4a00-9000-microservice01",
+        "name": "MicroService API",
+        "description": "Generated from the resource registry (php spark docs:generate). Set the `baseUrl` and `apiKey` collection variables. Mint a key with `php spark key:create`. Bearer auth is inherited by every request except health. Success: {data, meta}; errors: RFC 9457 problem+json; rate limits via X-RateLimit-* / 429; reads carry an ETag (resend as If-None-Match for 304); responses carry no PHP/CodeIgniter/Apache fingerprint.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{apiKey}}",
+                "type": "string"
+            }
+        ]
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080",
+            "type": "string"
+        },
+        {
+            "key": "apiKey",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "archiveId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "productsDelId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "productsId",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "System",
+            "item": [
+                {
+                    "name": "Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/health?probe=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "health"
+                            ],
+                            "query": [
+                                {
+                                    "key": "probe",
+                                    "value": "",
+                                    "description": "live = process-only liveness (always 200, no dependencies); ready (default) = readiness, pings database + cache.",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness.",
+                        "auth": {
+                            "type": "noauth"
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Introspect the authenticated API key (name, scopes, limits) \u2014 no secret.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_me"
+                            ]
+                        },
+                        "description": "Introspect the authenticated API key (name, scopes, limits) \u2014 no secret."
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Discover registered resources and how to query them.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_resources",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_resources"
+                            ]
+                        },
+                        "description": "Discover registered resources and how to query them."
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Audit & recycle bin",
+            "item": [
+                {
+                    "name": "List archived (deleted) rows.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_archive?resource=&restored=&page=&perPage=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_archive"
+                            ],
+                            "query": [
+                                {
+                                    "key": "resource",
+                                    "value": "",
+                                    "description": "Optional resource filter.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "restored",
+                                    "value": "",
+                                    "description": "Filter by restoration state: false = still-deleted (restorable), true = already restored. Omit for all.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "",
+                                    "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "perPage",
+                                    "value": "",
+                                    "description": "Items per page (capped per resource).",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "List archived (deleted) rows. Scope: archive:read."
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});",
+                                    "if (pm.response.code === 200 && !pm.collectionVariables.get('archiveId')) {",
+                                    "    const rows = (pm.response.json() || {}).data;",
+                                    "    const pick = Array.isArray(rows) ? (rows.find(function (r) { return r.restored_at === null || r.restored_at === undefined; })) : undefined;",
+                                    "    if (pick && pick.id !== undefined) {",
+                                    "        pm.collectionVariables.set('archiveId', pick.id);",
+                                    "    }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Inspect one archived record (full payload).",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_archive/{{archiveId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_archive",
+                                "{{archiveId}}"
+                            ]
+                        },
+                        "description": "Inspect one archived record (full payload). Scope: archive:read."
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Restore an archived record to its original table.",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_archive/{{archiveId}}/restore",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_archive",
+                                "{{archiveId}}",
+                                "restore"
+                            ]
+                        },
+                        "description": "Restore an archived record to its original table. Scope: archive:write."
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Read the data-mutation audit trail.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/_audit?resource=&record_id=&sinceId=&page=&perPage=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "_audit"
+                            ],
+                            "query": [
+                                {
+                                    "key": "resource",
+                                    "value": "",
+                                    "description": "Optional resource filter.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "record_id",
+                                    "value": "",
+                                    "description": "Optional record id filter.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "sinceId",
+                                    "value": "",
+                                    "description": "Incremental polling: return only entries after this audit id, oldest-first \u2014 poll with the last id you saw (n8n change-data-capture).",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "",
+                                    "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "perPage",
+                                    "value": "",
+                                    "description": "Items per page (capped per resource).",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "Read the data-mutation audit trail. Scope: audit:read."
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Products",
+            "item": [
+                {
+                    "name": "List products.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products?page=&perPage=&cursor=&sort=&fields=&filter[sku]=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "",
+                                    "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "perPage",
+                                    "value": "",
+                                    "description": "Items per page (capped per resource).",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "cursor",
+                                    "value": "",
+                                    "description": "Opt into keyset pagination (stable, index-fast, ideal for n8n). Send the param empty to start, then follow meta.pagination.nextCursor until it is null. Iterates by id; combine only with sort=id / -id.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "sort",
+                                    "value": "",
+                                    "description": "Sort by one or more columns, comma-separated (e.g. -price,name); prefix \"-\" for descending. Allowed: sku, name, price, created_at, updated_at (and id). Any other column is rejected with 400 (not silently ignored).",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "fields",
+                                    "value": "",
+                                    "description": "Comma-separated sparse fieldset. Allowed: id, sku, name, price, status, created_at, updated_at.",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "filter[sku]",
+                                    "value": "",
+                                    "description": "Filter. Columns: sku, status, price, created_at, updated_at. Operators: eq, ne, gt, gte, lt, lte, like, in, nin (e.g. filter[col][gte]=10). Numeric columns require numeric values (a non-numeric value is rejected with 400, never coerced); for like, % and _ match literally.",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "List products. Scope: products:read."
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});",
+                                    "if (pm.response.code === 200 && !pm.collectionVariables.get('productsId')) {",
+                                    "    const rows = (pm.response.json() || {}).data;",
+                                    "    const pick = Array.isArray(rows) ? (rows[0]) : undefined;",
+                                    "    if (pick && pick.id !== undefined) {",
+                                    "        pm.collectionVariables.set('productsId', pick.id);",
+                                    "    }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Create a products record (send a JSON array of objects to bulk-create, all-or-nothing).",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products"
+                            ]
+                        },
+                        "description": "Create a products record (send a JSON array of objects to bulk-create, all-or-nothing). Scope: products:write.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"sku\": \"{{$randomUUID}}\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([201]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});",
+                                    "const ct = pm.response.headers.get(\"Content-Type\") || \"\";",
+                                    "if (pm.response.code === 201 && ct.indexOf('json') !== -1) {",
+                                    "    const d = pm.response.json().data;",
+                                    "    if (d && d.id !== undefined) { pm.collectionVariables.set('productsId', d.id); }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100).",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products"
+                            ]
+                        },
+                        "description": "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100). Scope: products:write.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[\n    {\n        \"id\": \"{{productsId}}\",\n        \"sku\": \"{{$randomUUID}}\",\n        \"name\": \"name\",\n        \"price\": 9.99,\n        \"status\": \"active\"\n    }\n]"
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('array');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Bulk archival delete products: send {\"ids\": [...]} (all-or-nothing, max 100, restorable via the recycle bin).",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products"
+                            ]
+                        },
+                        "description": "Bulk archival delete products: send {\"ids\": [...]} (all-or-nothing, max 100, restorable via the recycle bin). Scope: products:delete.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"ids\": [\"{{productsDelId}}\"]\n}"
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body).to.have.any.keys('data', 'meta');",
+                                    "});"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "// Create a throwaway products to delete, so this destructive demo never",
+                                    "// removes the row the single-item requests use. Its id goes into {{productsDelId}}.",
+                                    "pm.sendRequest({",
+                                    "  url: pm.variables.replaceIn('{{baseUrl}}') + '/api/v1/products',",
+                                    "  method: 'POST',",
+                                    "  header: {",
+                                    "    'Authorization': 'Bearer ' + pm.variables.replaceIn('{{apiKey}}'),",
+                                    "    'Content-Type': 'application/json'",
+                                    "  },",
+                                    "  body: { mode: 'raw', raw: JSON.stringify({\n    sku: 'del-' + Date.now() + '-' + Math.floor(Math.random() * 1e6),\n    name: 'x',\n    price: 1,\n    status: 'active',\n  }) }",
+                                    "}, function (err, res) {",
+                                    "  if (!err && res.code === 201) { pm.collectionVariables.set('productsDelId', res.json().data.id); }",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Fetch one products by id.",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "If-None-Match",
+                                "value": "",
+                                "description": "Optional. Paste a prior ETag to get 304 Not Modified when unchanged.",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products/{{productsId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products",
+                                "{{productsId}}"
+                            ]
+                        },
+                        "description": "Fetch one products by id. Scope: products:read."
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update a products (applies the fields sent).",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "If-Match",
+                                "value": "",
+                                "description": "Optional. Paste the ETag you fetched; the write returns 412 if the record changed since (optimistic concurrency).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products/{{productsId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products",
+                                "{{productsId}}"
+                            ]
+                        },
+                        "description": "Update a products (applies the fields sent). Scope: products:write.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"sku\": \"{{$randomUUID}}\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update a products (PUT alias of the update operation \u2014 applies the fields sent; clients that default to PUT can use it).",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "If-Match",
+                                "value": "",
+                                "description": "Optional. Paste the ETag you fetched; the write returns 412 if the record changed since (optimistic concurrency).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products/{{productsId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products",
+                                "{{productsId}}"
+                            ]
+                        },
+                        "description": "Update a products (PUT alias of the update operation \u2014 applies the fields sent; clients that default to PUT can use it). Scope: products:write.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"sku\": \"{{$randomUUID}}\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Archival delete (moves the row to the recycle bin).",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "If-Match",
+                                "value": "",
+                                "description": "Optional. Paste the ETag you fetched; the write returns 412 if the record changed since (optimistic concurrency).",
+                                "disabled": true
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products/{{productsId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products",
+                                "{{productsId}}"
+                            ]
+                        },
+                        "description": "Archival delete (moves the row to the recycle bin). Scope: products:delete."
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([204]);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Upsert products by `sku` (create-or-update): send one object or a JSON array; each item matched on sku is updated, others created (all-or-nothing, max 100). meta: {upserted, created, updated}.",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Idempotency-Key",
+                                "value": "",
+                                "description": "Optional. Retries with the same key replay the first response (n8n-safe).",
+                                "disabled": true
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "products"
+                            ]
+                        },
+                        "description": "Upsert products by `sku` (create-or-update): send one object or a JSON array; each item matched on sku is updated, others created (all-or-nothing, max 100). meta: {upserted, created, updated}. Scope: products:write.",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"sku\": \"{{$randomUUID}}\",\n    \"name\": \"name\",\n    \"price\": 9.99,\n    \"status\": \"active\"\n}"
+                        }
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test(\"status is a documented success\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                                    "});",
+                                    "pm.test(\"returns the success envelope\", function () {",
+                                    "    var body = pm.response.json();",
+                                    "    pm.expect(body.data, 'data').to.be.an('object');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

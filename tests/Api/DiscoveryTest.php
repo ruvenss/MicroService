@@ -1,0 +1,113 @@
+<?php
+
+declare(strict_types=1);
+
+use Tests\Support\FeatureTestCase;
+
+/**
+ * @internal
+ */
+final class DiscoveryTest extends FeatureTestCase
+{
+    public function testRequiresAuthentication(): void
+    {
+        $this->get('api/v1/_resources')->assertStatus(401);
+    }
+
+    public function testListsRegisteredResourcesWhenAuthenticated(): void
+    {
+        $result = $this->withHeaders($this->authHeaders(['*:read']))->get('api/v1/_resources');
+        $result->assertStatus(200);
+
+        $json     = json_decode((string) $result->response()->getBody(), true);
+        $products = null;
+        foreach ($json['data'] as $entry) {
+            if ($entry['resource'] === 'products') {
+                $products = $entry;
+            }
+        }
+
+        $this->assertNotNull($products);
+        $this->assertSame('/api/v1/products', $products['endpoint']);
+        $this->assertContains('status', $products['filterable']);
+        $this->assertContains('eq', $products['operators']);
+        $this->assertContains('id', $products['fields']);
+
+        // The primary key is always filterable and sortable, so discovery advertises
+        // it even though the resource does not list it (n8n can filter/sort by id).
+        $this->assertContains('id', $products['filterable']);
+        $this->assertContains('id', $products['sortable']);
+    }
+
+    public function testDiscoveryIsScopedToWhatTheKeyCanUse(): void
+    {
+        // Least privilege: a key with no scope for products must not discover it —
+        // it never learns the resource exists or its schema (matters most if a
+        // limited key is exposed). The endpoint still 200s with the accessible subset.
+        $result = $this->withHeaders($this->authHeaders(['audit:read']))->get('api/v1/_resources');
+        $result->assertStatus(200);
+        $slugs = array_map(static fn (array $e): string => $e['resource'], json_decode((string) $result->response()->getBody(), true)['data']);
+        $this->assertNotContains('products', $slugs);
+
+        // A products-scoped key does discover it.
+        $result2 = $this->withHeaders($this->authHeaders(['products:read']))->get('api/v1/_resources');
+        $slugs2  = array_map(static fn (array $e): string => $e['resource'], json_decode((string) $result2->response()->getBody(), true)['data']);
+        $this->assertContains('products', $slugs2);
+    }
+
+    public function testAdvertisesUpsertKeyAndFieldSchema(): void
+    {
+        $result = $this->withHeaders($this->authHeaders(['*:read']))->get('api/v1/_resources');
+        $json   = json_decode((string) $result->response()->getBody(), true);
+
+        $products = null;
+        foreach ($json['data'] as $entry) {
+            if ($entry['resource'] === 'products') {
+                $products = $entry;
+            }
+        }
+
+        // The primary key (for /{id} operations + cursor pagination) is advertised —
+        // n8n must not assume "id" since the engine is generic over the key.
+        $this->assertSame('id', $products['primaryKey']);
+
+        // The default ordering when no sort is sent, so n8n knows how a page is ordered.
+        $this->assertSame('-created_at', $products['defaultSort']);
+
+        // n8n can discover that PUT upsert is available and by which key.
+        $this->assertSame('sku', $products['upsertKey']);
+
+        // Per-field input schema: required flags + JSON types (for form-building).
+        $this->assertTrue($products['schema']['sku']['required']);        // required on create
+        $this->assertFalse($products['schema']['status']['required']);    // permit_empty
+        $this->assertSame('string', $products['schema']['sku']['type']);
+        $this->assertSame('float', $products['schema']['price']['type']); // from the declared cast
+
+        // Pagination + bulk limits, so an n8n workflow can size its page/batch calls
+        // to fit instead of discovering the caps by hitting a 4xx.
+        $this->assertSame(100, $products['perPage']['max']);
+        $this->assertSame(\App\Controllers\Api\ResourceController::BULK_MAX, $products['bulkMax']);
+    }
+
+    public function testAdvertisesEnumChoicesForConstrainedFields(): void
+    {
+        $result = $this->withHeaders($this->authHeaders(['*:read']))->get('api/v1/_resources');
+        $json   = json_decode((string) $result->response()->getBody(), true);
+
+        $products = null;
+        foreach ($json['data'] as $entry) {
+            if ($entry['resource'] === 'products') {
+                $products = $entry;
+            }
+        }
+
+        // A constrained field advertises its allowed values (from in_list[...]), so an
+        // n8n node building a create request from this live call knows the choices —
+        // consistent with what OpenAPI/Postman expose, not a bare "string".
+        $this->assertSame(['active', 'archived'], $products['schema']['status']['enum']);
+
+        // Unconstrained fields carry no enum key (kept lean).
+        $this->assertArrayNotHasKey('enum', $products['schema']['sku']);
+        $this->assertArrayNotHasKey('enum', $products['schema']['price']);
+    }
+}

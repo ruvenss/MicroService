@@ -1,0 +1,34 @@
+$kind: http-request
+name: Read the data-mutation audit trail.
+description: "Read the data-mutation audit trail. Scope: audit:read."
+url: "{{baseUrl}}/api/v1/_audit"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+  - key: If-None-Match
+    value: ""
+    disabled: true
+    description: Optional. Paste a prior ETag to get 304 Not Modified when unchanged.
+queryParams:
+  - key: resource
+    value: ""
+    disabled: true
+    description: Optional resource filter.
+  - key: record_id
+    value: ""
+    disabled: true
+    description: Optional record id filter.
+  - key: sinceId
+    value: ""
+    disabled: true
+    description: "Incremental polling: return only entries after this audit id, oldest-first — poll with the last id you saw (n8n change-data-capture)."
+  - key: page
+    value: ""
+    disabled: true
+    description: Page number (1-based).
+  - key: perPage
+    value: ""
+    disabled: true
+    description: Items per page (capped per resource).
+order: 4000

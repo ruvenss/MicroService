@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<ruleset name="MicroService">
+    <description>PSR-12 coding standard for application and plugin code.</description>
+
+    <file>app</file>
+    <file>plugins</file>
+
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <!-- Errors fail the build; warnings (e.g. line length in stock CI4 config
+         files) stay advisory and do not break CI. -->
+    <config name="ignore_warnings_on_exit" value="1"/>
+
+    <rule ref="PSR12"/>
+
+    <!-- Generated / framework-shaped code is exempt. -->
+    <exclude-pattern>*/Database/Migrations/*</exclude-pattern>
+    <exclude-pattern>app/Views/*</exclude-pattern>
+</ruleset>

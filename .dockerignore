@@ -1,0 +1,31 @@
+# Keep secrets, VCS, and rebuildable/big dirs out of the image build context.
+.git
+.gitignore
+.env
+.env.local
+*.env.local
+/vendor/
+/writable/cache/*
+/writable/logs/*
+/writable/debugbar/*
+/writable/session/*
+/build/
+.phpunit.cache
+.phpunit.result.cache
+node_modules
+.claude
+.qodo
+.vscode
+/docs
+# The generated API docs describe the whole surface — never bake them into a
+# production image (would be exposed if the service is). Dev serves them via
+# `php spark serve`; they stay in the repo for humans/LLMs. Belt-and-suspenders:
+# the vhost also `RedirectMatch 404 ^/docs`, so even if these are ever present in
+# the container they are never web-served (see docker/apache/microservice.conf).
+/public/docs
+tests
+phpunit.dist.xml
+phpcs.xml.dist
+phpstan.neon
+phpstan-baseline.neon
+docker-compose*.yml

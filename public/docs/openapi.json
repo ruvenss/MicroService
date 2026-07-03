@@ -1,0 +1,3354 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "MicroService API",
+        "version": "1.0.0",
+        "description": "Generated from the resource registry. Bearer API-key auth on all /api/v1/* except health. Success: `{data, meta}`. Errors: RFC 9457 problem+json. Every response carries X-Request-Id; rate limits via X-RateLimit-* / 429. Reads carry an ETag \u2014 pass it back as If-None-Match for a 304 Not Modified. Every GET endpoint also answers HEAD (same status/headers, no body)."
+    },
+    "servers": [
+        {
+            "url": "{scheme}://{host}",
+            "description": "Set host (and scheme) to your deployment; defaults to the local dev server.",
+            "variables": {
+                "scheme": {
+                    "default": "http",
+                    "enum": [
+                        "http",
+                        "https"
+                    ]
+                },
+                "host": {
+                    "default": "localhost:8080"
+                }
+            }
+        }
+    ],
+    "security": [
+        {
+            "bearerAuth": []
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "API key as `prefix.secret`."
+            }
+        },
+        "schemas": {
+            "Problem": {
+                "type": "object",
+                "description": "RFC 9457 problem detail.",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "detail": {
+                        "type": "string"
+                    },
+                    "requestId": {
+                        "type": "string"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                }
+            }
+        }
+    },
+    "paths": {
+        "/api/v1/_archive": {
+            "get": {
+                "tags": [
+                    "Audit & recycle bin"
+                ],
+                "operationId": "archiveList",
+                "summary": "List archived (deleted) rows. (scope: archive:read)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "resource",
+                        "in": "query",
+                        "required": false,
+                        "description": "Optional resource filter.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "restored",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter by restoration state: false = still-deleted (restorable), true = already restored. Omit for all.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "required": false,
+                        "description": "Items per page (capped per resource).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "ETag": {
+                                "description": "Validator for conditional requests (send back as If-None-Match).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/_archive/{id}": {
+            "get": {
+                "tags": [
+                    "Audit & recycle bin"
+                ],
+                "operationId": "archiveShow",
+                "summary": "Inspect one archived record (full payload). (scope: archive:read)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "ETag": {
+                                "description": "Validator for conditional requests (send back as If-None-Match).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/_archive/{id}/restore": {
+            "post": {
+                "tags": [
+                    "Audit & recycle bin"
+                ],
+                "operationId": "archiveRestore",
+                "summary": "Restore an archived record to its original table. (scope: archive:write)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/_audit": {
+            "get": {
+                "tags": [
+                    "Audit & recycle bin"
+                ],
+                "operationId": "auditList",
+                "summary": "Read the data-mutation audit trail. (scope: audit:read)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "resource",
+                        "in": "query",
+                        "required": false,
+                        "description": "Optional resource filter.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "record_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Optional record id filter.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sinceId",
+                        "in": "query",
+                        "required": false,
+                        "description": "Incremental polling: return only entries after this audit id, oldest-first \u2014 poll with the last id you saw (n8n change-data-capture).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "required": false,
+                        "description": "Items per page (capped per resource).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "ETag": {
+                                "description": "Validator for conditional requests (send back as If-None-Match).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/_me": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "operationId": "whoAmI",
+                "summary": "Introspect the authenticated API key (name, scopes, limits) \u2014 no secret.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "ETag": {
+                                "description": "Validator for conditional requests (send back as If-None-Match).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/_resources": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "operationId": "discoverResources",
+                "summary": "Discover registered resources and how to query them.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "ETag": {
+                                "description": "Validator for conditional requests (send back as If-None-Match).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/health": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "operationId": "health",
+                "summary": "Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness.",
+                "security": [],
+                "parameters": [
+                    {
+                        "name": "probe",
+                        "in": "query",
+                        "required": false,
+                        "description": "live = process-only liveness (always 200, no dependencies); ready (default) = readiness, pings database + cache.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "ETag": {
+                                "description": "Validator for conditional requests (send back as If-None-Match).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable \u2014 readiness degraded (database or cache unreachable).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "operationId": "productsList",
+                "summary": "List products. (scope: products:read)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Page number (1-based). Very deep offsets are rejected with 400 \u2014 use the endpoint's keyset alternative (cursor for resources, sinceId for the audit trail) for deep result sets.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "perPage",
+                        "in": "query",
+                        "required": false,
+                        "description": "Items per page (capped per resource).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": false,
+                        "description": "Opt into keyset pagination (stable, index-fast, ideal for n8n). Send the param empty to start, then follow meta.pagination.nextCursor until it is null. Iterates by id; combine only with sort=id / -id.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "description": "Sort by one or more columns, comma-separated (e.g. -price,name); prefix \"-\" for descending. Allowed: sku, name, price, created_at, updated_at (and id). Any other column is rejected with 400 (not silently ignored).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "fields",
+                        "in": "query",
+                        "required": false,
+                        "description": "Comma-separated sparse fieldset. Allowed: id, sku, name, price, status, created_at, updated_at.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "filter[sku]",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter. Columns: sku, status, price, created_at, updated_at. Operators: eq, ne, gt, gte, lt, lte, like, in, nin (e.g. filter[col][gte]=10). Numeric columns require numeric values (a non-numeric value is rejected with 400, never coerced); for like, % and _ match literally.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "ETag": {
+                                "description": "Validator for conditional requests (send back as If-None-Match).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "sku": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "price": {
+                                                        "type": "number"
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "active",
+                                                            "archived"
+                                                        ]
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Products"
+                ],
+                "operationId": "productsCreate",
+                "summary": "Create a products record (send a JSON array of objects to bulk-create, all-or-nothing). (scope: products:write)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "sku": {
+                                        "type": "string",
+                                        "example": "sku"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "name"
+                                    },
+                                    "price": {
+                                        "type": "number",
+                                        "example": 9.99
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ],
+                                        "example": "active"
+                                    }
+                                },
+                                "required": [
+                                    "sku",
+                                    "name",
+                                    "price"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "sku": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "price": {
+                                                    "type": "number"
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "active",
+                                                        "archived"
+                                                    ]
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Payload Too Large.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Products"
+                ],
+                "operationId": "productsBulkUpdate",
+                "summary": "Bulk update products: a JSON array of objects, each with its id plus fields to change (all-or-nothing, max 100). (scope: products:write)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object"
+                                }
+                            },
+                            "example": [
+                                {
+                                    "id": "1",
+                                    "sku": "sku",
+                                    "name": "name",
+                                    "price": 9.99,
+                                    "status": "active"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "sku": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "price": {
+                                                        "type": "number"
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "active",
+                                                            "archived"
+                                                        ]
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Payload Too Large.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Products"
+                ],
+                "operationId": "productsBulkDelete",
+                "summary": "Bulk archival delete products: send {\"ids\": [...]} (all-or-nothing, max 100, restorable via the recycle bin). (scope: products:delete)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            },
+                            "example": {
+                                "ids": [
+                                    "1",
+                                    "2"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Payload Too Large.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Products"
+                ],
+                "operationId": "productsUpsert",
+                "summary": "Upsert products by `sku` (create-or-update): send one object or a JSON array; each item matched on sku is updated, others created (all-or-nothing, max 100). meta: {upserted, created, updated}. (scope: products:write)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "sku": {
+                                        "type": "string",
+                                        "example": "sku"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "name"
+                                    },
+                                    "price": {
+                                        "type": "number",
+                                        "example": 9.99
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ],
+                                        "example": "active"
+                                    }
+                                },
+                                "required": [
+                                    "sku",
+                                    "name",
+                                    "price"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "sku": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "price": {
+                                                    "type": "number"
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "active",
+                                                        "archived"
+                                                    ]
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Payload Too Large.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/{id}": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "operationId": "productsShow",
+                "summary": "Fetch one products by id. (scope: products:read)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass a prior ETag; the server replies 304 Not Modified (empty body) when nothing changed.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "ETag": {
+                                "description": "Validator for conditional requests (send back as If-None-Match).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "sku": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "price": {
+                                                    "type": "number"
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "active",
+                                                        "archived"
+                                                    ]
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified \u2014 the ETag matched If-None-Match."
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Products"
+                ],
+                "operationId": "productsUpdate",
+                "summary": "Update a products (applies the fields sent). (scope: products:write)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass the ETag you fetched; the write is refused with 412 if the record changed since (optimistic concurrency \u2014 prevents lost updates).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "sku": {
+                                        "type": "string",
+                                        "example": "sku"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "name"
+                                    },
+                                    "price": {
+                                        "type": "number",
+                                        "example": 9.99
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ],
+                                        "example": "active"
+                                    }
+                                },
+                                "required": [
+                                    "sku",
+                                    "name",
+                                    "price"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "sku": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "price": {
+                                                    "type": "number"
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "active",
+                                                        "archived"
+                                                    ]
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "Precondition Failed \u2014 the If-Match ETag did not match the current resource.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Payload Too Large.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Products"
+                ],
+                "operationId": "productsUpdatePut",
+                "summary": "Update a products (PUT alias of the update operation \u2014 applies the fields sent; clients that default to PUT can use it). (scope: products:write)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass the ETag you fetched; the write is refused with 412 if the record changed since (optimistic concurrency \u2014 prevents lost updates).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "sku": {
+                                        "type": "string",
+                                        "example": "sku"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "name"
+                                    },
+                                    "price": {
+                                        "type": "number",
+                                        "example": 9.99
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ],
+                                        "example": "active"
+                                    }
+                                },
+                                "required": [
+                                    "sku",
+                                    "name",
+                                    "price"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "sku": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "price": {
+                                                    "type": "number"
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "active",
+                                                        "archived"
+                                                    ]
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "Precondition Failed \u2014 the If-Match ETag did not match the current resource.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Payload Too Large.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity \u2014 validation failed (see the errors member).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Products"
+                ],
+                "operationId": "productsDelete",
+                "summary": "Archival delete (moves the row to the recycle bin). (scope: products:delete)",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. A retry with the same key + request replays the first response (safe for n8n retries).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Optional. Pass the ETag you fetched; the write is refused with 412 if the record changed since (optimistic concurrency \u2014 prevents lost updates).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content",
+                        "headers": {
+                            "X-Request-Id": {
+                                "description": "Correlation id (echoes an inbound one).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict \u2014 a unique value is already taken (including a concurrent create/update that raced the DB index), an Idempotency-Key whose original request is still in progress, or a delete a plugin vetoed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "Precondition Failed \u2014 the If-Match ETag did not match the current resource.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests \u2014 rate limit exceeded.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds to wait before retrying.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Limit": {
+                                "description": "Requests allowed per window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Requests remaining in the current window.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-RateLimit-Reset": {
+                                "description": "Epoch second when the window resets.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

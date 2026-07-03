@@ -1,0 +1,13 @@
+$kind: http-request
+name: Introspect the authenticated API key (name, scopes, limits) — no secret.
+description: Introspect the authenticated API key (name, scopes, limits) — no secret.
+url: "{{baseUrl}}/api/v1/_me"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+  - key: If-None-Match
+    value: ""
+    disabled: true
+    description: Optional. Paste a prior ETag to get 304 Not Modified when unchanged.
+order: 2000

@@ -1,0 +1,228 @@
+<?php
+
+namespace Config;
+
+use CodeIgniter\Cache\CacheInterface;
+use CodeIgniter\Cache\Handlers\ApcuHandler;
+use CodeIgniter\Cache\Handlers\DummyHandler;
+use CodeIgniter\Cache\Handlers\FileHandler;
+use CodeIgniter\Cache\Handlers\MemcachedHandler;
+use App\Libraries\Cache\AtomicPredisHandler;
+use CodeIgniter\Cache\Handlers\RedisHandler;
+use CodeIgniter\Cache\Handlers\WincacheHandler;
+use CodeIgniter\Config\BaseConfig;
+
+class Cache extends BaseConfig
+{
+    /**
+     * --------------------------------------------------------------------------
+     * Primary Handler
+     * --------------------------------------------------------------------------
+     *
+     * The name of the preferred handler that should be used. If for some reason
+     * it is not available, the $backupHandler will be used in its place.
+     */
+    public string $handler = 'file';
+
+    /**
+     * --------------------------------------------------------------------------
+     * Backup Handler
+     * --------------------------------------------------------------------------
+     *
+     * The name of the handler that will be used in case the first one is
+     * unreachable. `file` (always available) so a Redis outage degrades to the
+     * local filesystem cache instead of failing — CI4's CacheFactory catches the
+     * primary handler's connection CriticalError and falls back here automatically.
+     */
+    public string $backupHandler = 'file';
+
+    /**
+     * --------------------------------------------------------------------------
+     * Key Prefix
+     * --------------------------------------------------------------------------
+     *
+     * This string is added to all cache item names to help avoid collisions
+     * if you run multiple applications with the same cache engine.
+     */
+    public string $prefix = '';
+
+    /**
+     * --------------------------------------------------------------------------
+     * Default TTL
+     * --------------------------------------------------------------------------
+     *
+     * The default number of seconds to save items when none is specified.
+     *
+     * WARNING: This is not used by framework handlers where 60 seconds is
+     * hard-coded, but may be useful to projects and modules. This will replace
+     * the hard-coded value in a future release.
+     */
+    public int $ttl = 60;
+
+    /**
+     * --------------------------------------------------------------------------
+     * Reserved Characters
+     * --------------------------------------------------------------------------
+     *
+     * A string of reserved characters that will not be allowed in keys or tags.
+     * Strings that violate this restriction will cause handlers to throw.
+     * Default: {}()/\@:
+     *
+     * NOTE: The default set is required for PSR-6 compliance.
+     */
+    public string $reservedCharacters = '{}()/\@:';
+
+    /**
+     * --------------------------------------------------------------------------
+     * File settings
+     * --------------------------------------------------------------------------
+     *
+     * Your file storage preferences can be specified below, if you are using
+     * the File driver.
+     *
+     * @var array{storePath?: string, mode?: int}
+     */
+    public array $file = [
+        'storePath' => WRITEPATH . 'cache/',
+        'mode'      => 0640,
+    ];
+
+    /**
+     * -------------------------------------------------------------------------
+     * Memcached settings
+     * -------------------------------------------------------------------------
+     *
+     * Your Memcached servers can be specified below, if you are using
+     * the Memcached drivers.
+     *
+     * @see https://codeigniter.com/user_guide/libraries/caching.html#memcached
+     *
+     * @var array{host?: string, port?: int, weight?: int, raw?: bool}
+     */
+    public array $memcached = [
+        'host'   => '127.0.0.1',
+        'port'   => 11211,
+        'weight' => 1,
+        'raw'    => false,
+    ];
+
+    /**
+     * -------------------------------------------------------------------------
+     * Redis settings
+     * -------------------------------------------------------------------------
+     *
+     * Your Redis server can be specified below, if you are using
+     * the Redis or Predis drivers.
+     *
+     * @var array{
+     *     host?: string,
+     *     password?: string|null,
+     *     port?: int,
+     *     timeout?: int,
+     *     async?: bool,
+     *     persistent?: bool,
+     *     database?: int
+     * }
+     */
+    public array $redis = [
+        'host'       => '127.0.0.1',
+        'password'   => null,
+        'port'       => 6379,
+        'timeout'    => 0,
+        'async'      => false, // specific to Predis and ignored by the native Redis extension
+        'persistent' => false,
+        'database'   => 0,
+    ];
+
+    /**
+     * --------------------------------------------------------------------------
+     * Available Cache Handlers
+     * --------------------------------------------------------------------------
+     *
+     * This is an array of cache engine alias' and class names. Only engines
+     * that are listed here are allowed to be used.
+     *
+     * @var array<string, class-string<CacheInterface>>
+     */
+    public array $validHandlers = [
+        'apcu'      => ApcuHandler::class,
+        'dummy'     => DummyHandler::class,
+        'file'      => FileHandler::class,
+        'memcached' => MemcachedHandler::class,
+        // Our subclass adds an atomic fixed-window counter (incrementWindow) the
+        // rate limiter needs; it is a drop-in PredisHandler otherwise.
+        'predis'    => AtomicPredisHandler::class,
+        'redis'     => RedisHandler::class,
+        'wincache'  => WincacheHandler::class,
+    ];
+
+    /**
+     * --------------------------------------------------------------------------
+     * Web Page Caching: Cache Include Query String
+     * --------------------------------------------------------------------------
+     *
+     * Whether to take the URL query string into consideration when generating
+     * output cache files. Valid options are:
+     *
+     *    false = Disabled
+     *    true  = Enabled, take all query parameters into account.
+     *            Please be aware that this may result in numerous cache
+     *            files generated for the same page over and over again.
+     *    ['q'] = Enabled, but only take into account the specified list
+     *            of query parameters.
+     *
+     * @var bool|list<string>
+     */
+    public $cacheQueryString = false;
+
+    /**
+     * --------------------------------------------------------------------------
+     * Web Page Caching: Cache Status Codes
+     * --------------------------------------------------------------------------
+     *
+     * HTTP status codes that are allowed to be cached. Only responses with
+     * these status codes will be cached by the PageCache filter.
+     *
+     * Default: [] - Cache all status codes (backward compatible)
+     *
+     * Recommended: [200] - Only cache successful responses
+     *
+     * You can also use status codes like:
+     *   [200, 404, 410] - Cache successful responses and specific error codes
+     *   [200, 201, 202, 203, 204] - All 2xx successful responses
+     *
+     * WARNING: Using [] may cache temporary error pages (404, 500, etc).
+     * Consider restricting to [200] for production applications to avoid
+     * caching errors that should be temporary.
+     *
+     * @var list<int>
+     */
+    public array $cacheStatusCodes = [];
+
+    /**
+     * When `REDIS_HOST` is set (the docker-compose stack ships a Redis sidecar),
+     * use the **Predis** handler so cache/rate-limit/idempotency/counter state is
+     * shared across app containers — the distributed guarantee locked decision #1
+     * requires and file cache cannot provide once you run more than one replica.
+     * Predis is pure PHP, so it works on PHP 8.5 without the phpredis C extension.
+     * Absent (local dev / tests / a single-node deploy) it stays on `file`. Either
+     * way `backupHandler = file` means a Redis outage degrades, never 500s.
+     *
+     * Underscore-named env (mapped here) because dotted CI keys do not propagate
+     * through Apache/FPM — see docker-compose.yml.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+
+        $redisHost = getenv('REDIS_HOST');
+        if ($redisHost !== false && $redisHost !== '') {
+            $this->handler        = 'predis';
+            $this->redis['host']  = $redisHost;
+            $this->redis['port']  = (int) (getenv('REDIS_PORT') ?: 6379);
+            // Fail fast to the file backup if Redis is unreachable, rather than
+            // adding connection-hang latency to every request during an outage.
+            $this->redis['timeout'] = 1;
+        }
+    }
+}

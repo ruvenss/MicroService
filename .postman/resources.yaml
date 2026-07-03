@@ -1,0 +1,15 @@
+# Use this workspace to collaborate
+workspace:
+  id: 976f0a4b-fa3a-4951-a3c6-b1f27b664a7f
+
+localResources:
+  collections:
+    - ../docs/postman/MicroService.postman_collection.json
+  environments:
+    - ../docs/postman/MicroService.local.postman_environment.json
+  specs:
+    - ../public/docs/openapi.json
+
+cloudResources:
+  collections:
+    ../postman/collections/MicroService API: 2b32f455-14a8-4c47-8b35-f5c76828270c

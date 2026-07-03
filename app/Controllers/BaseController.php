@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Controllers;
+
+use CodeIgniter\Controller;
+use CodeIgniter\HTTP\RequestInterface;
+use CodeIgniter\HTTP\ResponseInterface;
+use Psr\Log\LoggerInterface;
+
+/**
+ * BaseController provides a convenient place for loading components
+ * and performing functions that are needed by all your controllers.
+ *
+ * Extend this class in any new controllers:
+ * ```
+ *     class Home extends BaseController
+ * ```
+ *
+ * For security, be sure to declare any new methods as protected or private.
+ */
+abstract class BaseController extends Controller
+{
+    /**
+     * Deepest `OFFSET` any list endpoint (resources, `_audit`, `_archive`) allows for
+     * classic page/perPage pagination. Past this the request is refused with a 400 —
+     * an unbounded `OFFSET n` makes the database walk and discard `n` rows per request,
+     * so a `?page=<huge>` against a large table (the audit log especially) is an
+     * amplification DoS if the service is exposed. Keyset alternatives (`?cursor=` for
+     * resources, `?sinceId=` for the audit trail) have no such cost.
+     */
+    public const MAX_OFFSET = 100000;
+
+    /**
+     * Be sure to declare properties for any property fetch you initialized.
+     * The creation of dynamic property is deprecated in PHP 8.2.
+     */
+
+    // protected $session;
+
+    /**
+     * @return void
+     */
+    public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
+    {
+        // Load here all helpers you want to be available in your controllers that extend BaseController.
+        // Caution: Do not put the this below the parent::initController() call below.
+        // $this->helpers = ['form', 'url'];
+
+        // Caution: Do not edit this line.
+        parent::initController($request, $response, $logger);
+
+        // Each request is a single, independent mutation, so use NON-strict managed
+        // transactions: a rolled-back transaction must not leave the connection's
+        // transStatus false and poison the *next* transaction. That matters because the
+        // app uses persistent DB connections (pConnect) — with the default strict mode a
+        // single failed write (e.g. a transactional webhook-outbox insert that rolled the
+        // change back → 500) would silently cascade into failing every later request that
+        // reuses the same pooled connection.
+        db_connect()->transStrict(false);
+    }
+
+    /**
+     * Offset-pagination page size from `?perPage`, shared by every list endpoint
+     * (resources, `_audit`, `_archive`) so they behave identically.
+     *
+     * A positive integer is clamped to `[1, $max]`. Anything else — absent, empty,
+     * zero, negative, or non-numeric (e.g. an n8n workflow whose perPage variable is
+     * unset, arriving as `perPage=` → 0) — falls back to `$default` rather than silently
+     * collapsing to 1-row pages (a ~25x round-trip amplification the caller never asked
+     * for). An explicit `perPage=1` is honoured.
+     */
+    protected function pageSize(int $default, int $max): int
+    {
+        $requested = (int) ($this->request->getGet('perPage') ?? 0);
+        if ($requested < 1) {
+            $requested = $default;
+        }
+
+        return min($requested, $max);
+    }
+}

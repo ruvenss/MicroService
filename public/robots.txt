@@ -1,0 +1,3 @@
+# Machine-to-machine API — nothing here is meant to be crawled or indexed.
+User-agent: *
+Disallow: /

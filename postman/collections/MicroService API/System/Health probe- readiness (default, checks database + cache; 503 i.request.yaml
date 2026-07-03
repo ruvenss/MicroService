@@ -1,0 +1,20 @@
+$kind: http-request
+name: "Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness."
+description: "Health probe: readiness (default, checks database + cache; 503 if degraded) or liveness."
+url: "{{baseUrl}}/api/v1/health"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+  - key: If-None-Match
+    value: ""
+    disabled: true
+    description: Optional. Paste a prior ETag to get 304 Not Modified when unchanged.
+queryParams:
+  - key: probe
+    value: ""
+    disabled: true
+    description: live = process-only liveness (always 200, no dependencies); ready (default) = readiness, pings database + cache.
+auth:
+  type: noauth
+order: 1000
