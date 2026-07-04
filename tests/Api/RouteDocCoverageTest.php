@@ -61,8 +61,11 @@ final class RouteDocCoverageTest extends CIUnitTestCase
 
         $add = function (string $verb, string $pattern) use (&$set): void {
             $verb = strtolower($verb);
-            if (! in_array($verb, self::VERBS, true) || str_contains($pattern, '_throw')) {
-                return; // HEAD/OPTIONS are implicit; _throw is a dev-only diagnostic
+            if (! in_array($verb, self::VERBS, true) || str_contains($pattern, '_throw') || str_starts_with($pattern, 'ms_debug')) {
+                // HEAD/OPTIONS are implicit; _throw and ms_debug are dev-only surfaces
+                // (registered only when ENVIRONMENT=development) and are deliberately NOT
+                // part of the documented API contract — they never exist in production.
+                return;
             }
             $path                              = str_starts_with($pattern, 'api/v1') ? $pattern : 'api/v1/' . ltrim($pattern, '/');
             $set[$this->canonical($verb, $path)] = true;

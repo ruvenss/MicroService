@@ -22,6 +22,19 @@ if (ENVIRONMENT !== 'production') {
     });
 }
 
+// Development-only realtime debug dashboard (App\Controllers\Debug\MsDebug).
+// Registered ONLY when CI_ENVIRONMENT=development (mapped to the ENVIRONMENT
+// constant) — the STRICTER `=== 'development'` gate, not `!== 'production'`, so it
+// is absent under testing/production alike. It sits OUTSIDE every `api/v1` filter
+// group: no auth, no rate-limit, no usage tracking — it is a local dev surface, not
+// part of the API contract, and never present where the service is exposed. The
+// controller re-asserts the same gate as defence in depth (falls through to the
+// neutral 404 otherwise), so a stray registration can never reveal it.
+if (ENVIRONMENT === 'development') {
+    $routes->get('ms_debug', 'Debug\MsDebug::index');
+    $routes->get('ms_debug/data', 'Debug\MsDebug::data');
+}
+
 // ── Authenticated endpoints ──────────────────────────────────────────────
 // Authenticated meta endpoints (valid key; per-endpoint scope checks live in the
 // controllers). Usage is tracked. Declared before the generic CRUD group so the

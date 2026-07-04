@@ -47,3 +47,15 @@ parameters:
 			identifier: notIdentical.alwaysTrue
 			count: 1
 			path: app/Libraries/ApiExceptionHandler.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''testing'' and ''development'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Config/Routes.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between ''testing'' and ''development'' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Controllers/Debug/MsDebug.php
